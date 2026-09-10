@@ -2,7 +2,57 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering)
+
+## Phase 22 — PDH sampling correctness + median filtering
+Matt: "numbers are still bouncing around" (generic, no new screenshot this
+round) plus a request to look at comparable open-source tools for how they
+read sensors. `FanControl` (Rem0o) turned out to have no public source (its
+GitHub repo is releases-only) and `Levminer/cores` is a Rust/Tauri codebase,
+neither directly portable — but Microsoft's own `PerformanceCounter` docs
+confirmed a real, previously-unaddressed mechanism: a rate-based counter
+(which "GPU Engine\Utilization Percentage" is) computes its value from the
+delta between *its own* last two `NextValue()` calls, and calling it again
+too soon after the previous call — under ~1 second — produces an unstable,
+not just stale, result. Two concrete bugs followed from that:
+- [x] **GPU Engine counters now sample on their own minimum ~950ms cadence,
+      decoupled from the caller.** `HardwareMonitorService`'s poll interval
+      is user-configurable down to 250ms (Settings → Dashboard refresh
+      rate) — well under what a PDH rate counter needs. `GetTotalEngineUtilization`
+      now returns the last good sample instead of re-querying if called
+      again too soon, regardless of what refresh rate is configured.
+- [x] **Split into two independent `GpuEngineCounterSet`s.** The headline
+      GPU% (`GetTotalEngineUtilization`, ~1s cadence) and the Top Processes
+      GPU ranking (`SampleGpu`, Portrait Mode's ~2s cadence) were sharing
+      the same `PerformanceCounter` objects — since a counter's delta is
+      computed from whoever last called it regardless of which caller,
+      having Dashboard and Portrait Mode open at the same time would desync
+      both readings' effective sampling interval. Now each keeps its own set;
+      the extra PDH registrations are cheap (a handful of GPU-active
+      processes at most).
+- [x] **`MedianFilter` (window of 3) ahead of the existing `EmaSmoother` for
+      CPU/GPU load.** A single wrong instantaneous sample still leaks
+      partway through EMA alone and takes a couple of seconds to fade — a
+      median of the last 3 samples rejects a one-off spike outright (it can
+      never be the middle value of three) before smoothing sees it, the same
+      technique HWiNFO's sensor smoothing and RTSS use. A real sustained
+      level change still reaches the median within 1-2 samples, so this
+      doesn't meaningfully add lag on top of what EMA already has.
+- [x] **Storage: replaced 8 per-poll WMI round trips with 2 bulk queries.**
+      `BuildFreeSpaceByPhysicalDisk` previously ran a separate `ASSOCIATORS
+      OF` query per drive per association hop (2 queries × 4 drives on
+      Matt's machine, every poll). Now reads the whole of
+      `Win32_LogicalDiskToPartition` and `Win32_DiskDriveToDiskPartition`
+      once each and matches locally in memory — the same bulk-read pattern
+      the Windows Storage Management stack itself uses
+      (`Get-Partition`/`Get-Disk`), and it closes the window for any
+      cross-query inconsistency mid-poll, which was the one remaining
+      unproven suspect after the duplicate-row theory was fixed and the
+      dedup guard (kept, now structurally redundant but cheap) never fired
+      in a clean 20+ second trace.
+- [ ] Not independently re-verified live — needs Matt's own check, and the
+      intermittent storage recurrence from Phase 20 still needs a bad-poll
+      trace if it happens again (`storage-trace.log` logging stays in place).
 
 ## Phase 21 — CPU/GPU % jitter vs. Portrait Stats
 Matt's report: GPU% swinging 2→21→2 within a second or two, called out as

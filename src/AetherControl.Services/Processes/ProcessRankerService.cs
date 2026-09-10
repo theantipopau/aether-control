@@ -13,16 +13,33 @@ namespace AetherControl.Services.Processes;
 /// </summary>
 public sealed partial class ProcessRankerService
 {
+    // A rate-based PerformanceCounter (which "GPU Engine\Utilization Percentage" is) computes its
+    // value from the delta between this call and its *own* last NextValue() call — Microsoft's own
+    // docs confirm calling it again too soon after the previous call produces an unstable/garbage
+    // result, not just a stale one. HardwareMonitorService's poll interval is user-configurable down
+    // to 250ms, well under the ~1s a PDH rate counter needs between samples to stay accurate — so
+    // this can't just sample on every caller's tick. Its own minimum cadence here, independent of
+    // however often callers ask, is what keeps it stable regardless of the dashboard refresh setting.
+    private static readonly TimeSpan MinEngineSampleInterval = TimeSpan.FromMilliseconds(950);
+
     private readonly Dictionary<int, (TimeSpan cpuTime, DateTime sampledAt)> _lastCpuSample = new();
-    private readonly Dictionary<string, PerformanceCounter> _gpuCounters = new();
-    private DateTime _lastGpuRefresh = DateTime.MinValue;
+    // Two independent counter sets, not one shared between the two GPU read paths: a rate-based
+    // PerformanceCounter's NextValue() computes its delta from *its own* last call regardless of who
+    // made that call, so a per-process ranking tick (SampleGpu, Portrait Mode's ~2s cadence) and the
+    // headline-total tick (GetTotalEngineUtilization, ~1s) sharing one PerformanceCounter per instance
+    // would desync each other's effective sampling interval the moment both are active at once —
+    // exactly the kind of irregular-interval noise this whole change is trying to eliminate. Doubling
+    // the PDH registrations is cheap (a handful of GPU-active processes at most).
+    private readonly GpuEngineCounterSet _perProcessCounters = new();
+    private readonly GpuEngineCounterSet _totalCounters = new();
+    private DateTime _lastEngineTotalSampledAt = DateTime.MinValue;
+    private double _lastEngineTotal;
     private bool? _gpuEngineAvailable;
     // This is now called from three independent timers (Dashboard's process-ranking tick, Portrait
     // Mode's, and HardwareMonitorService's own 1-second poll for the headline GPU% card) all hitting
-    // the same singleton instance — none of the dictionaries above are thread-safe, and enumerating
-    // _gpuCounters on one thread while RefreshGpuCounterInstances mutates it on another throws
-    // InvalidOperationException. One lock around each sample is simpler than making every collection
-    // concurrent for what's a once-a-second call, not a hot path.
+    // the same singleton instance — none of the state above is thread-safe on its own. One lock
+    // around each sample is simpler than making every collection concurrent for what's a once-a-second
+    // call, not a hot path.
     private readonly object _sampleLock = new();
 
     /// <summary>Whether this session's driver exposes the "GPU Engine" PDH category at all (checked
@@ -154,9 +171,9 @@ public sealed partial class ProcessRankerService
             return result;
         }
 
-        RefreshGpuCounterInstances();
+        _perProcessCounters.Refresh();
 
-        foreach (var (instanceName, counter) in _gpuCounters)
+        foreach (var (instanceName, counter) in _perProcessCounters.Counters)
         {
             float value;
             try
@@ -190,39 +207,52 @@ public sealed partial class ProcessRankerService
         return result;
     }
 
-    private void RefreshGpuCounterInstances()
+    /// <summary>Owns one set of "GPU Engine" PerformanceCounter instances, refreshed periodically as
+    /// process/engine instance names churn. A private nested type rather than a shared dictionary so
+    /// two independent consumers (per-process ranking vs. the headline total) never interleave
+    /// NextValue() calls on the same counter object — see the fields' own comment for why that
+    /// matters for a rate-based counter.</summary>
+    private sealed class GpuEngineCounterSet
     {
-        // Instance names churn as processes start/stop using the GPU; re-scan periodically.
-        if ((DateTime.UtcNow - _lastGpuRefresh).TotalSeconds < 2)
+        private readonly Dictionary<string, PerformanceCounter> _counters = new();
+        private DateTime _lastRefresh = DateTime.MinValue;
+
+        public IReadOnlyDictionary<string, PerformanceCounter> Counters => _counters;
+
+        public void Refresh()
         {
-            return;
-        }
-
-        _lastGpuRefresh = DateTime.UtcNow;
-
-        var category = new PerformanceCounterCategory("GPU Engine");
-        var currentInstances = category.GetInstanceNames().ToHashSet();
-
-        foreach (var stale in _gpuCounters.Keys.Where(k => !currentInstances.Contains(k)).ToList())
-        {
-            _gpuCounters[stale].Dispose();
-            _gpuCounters.Remove(stale);
-        }
-
-        foreach (var instanceName in currentInstances)
-        {
-            if (_gpuCounters.ContainsKey(instanceName))
+            // Instance names churn as processes start/stop using the GPU; re-scan periodically.
+            if ((DateTime.UtcNow - _lastRefresh).TotalSeconds < 2)
             {
-                continue;
+                return;
             }
 
-            try
+            _lastRefresh = DateTime.UtcNow;
+
+            var category = new PerformanceCounterCategory("GPU Engine");
+            var currentInstances = category.GetInstanceNames().ToHashSet();
+
+            foreach (var stale in _counters.Keys.Where(k => !currentInstances.Contains(k)).ToList())
             {
-                _gpuCounters[instanceName] = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, readOnly: true);
+                _counters[stale].Dispose();
+                _counters.Remove(stale);
             }
-            catch
+
+            foreach (var instanceName in currentInstances)
             {
-                // Instance disappeared between enumeration and construction — ignore.
+                if (_counters.ContainsKey(instanceName))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    _counters[instanceName] = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, readOnly: true);
+                }
+                catch
+                {
+                    // Instance disappeared between enumeration and construction — ignore.
+                }
             }
         }
     }
@@ -233,9 +263,9 @@ public sealed partial class ProcessRankerService
     /// every process using it). LibreHardwareMonitor's "GPU Core" sensor reads the driver's own
     /// broader load figure (all engines/clocks via ADL/NVAPI), which is a real, legitimate number
     /// but a different one — confirmed by a real side-by-side where LHM read ~15% against Task
-    /// Manager's ~8% at the same instant, consistently, not just noise. Reusing the same "GPU
-    /// Engine" counters <see cref="SampleGpu"/> already keeps refreshed rather than opening a
-    /// second set avoids doubling the PDH counter overhead.
+    /// Manager's ~8% at the same instant, consistently, not just noise. Uses its own
+    /// <see cref="GpuEngineCounterSet"/>, separate from <see cref="SampleGpu"/>'s — see that field's
+    /// comment for why sharing counter objects between two independently-timed callers is unsafe.
     /// </summary>
     public double GetTotalEngineUtilization(string engineTypeContains = "engtype_3D")
     {
@@ -246,10 +276,21 @@ public sealed partial class ProcessRankerService
                 return 0;
             }
 
-            RefreshGpuCounterInstances();
+            // Sampling more often than this doesn't make the reading more current — it makes it
+            // less accurate, since a rate counter queried too soon after its own last query has too
+            // little elapsed time to compute a meaningful delta. Callers polling faster than this
+            // (e.g. a dashboard refresh rate turned down to 250ms) just get the last good sample.
+            var now = DateTime.UtcNow;
+            if (now - _lastEngineTotalSampledAt < MinEngineSampleInterval)
+            {
+                return _lastEngineTotal;
+            }
+
+            _lastEngineTotalSampledAt = now;
+            _totalCounters.Refresh();
 
             double total = 0;
-            foreach (var (instanceName, counter) in _gpuCounters)
+            foreach (var (instanceName, counter) in _totalCounters.Counters)
             {
                 if (!instanceName.Contains(engineTypeContains, StringComparison.OrdinalIgnoreCase))
                 {
@@ -266,7 +307,8 @@ public sealed partial class ProcessRankerService
                 }
             }
 
-            return Math.Min(total, 100.0);
+            _lastEngineTotal = Math.Min(total, 100.0);
+            return _lastEngineTotal;
         }
     }
 

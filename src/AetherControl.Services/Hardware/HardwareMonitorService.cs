@@ -57,6 +57,12 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     // look like an Aether-only bug. Damping the *display* the same way clock speed already is.
     private readonly EmaSmoother _cpuLoadSmoother = new();
     private readonly EmaSmoother _gpuLoadSmoother = new();
+    // A single wrong sample (one bad instantaneous read, not a real level change — e.g. LHM's driver
+    // call landing mid-transition) still leaks partway through an EmaSmoother and takes a couple of
+    // seconds to fade. A median-of-3 ahead of it throws a genuine one-off spike out completely (it's
+    // never the middle value of three) before smoothing ever sees it.
+    private readonly MedianFilter _cpuLoadMedian = new();
+    private readonly MedianFilter _gpuLoadMedian = new();
 
     public HardwareMonitorService(
         ILogger<HardwareMonitorService> logger,
@@ -167,7 +173,7 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
         var cpuInfo = HardwareSnapshotMapper.MapCpu(cpu);
         SmoothClockSpeeds(cpuInfo);
-        cpuInfo.UtilisationPercent = (float)_cpuLoadSmoother.Update(cpuInfo.UtilisationPercent);
+        cpuInfo.UtilisationPercent = (float)_cpuLoadSmoother.Update(_cpuLoadMedian.Update(cpuInfo.UtilisationPercent));
 
         var gpuInfo = HardwareSnapshotMapper.MapGpu(gpu);
         // Prefer the same "GPU Engine" PDH counter Task Manager's headline GPU% is built from over
@@ -179,7 +185,7 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         var gpuLoadPercent = _processRanker.IsGpuEngineCounterAvailable
             ? _processRanker.GetTotalEngineUtilization()
             : gpuInfo.UtilisationPercent;
-        gpuInfo.UtilisationPercent = (float)_gpuLoadSmoother.Update(gpuLoadPercent);
+        gpuInfo.UtilisationPercent = (float)_gpuLoadSmoother.Update(_gpuLoadMedian.Update(gpuLoadPercent));
 
         var snapshot = new HardwareSnapshot
         {

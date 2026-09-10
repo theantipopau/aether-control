@@ -157,75 +157,109 @@ internal static class StorageHealthProbe
     /// escape a DeviceID like \\.\PHYSICALDRIVE0 at all, since neither a drive letter ("C:") nor a
     /// partition DeviceID ("Disk #0, Partition #0") contains a backslash.
     /// </summary>
+    /// <summary>
+    /// Was 2 ASSOCIATORS-OF queries per drive (8 WMI round trips for Matt's 4-drive machine, every
+    /// single poll). Each ASSOCIATORS OF call is its own separate query against WMI's provider —
+    /// nothing guarantees the 8 calls in one poll observe a perfectly consistent snapshot of the
+    /// system if anything changes state mid-poll (a drive letter remount, Explorer touching a volume,
+    /// etc.), which was the remaining unproven suspect after ruling out double-counted associator
+    /// rows. Two bulk, unfiltered queries — the whole of Win32_LogicalDiskToPartition and
+    /// Win32_DiskDriveToDiskPartition, matched locally in memory — get the exact same associations in
+    /// 2 round trips instead of 8, closing that window. This is also just how the Windows Storage
+    /// Management stack (Get-Partition/Get-Disk) does it: one bulk read of each association table,
+    /// not N queries keyed on a specific object.
+    /// </summary>
     private static Dictionary<string, double> BuildFreeSpaceByPhysicalDisk()
     {
         var freeSpaceByDiskId = new Dictionary<string, double>();
+        var partitionsByLogicalDisk = new Dictionary<string, HashSet<string>>();
+        var disksByPartition = new Dictionary<string, HashSet<string>>();
 
-        // Real evidence from Matt's machine ruled out a drive-identity mix-up: all four distinct
-        // physical drives jumped by a correlated ~1.55-1.59x at once (637→988GB, 435→680GB,
-        // 356→562GB, 335→532GB) — a pure "wrong drive shown here" bug can't move every drive in
-        // the same direction together. That points at this method double-counting a logical
-        // drive's free space into a disk's total, which WMI associator queries are known to do
-        // occasionally (duplicate rows for the same partition/disk pair, a real provider quirk,
-        // not specific to this hardware). This set makes each (logical drive, physical disk) pair
-        // contribute its free space at most once per poll, regardless of how many duplicate rows
-        // WMI returns for it that particular time — the actual per-poll trigger for the duplication
-        // itself was never pinned down, but it can't inflate a total if it's deduplicated here.
+        try
+        {
+            using var logicalToPartition = new ManagementObjectSearcher("SELECT * FROM Win32_LogicalDiskToPartition");
+            foreach (ManagementBaseObject link in logicalToPartition.Get())
+            {
+                var partitionId = ExtractDeviceId(link["Antecedent"]?.ToString());
+                var logicalDeviceId = ExtractDeviceId(link["Dependent"]?.ToString());
+                if (partitionId is null || logicalDeviceId is null)
+                {
+                    continue;
+                }
+
+                if (!partitionsByLogicalDisk.TryGetValue(logicalDeviceId, out var partitions))
+                {
+                    partitions = [];
+                    partitionsByLogicalDisk[logicalDeviceId] = partitions;
+                }
+
+                partitions.Add(partitionId);
+            }
+
+            using var diskToPartition = new ManagementObjectSearcher("SELECT * FROM Win32_DiskDriveToDiskPartition");
+            foreach (ManagementBaseObject link in diskToPartition.Get())
+            {
+                var diskId = ExtractDeviceId(link["Antecedent"]?.ToString());
+                var partitionId = ExtractDeviceId(link["Dependent"]?.ToString());
+                if (diskId is null || partitionId is null)
+                {
+                    continue;
+                }
+
+                if (!disksByPartition.TryGetValue(partitionId, out var disks))
+                {
+                    disks = [];
+                    disksByPartition[partitionId] = disks;
+                }
+
+                disks.Add(diskId);
+            }
+        }
+        catch (ManagementException ex)
+        {
+            StorageDiagnosticLog.Write($"BULK QUERY EXCEPTION: {ex.Message}");
+            return freeSpaceByDiskId;
+        }
+
+        // Each (logical drive, physical disk) pair contributes its free space at most once per
+        // poll, regardless of how many partition hops connect them — guards against the WMI
+        // duplicate-association-row quirk that caused a real, evidence-confirmed over-count before
+        // (see git history), now structurally impossible to hit twice for the same pair.
         var countedContributions = new HashSet<(string LogicalDeviceId, string DiskId)>();
 
         foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))
         {
             var logicalDeviceId = drive.Name.TrimEnd('\\', '/');
             var freeGb = drive.TotalFreeSpace / 1024.0 / 1024.0 / 1024.0;
-            try
+
+            if (!partitionsByLogicalDisk.TryGetValue(logicalDeviceId, out var partitionIds))
             {
-                using var partitionSearcher = new ManagementObjectSearcher(
-                    $"ASSOCIATORS OF {{Win32_LogicalDisk.DeviceID='{logicalDeviceId}'}} WHERE AssocClass=Win32_LogicalDiskToPartition");
+                StorageDiagnosticLog.Write($"{logicalDeviceId} free={freeGb:0.00}GB NO PARTITIONS FOUND");
+                continue;
+            }
 
-                var partitionIds = new HashSet<string>();
-                foreach (ManagementBaseObject partition in partitionSearcher.Get())
+            var diskIds = new HashSet<string>();
+            foreach (var partitionId in partitionIds)
+            {
+                if (disksByPartition.TryGetValue(partitionId, out var disks))
                 {
-                    var partitionId = partition["DeviceID"]?.ToString();
-                    if (!string.IsNullOrEmpty(partitionId))
-                    {
-                        partitionIds.Add(partitionId);
-                    }
-                }
-
-                var diskIds = new HashSet<string>();
-                foreach (var partitionId in partitionIds)
-                {
-                    using var diskSearcher = new ManagementObjectSearcher(
-                        $"ASSOCIATORS OF {{Win32_DiskPartition.DeviceID='{partitionId}'}} WHERE AssocClass=Win32_DiskDriveToDiskPartition");
-
-                    foreach (ManagementBaseObject disk in diskSearcher.Get())
-                    {
-                        var diskId = disk["DeviceID"]?.ToString();
-                        if (!string.IsNullOrEmpty(diskId))
-                        {
-                            diskIds.Add(diskId);
-                        }
-                    }
-                }
-
-                StorageDiagnosticLog.Write(
-                    $"{logicalDeviceId} free={freeGb:0.00}GB partitions=[{string.Join(",", partitionIds)}] disks=[{string.Join(",", diskIds)}]");
-
-                foreach (var diskId in diskIds)
-                {
-                    if (countedContributions.Add((logicalDeviceId, diskId)))
-                    {
-                        freeSpaceByDiskId[diskId] = freeSpaceByDiskId.GetValueOrDefault(diskId, 0) + drive.TotalFreeSpace;
-                    }
-                    else
-                    {
-                        StorageDiagnosticLog.Write($"  {logicalDeviceId} -> {diskId} SKIPPED (already counted this poll)");
-                    }
+                    diskIds.UnionWith(disks);
                 }
             }
-            catch (ManagementException ex)
+
+            StorageDiagnosticLog.Write(
+                $"{logicalDeviceId} free={freeGb:0.00}GB partitions=[{string.Join(",", partitionIds)}] disks=[{string.Join(",", diskIds)}]");
+
+            foreach (var diskId in diskIds)
             {
-                StorageDiagnosticLog.Write($"{logicalDeviceId} WMI EXCEPTION: {ex.Message}");
+                if (countedContributions.Add((logicalDeviceId, diskId)))
+                {
+                    freeSpaceByDiskId[diskId] = freeSpaceByDiskId.GetValueOrDefault(diskId, 0) + drive.TotalFreeSpace;
+                }
+                else
+                {
+                    StorageDiagnosticLog.Write($"  {logicalDeviceId} -> {diskId} SKIPPED (already counted this poll)");
+                }
             }
         }
 
@@ -233,6 +267,37 @@ internal static class StorageHealthProbe
             $"RESULT: {string.Join(" | ", freeSpaceByDiskId.Select(kv => $"{kv.Key}={kv.Value / 1024.0 / 1024.0 / 1024.0:0.00}GB"))}");
 
         return freeSpaceByDiskId;
+    }
+
+    /// <summary>
+    /// WMI association properties (Antecedent/Dependent) come back as embedded object paths, e.g.
+    /// <c>\\HOST\root\cimv2:Win32_DiskDrive.DeviceID="\\\\.\\PHYSICALDRIVE0"</c> — the DeviceID's own
+    /// backslashes are doubled inside the path string. Pulls the DeviceID value back out and
+    /// un-escapes it to match the plain DeviceID strings <c>Win32_DiskDrive</c> etc. return directly
+    /// (e.g. from <see cref="QueryPhysicalDisks"/>'s own <c>SELECT ... FROM Win32_DiskDrive</c>).
+    /// </summary>
+    private static string? ExtractDeviceId(string? wmiPath)
+    {
+        if (string.IsNullOrEmpty(wmiPath))
+        {
+            return null;
+        }
+
+        const string marker = "DeviceID=\"";
+        var start = wmiPath.IndexOf(marker, StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return null;
+        }
+
+        start += marker.Length;
+        var end = wmiPath.IndexOf('"', start);
+        if (end < 0)
+        {
+            return null;
+        }
+
+        return wmiPath[start..end].Replace("\\\\", "\\");
     }
 
     private static void ApplySmartFailurePrediction(List<StorageDriveInfo> drives)

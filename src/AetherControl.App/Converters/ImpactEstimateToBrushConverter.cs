@@ -11,7 +11,7 @@ public sealed class ImpactEstimateToBrushConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, string language)
     {
         var resources = Application.Current.Resources;
-        return value as string switch
+        return (value as string) switch
         {
             "High" => (Brush)resources["AetherHotBrush"],
             "Medium" => (Brush)resources["AetherWarmBrush"],
