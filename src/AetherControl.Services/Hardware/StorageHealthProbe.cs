@@ -176,6 +176,7 @@ internal static class StorageHealthProbe
         foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))
         {
             var logicalDeviceId = drive.Name.TrimEnd('\\', '/');
+            var freeGb = drive.TotalFreeSpace / 1024.0 / 1024.0 / 1024.0;
             try
             {
                 using var partitionSearcher = new ManagementObjectSearcher(
@@ -207,18 +208,29 @@ internal static class StorageHealthProbe
                     }
                 }
 
+                StorageDiagnosticLog.Write(
+                    $"{logicalDeviceId} free={freeGb:0.00}GB partitions=[{string.Join(",", partitionIds)}] disks=[{string.Join(",", diskIds)}]");
+
                 foreach (var diskId in diskIds)
                 {
                     if (countedContributions.Add((logicalDeviceId, diskId)))
                     {
                         freeSpaceByDiskId[diskId] = freeSpaceByDiskId.GetValueOrDefault(diskId, 0) + drive.TotalFreeSpace;
                     }
+                    else
+                    {
+                        StorageDiagnosticLog.Write($"  {logicalDeviceId} -> {diskId} SKIPPED (already counted this poll)");
+                    }
                 }
             }
-            catch (ManagementException)
+            catch (ManagementException ex)
             {
+                StorageDiagnosticLog.Write($"{logicalDeviceId} WMI EXCEPTION: {ex.Message}");
             }
         }
+
+        StorageDiagnosticLog.Write(
+            $"RESULT: {string.Join(" | ", freeSpaceByDiskId.Select(kv => $"{kv.Key}={kv.Value / 1024.0 / 1024.0 / 1024.0:0.00}GB"))}");
 
         return freeSpaceByDiskId;
     }

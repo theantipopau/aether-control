@@ -2,6 +2,7 @@ using System.Diagnostics;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
+using AetherControl.Services.Processes;
 using LibreHardwareMonitor.Hardware;
 using Microsoft.Extensions.Logging;
 
@@ -39,6 +40,7 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     private readonly ILogger<HardwareMonitorService> _logger;
     private readonly INetworkMonitorService _networkMonitor;
     private readonly FanRpmProbeService _fanProbe;
+    private readonly ProcessRankerService _processRanker;
     private readonly Computer _computer;
     private readonly HardwareUpdateVisitor _visitor = new();
 
@@ -59,11 +61,13 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     public HardwareMonitorService(
         ILogger<HardwareMonitorService> logger,
         INetworkMonitorService networkMonitor,
-        FanRpmProbeService fanProbe)
+        FanRpmProbeService fanProbe,
+        ProcessRankerService processRanker)
     {
         _logger = logger;
         _networkMonitor = networkMonitor;
         _fanProbe = fanProbe;
+        _processRanker = processRanker;
         _computer = new Computer
         {
             IsCpuEnabled = true,
@@ -166,7 +170,16 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         cpuInfo.UtilisationPercent = (float)_cpuLoadSmoother.Update(cpuInfo.UtilisationPercent);
 
         var gpuInfo = HardwareSnapshotMapper.MapGpu(gpu);
-        gpuInfo.UtilisationPercent = (float)_gpuLoadSmoother.Update(gpuInfo.UtilisationPercent);
+        // Prefer the same "GPU Engine" PDH counter Task Manager's headline GPU% is built from over
+        // LHM's ADL/NVAPI "GPU Core" load sensor — confirmed via a real side-by-side that the two
+        // measure genuinely different things (LHM's driver-level figure ran ~2x Task Manager's at
+        // the same instant, not just noise), and matching what Task Manager shows is what "accurate"
+        // means to someone comparing the two side by side. Falls back to the LHM value only when this
+        // driver doesn't expose the counter category at all.
+        var gpuLoadPercent = _processRanker.IsGpuEngineCounterAvailable
+            ? _processRanker.GetTotalEngineUtilization()
+            : gpuInfo.UtilisationPercent;
+        gpuInfo.UtilisationPercent = (float)_gpuLoadSmoother.Update(gpuLoadPercent);
 
         var snapshot = new HardwareSnapshot
         {

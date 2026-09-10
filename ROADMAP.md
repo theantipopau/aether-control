@@ -24,6 +24,34 @@ a discrepancy.
       snapshot. Doesn't change what's real underneath — the raw sensor swings
       just as hard as before — it damps the number Matt actually looks at,
       the same tradeoff already made for clock speed and network.
+- [x] **Recurrence with real evidence: a stale binary, not a live bug.** Matt's
+      "still jumping" report turned out to be against an exe built ~15:44,
+      almost two hours before the smoothing fix landed at 17:37 — `dotnet
+      build` on `AetherControl.App` fails in this environment (missing
+      `Microsoft.Build.Packaging.Pri.Tasks.dll`, a bare-SDK gap, not present
+      when built via Visual Studio's own MSBuild), so the CLI silently
+      couldn't produce a fresh exe earlier in the session and nobody had
+      rebuilt since. Rebuilding via VS's `MSBuild.exe` directly
+      (`-p:Platform=x64`) works around it.
+- [x] **GPU% — switched from LHM's ADL "GPU Core" sensor to the same "GPU
+      Engine" PDH counters Task Manager itself uses.** Real side-by-side
+      against Task Manager (two screenshots, same instants): LHM's GPU Core
+      load sensor read ~15% against Task Manager's ~8%, consistently, not
+      noise — a genuine measurement difference (LHM/ADL reports overall
+      driver-level load across all engines/clocks; Task Manager's headline
+      number totals just the "3D" engine instance across processes). Added
+      `ProcessRankerService.GetTotalEngineUtilization()`, which sums the
+      `engtype_3D` instances of the "GPU Engine" category the same way Task
+      Manager does — this reuses the counter set `ProcessRankerService`
+      already keeps refreshed for the Top Processes list rather than opening
+      a second one. `HardwareMonitorService.Poll()` now uses this as the
+      primary source (falling back to the LHM sensor only if this driver
+      doesn't expose the counter category at all), still smoothed by the same
+      `EmaSmoother`. Also added a lock around `ProcessRankerService`'s
+      internal dictionaries — this method is now called from three different
+      timers (Dashboard, Portrait Mode, and `HardwareMonitorService`'s own
+      1-second poll) against the one singleton instance, and none of its
+      collections were thread-safe before.
 - [ ] Not independently re-verified live — needs Matt's own check.
 
 ## Phase 20 — Storage/network flicker recurrence
@@ -76,6 +104,20 @@ earlier DeviceId-sort fix.
       evidence supports, not a confirmed-via-trace root cause. If it recurs,
       the next step is a real diagnostic dump of the raw associator query
       results, not a third theory.
+- [x] **Recurred once more (847/584/478/452GB vs. the real 988/684/562/532)
+      within a single running session — added `StorageDiagnosticLog`**
+      (`%AppData%\Aether Control\storage-trace.log`) logging every drive's
+      raw `TotalFreeSpace`, matched partition IDs and disk IDs, and the final
+      per-disk total, every poll. A 20+ second live trace right after this
+      landed showed the underlying query rock-stable — `\\.\PHYSICALDRIVE0..3`
+      read identically (684.32/561.60/532.36/988.24GB, only C: drifting by
+      0.01GB from real writes) every single poll, matching the dashboard
+      exactly. So `BuildFreeSpaceByPhysicalDisk` itself is confirmed correct
+      and deterministic; whatever produced the one bad reading didn't
+      reproduce in this window, meaning it's genuinely intermittent rather
+      than constant. The logging stays in place (cheap, append-only) so the
+      next time Matt sees a wrong number, the exact poll is already on disk
+      to read back rather than needing a fresh screenshot.
 
 ## Reference projects (Matt's, reused — not duplicated)
 - **Portrait Stats** (`E:\Portrait Stats`) — WPF portrait monitor app. Ported

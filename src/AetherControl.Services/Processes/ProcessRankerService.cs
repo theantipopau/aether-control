@@ -17,6 +17,18 @@ public sealed partial class ProcessRankerService
     private readonly Dictionary<string, PerformanceCounter> _gpuCounters = new();
     private DateTime _lastGpuRefresh = DateTime.MinValue;
     private bool? _gpuEngineAvailable;
+    // This is now called from three independent timers (Dashboard's process-ranking tick, Portrait
+    // Mode's, and HardwareMonitorService's own 1-second poll for the headline GPU% card) all hitting
+    // the same singleton instance — none of the dictionaries above are thread-safe, and enumerating
+    // _gpuCounters on one thread while RefreshGpuCounterInstances mutates it on another throws
+    // InvalidOperationException. One lock around each sample is simpler than making every collection
+    // concurrent for what's a once-a-second call, not a hot path.
+    private readonly object _sampleLock = new();
+
+    /// <summary>Whether this session's driver exposes the "GPU Engine" PDH category at all (checked
+    /// once, lazily, on first use) — false on some older/basic drivers, in which case callers should
+    /// fall back to another source rather than treat a 0% reading as a real idle GPU.</summary>
+    public bool IsGpuEngineCounterAvailable => _gpuEngineAvailable ??= PerformanceCounterCategory.Exists("GPU Engine");
 
     public IReadOnlyList<ProcessUsageInfo> GetTopByCpu(int count)
     {
@@ -71,6 +83,14 @@ public sealed partial class ProcessRankerService
 
     private Dictionary<int, (double Percent, string Name)> SampleCpu()
     {
+        lock (_sampleLock)
+        {
+            return SampleCpuLocked();
+        }
+    }
+
+    private Dictionary<int, (double Percent, string Name)> SampleCpuLocked()
+    {
         var now = DateTime.UtcNow;
         var result = new Dictionary<int, (double, string)>();
         var seenPids = new HashSet<int>();
@@ -119,12 +139,17 @@ public sealed partial class ProcessRankerService
 
     private Dictionary<int, double> SampleGpu()
     {
+        lock (_sampleLock)
+        {
+            return SampleGpuLocked();
+        }
+    }
+
+    private Dictionary<int, double> SampleGpuLocked()
+    {
         var result = new Dictionary<int, double>();
 
-        // The category's existence can't change while we're running, so only pay for the
-        // registry/perflib lookup once instead of every poll.
-        _gpuEngineAvailable ??= PerformanceCounterCategory.Exists("GPU Engine");
-        if (_gpuEngineAvailable != true)
+        if (!IsGpuEngineCounterAvailable)
         {
             return result;
         }
@@ -199,6 +224,49 @@ public sealed partial class ProcessRankerService
             {
                 // Instance disappeared between enumeration and construction — ignore.
             }
+        }
+    }
+
+    /// <summary>
+    /// Total GPU utilisation across all processes for one engine type, summed the same way Task
+    /// Manager computes its headline GPU% (it shows one engine — "3D" by default — totalled across
+    /// every process using it). LibreHardwareMonitor's "GPU Core" sensor reads the driver's own
+    /// broader load figure (all engines/clocks via ADL/NVAPI), which is a real, legitimate number
+    /// but a different one — confirmed by a real side-by-side where LHM read ~15% against Task
+    /// Manager's ~8% at the same instant, consistently, not just noise. Reusing the same "GPU
+    /// Engine" counters <see cref="SampleGpu"/> already keeps refreshed rather than opening a
+    /// second set avoids doubling the PDH counter overhead.
+    /// </summary>
+    public double GetTotalEngineUtilization(string engineTypeContains = "engtype_3D")
+    {
+        lock (_sampleLock)
+        {
+            if (!IsGpuEngineCounterAvailable)
+            {
+                return 0;
+            }
+
+            RefreshGpuCounterInstances();
+
+            double total = 0;
+            foreach (var (instanceName, counter) in _gpuCounters)
+            {
+                if (!instanceName.Contains(engineTypeContains, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    total += counter.NextValue();
+                }
+                catch
+                {
+                    // Instance disappeared mid-read — skip it for this sample.
+                }
+            }
+
+            return Math.Min(total, 100.0);
         }
     }
 
