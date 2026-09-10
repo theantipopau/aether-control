@@ -22,6 +22,20 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+
+        // A single missed catch anywhere in the app previously took the entire process down with it
+        // (confirmed: an uncaught PathTooLongException from a background directory scan surfaced here
+        // as a fatal, unrecoverable crash with nothing but a Windows Error Reporting dump to explain
+        // it). Logging + Handled=true keeps the app alive for anything that reaches this point — the
+        // underlying bugs still get fixed as they're found, this is the backstop for the ones that
+        // aren't yet.
+        UnhandledException += OnUnhandledException;
+    }
+
+    private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        UnhandledExceptionLog.Write(e.Exception, $"UnhandledException: {e.Message}");
+        e.Handled = true;
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)

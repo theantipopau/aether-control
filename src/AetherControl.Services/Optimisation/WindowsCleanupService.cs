@@ -53,8 +53,10 @@ public sealed class WindowsCleanupService
             {
                 total += new FileInfo(file).Length;
             }
-            catch (IOException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
+                // File deleted/renamed by its owning process (browser caches are actively written
+                // to while running) between being listed and being stat'd here — skip it.
             }
         }
 
@@ -77,7 +79,7 @@ public sealed class WindowsCleanupService
                 File.Delete(file);
                 freed += length;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PathTooLongException)
             {
                 // In-use or protected files are skipped rather than aborting the whole sweep.
             }
@@ -92,7 +94,7 @@ public sealed class WindowsCleanupService
                     Directory.Delete(directory);
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PathTooLongException)
             {
             }
         }
@@ -109,7 +111,14 @@ public sealed class WindowsCleanupService
             files = Directory.EnumerateFiles(path).ToList();
             subdirectories = Directory.EnumerateDirectories(path).ToList();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        // This crashed the whole app (confirmed via a crash dump — an unhandled PathTooLongException
+        // from deep inside Edge/Chrome's cache folder structure, which does not derive from
+        // IOException so the narrower catch here let it straight through, across the async boundary,
+        // and into an unhandled-on-the-UI-thread WinRT fatal exception). These are locations actively
+        // written to by other running processes (the browser itself), so *any* enumeration failure —
+        // wrong path length, a reparse point, a permission quirk, a file that vanished mid-walk — is
+        // an expected outcome of scanning live external state, not a bug to propagate.
+        catch (Exception)
         {
             yield break;
         }

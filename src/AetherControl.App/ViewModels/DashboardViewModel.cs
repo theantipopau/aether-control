@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
@@ -41,12 +42,17 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double networkLatencyMs;
     [ObservableProperty] private string networkExternalIp = "—";
 
-    [ObservableProperty] private IReadOnlyList<StorageDriveInfo> drives = [];
     [ObservableProperty] private string motherboardModel = "—";
-    [ObservableProperty] private IReadOnlyList<NamedSensorValue> motherboardVoltages = [];
-    [ObservableProperty] private IReadOnlyList<NamedSensorValue> motherboardFanSpeeds = [];
-    [ObservableProperty] private IReadOnlyList<NamedSensorValue> motherboardVrmTemperatures = [];
-    [ObservableProperty] private IReadOnlyList<ProcessUsageInfo> topProcessesByCpu = [];
+
+    // Persistent collections, mutated in place (see ObservableCollectionMergeExtensions) rather than
+    // reassigned every poll — reassigning the reference (as these were before, via [ObservableProperty])
+    // forces every bound ItemsControl to tear down and recreate its MetricCard containers from
+    // scratch each time, which restarts each card's NumberTween glide from zero every single poll.
+    public ObservableCollection<StorageDriveInfo> Drives { get; } = [];
+    public ObservableCollection<NamedSensorValue> MotherboardVoltages { get; } = [];
+    public ObservableCollection<NamedSensorValue> MotherboardFanSpeeds { get; } = [];
+    public ObservableCollection<NamedSensorValue> MotherboardVrmTemperatures { get; } = [];
+    public ObservableCollection<ProcessUsageInfo> TopProcessesByCpu { get; } = [];
 
     // Not every board/CPU/LHM-version combination exposes a real core-voltage sensor (confirmed via
     // a real sensor dump: this AMD Ryzen 7 9800X3D only reports "VID" — the VRM's target, not a
@@ -78,7 +84,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     private void RefreshTopProcesses()
     {
         var top = _processRanker.GetTopByCpu(5);
-        _dispatcherQueue.TryEnqueue(() => TopProcessesByCpu = top);
+        _dispatcherQueue.TryEnqueue(() => TopProcessesByCpu.MergeFrom(top, p => p.Pid));
     }
 
     private void OnSnapshotUpdated(object? sender, SensorsUpdatedEventArgs e)
@@ -113,11 +119,11 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         NetworkLatencyMs = snapshot.Network.LatencyMs;
         NetworkExternalIp = string.IsNullOrEmpty(snapshot.Network.ExternalIpAddress) ? "—" : snapshot.Network.ExternalIpAddress;
 
-        Drives = snapshot.Drives;
+        Drives.MergeFrom(snapshot.Drives, d => d.DeviceId);
         MotherboardModel = snapshot.Motherboard.Model;
-        MotherboardVoltages = snapshot.Motherboard.Voltages;
-        MotherboardFanSpeeds = snapshot.Motherboard.FanSpeeds;
-        MotherboardVrmTemperatures = snapshot.Motherboard.VrmTemperatures;
+        MotherboardVoltages.MergeFrom(snapshot.Motherboard.Voltages, v => v.Name);
+        MotherboardFanSpeeds.MergeFrom(snapshot.Motherboard.FanSpeeds, f => f.Name);
+        MotherboardVrmTemperatures.MergeFrom(snapshot.Motherboard.VrmTemperatures, t => t.Name);
     }
 
     public void Dispose()

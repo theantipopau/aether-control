@@ -2,7 +2,73 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause)
+
+## Phase 23 — Optimisation Centre crash + the real flicker cause
+Matt: "clicked optimization centre and crashed" + "storage values are still
+jumping all over the shop" (after Phase 22's fixes were already live).
+
+**The crash** — pulled a managed stack out of the actual crash dump
+(`dotnet-dump analyze`, `clrstack -all`) rather than guessing from the Event
+Viewer's native-only "Microsoft.ui.xaml.dll / 0xc000027b" entry. A background
+thread was mid-`WindowsCleanupService.DirectorySize` → `EnumerateFilesSafely`,
+walking Edge/Chrome's cache folders (auto-triggered by opening the page) —
+`EnumerateFilesSafely`'s catch only covered `IOException`/`UnauthorizedAccessException`,
+and `PathTooLongException` (very plausible against a browser cache's deep
+hashed-folder structure) does *not* derive from `IOException`. It escaped,
+crossed the async→UI-thread boundary, and WinRT turned it into a fatal
+stowed exception — killing the whole app over one folder it couldn't walk.
+- [x] Broadened the catches in `WindowsCleanupService` (all three
+      filesystem-walking spots) — `EnumerateFilesSafely`'s now catches
+      any exception, since it's walking live state owned by another running
+      process (the browser) where an enumeration failure is an expected
+      outcome, not a bug to propagate.
+- [x] **Added `App.UnhandledException` as a backstop**, logging to
+      `%AppData%\Aether Control\unhandled-exceptions.log` and setting
+      `Handled = true`. There was no global handler at all before this — a
+      single missed catch anywhere in the app could take the entire process
+      down, which is exactly what happened here.
+
+**The "still jumping" storage report** — `storage-trace.log` (added in Phase
+20) by this point covered the *entire* session since the last relaunch:
+~6300 polls, and the backend was perfectly stable throughout (two clean,
+gradual transitions consistent with real disk writes, zero anomalies). That
+ruled out the sensor/WMI layer entirely and pointed at the UI. Found it:
+`DashboardViewModel.Drives` (and `MotherboardVoltages`/`MotherboardFanSpeeds`/
+`MotherboardVrmTemperatures`/`TopProcessesByCpu`) were reassigned to a
+**brand-new list object every single poll**. `ItemsControl` has no way to
+know a freshly-assigned `IReadOnlyList<T>` represents "mostly the same data as
+before" — it tears down and recreates every realized `MetricCard` container
+from scratch. A freshly-constructed `MetricCard`'s `NumberTween` starts at 0,
+so its first `NumericValue` update glides 0 → (say) 682GB over ~220ms —
+*every single second, forever*. The number was never actually wrong; the UI
+was destroying and rebuilding the animated tile that displays it once a
+second. This is almost certainly the dominant cause of most "jumping"
+reports this session, not sensor noise.
+- [x] Added `ObservableCollectionMergeExtensions.MergeFrom` — updates an
+      `ObservableCollection<T>`'s contents in place (`Replace`/`Insert`/`Remove`/`Move`
+      via the indexer) instead of ever reassigning the collection reference.
+      `ItemsControl` reuses the existing container for a key that's still
+      present, so the same live `NumberTween` glides from its *previous*
+      value instead of sweeping from zero — the same smooth behaviour the
+      CPU/GPU/RAM tiles (bound directly to scalar properties, never
+      recreated) already had.
+- [x] Converted `DashboardViewModel.Drives`/`MotherboardVoltages`/
+      `MotherboardFanSpeeds`/`MotherboardVrmTemperatures`/`TopProcessesByCpu`
+      and `PortraitViewModel.Fans`/`TopCpuProcesses`/`TopGpuProcesses` to
+      persistent `ObservableCollection<T>` properties, merged in place every
+      poll. Portrait Mode's Fans list has the same bug pattern plus its own
+      symptom: a fan being renamed had its `TextBox` fully torn down and
+      recreated roughly once a second, discarding an in-progress edit.
+- [x] `CollectionEmptyToVisibilityConverter`'s empty-state bindings on those
+      same properties would have gone stale (bound to a reference that never
+      changes, they'd never re-evaluate again after the first poll) — fixed
+      by binding `X.Count` instead of `X` itself (`ObservableCollection<T>`
+      raises `PropertyChanged("Count")` on every mutation, which x:Bind's
+      dependency-property-path tracking does pick up) and widening the
+      converter to accept a plain `int` alongside the original collection form.
+- [ ] Not independently re-verified live — needs Matt's own check on both
+      the crash and the storage/tile flicker.
 
 ## Phase 22 — PDH sampling correctness + median filtering
 Matt: "numbers are still bouncing around" (generic, no new screenshot this

@@ -11,12 +11,24 @@ namespace AetherControl.App.Converters;
 /// motherboard fan RPM on a board where a vendor service is holding the
 /// Super I/O ports — see FanRpmProbeService). Pass ConverterParameter
 /// "Invert" to get the opposite (visible only when non-empty).
+/// <para>
+/// Accepts either the collection itself or a plain <c>int</c> count. The persistent
+/// <c>ObservableCollection&lt;T&gt;</c> properties (see ObservableCollectionMergeExtensions) never
+/// change reference, so a binding on the collection itself only ever evaluates once — bind
+/// <c>ViewModel.X.Count</c> instead for those, which re-evaluates on every
+/// <c>ObservableCollection</c> mutation since it raises PropertyChanged("Count") internally.
+/// </para>
 /// </summary>
 public sealed class CollectionEmptyToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {
-        var isEmpty = value is not ICollection { Count: > 0 };
+        var isEmpty = value switch
+        {
+            int count => count == 0,
+            ICollection { Count: > 0 } => false,
+            _ => true
+        };
         var invert = string.Equals(parameter as string, "Invert", StringComparison.OrdinalIgnoreCase);
         var show = invert ? !isEmpty : isEmpty;
         return show ? Visibility.Visible : Visibility.Collapsed;

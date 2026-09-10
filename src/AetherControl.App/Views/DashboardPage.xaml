@@ -113,7 +113,7 @@
                 <StackPanel Spacing="10">
                     <controls:SectionHeader Label="Top Processes" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"
-                            Visibility="{x:Bind ViewModel.TopProcessesByCpu, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                            Visibility="{x:Bind ViewModel.TopProcessesByCpu.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
                         <TextBlock Text="Nothing using meaningful CPU right now." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                     </Border>
                     <ItemsControl ItemsSource="{x:Bind ViewModel.TopProcessesByCpu, Mode=OneWay}">
@@ -162,7 +162,7 @@
 
                     <TextBlock Text="Voltages" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"
-                            Visibility="{x:Bind ViewModel.MotherboardVoltages, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                            Visibility="{x:Bind ViewModel.MotherboardVoltages.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
                         <TextBlock Text="No voltage sensors reported by this board yet." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                     </Border>
                     <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardVoltages, Mode=OneWay}">
@@ -180,7 +180,7 @@
 
                     <TextBlock Text="VRM Temperatures" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" Margin="0,8,0,0" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"
-                            Visibility="{x:Bind ViewModel.MotherboardVrmTemperatures, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                            Visibility="{x:Bind ViewModel.MotherboardVrmTemperatures.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
                         <TextBlock Text="No VRM temperature sensors reported by this board yet." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                     </Border>
                     <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardVrmTemperatures, Mode=OneWay}">
@@ -199,7 +199,7 @@
 
                     <TextBlock Text="Fan Speeds" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" Margin="0,8,0,0" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12" MaxWidth="480" HorizontalAlignment="Left"
-                            Visibility="{x:Bind ViewModel.MotherboardFanSpeeds, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                            Visibility="{x:Bind ViewModel.MotherboardFanSpeeds.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
                         <TextBlock Text="No fan RPM available right now — if ASUS Armoury Crate (or another vendor fan-control service) is running, it may be holding exclusive access to the Super I/O sensors."
                                    Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                     </Border>

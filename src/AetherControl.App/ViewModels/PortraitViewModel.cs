@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
@@ -69,9 +70,13 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private string fpsText = "--";
 
-    [ObservableProperty] private IReadOnlyList<PortraitFanRow> fans = [];
-    [ObservableProperty] private IReadOnlyList<ProcessUsageInfo> topCpuProcesses = [];
-    [ObservableProperty] private IReadOnlyList<ProcessUsageInfo> topGpuProcesses = [];
+    // Persistent, mutated in place (see ObservableCollectionMergeExtensions) — reassigning the
+    // reference every poll (as these were before) forces the bound ItemsControl to recreate every
+    // row from scratch each time, which for Fans meant a mid-rename TextBox got its in-progress
+    // edit wiped roughly every second.
+    public ObservableCollection<PortraitFanRow> Fans { get; } = [];
+    public ObservableCollection<ProcessUsageInfo> TopCpuProcesses { get; } = [];
+    public ObservableCollection<ProcessUsageInfo> TopGpuProcesses { get; } = [];
 
     public PortraitViewModel(
         IHardwareMonitorService hardwareMonitor,
@@ -144,9 +149,10 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
             DriveTempSeverity = PortraitSeverityThresholds.ForTemp(primaryDrive.TemperatureCelsius, warn: 50, critical: 60);
         }
 
-        Fans = snapshot.Motherboard.FanSpeeds
+        var fanRows = snapshot.Motherboard.FanSpeeds
             .Select(f => new PortraitFanRow(f.Name, _fanLabelStore.GetLabel(f.Name, f.Name), $"{f.Value:F0} RPM"))
             .ToList();
+        Fans.MergeFrom(fanRows, f => f.FanId);
     }
 
     private void Tick()
@@ -169,8 +175,8 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
         var byGpu = _processRanker.GetTopByGpu(5);
         _dispatcherQueue.TryEnqueue(() =>
         {
-            TopCpuProcesses = byCpu;
-            TopGpuProcesses = byGpu;
+            TopCpuProcesses.MergeFrom(byCpu, p => p.Pid);
+            TopGpuProcesses.MergeFrom(byGpu, p => p.Pid);
         });
     }
 
