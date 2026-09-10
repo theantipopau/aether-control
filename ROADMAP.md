@@ -2,7 +2,29 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats)
+
+## Phase 21 — CPU/GPU % jitter vs. Portrait Stats
+Matt's report: GPU% swinging 2→21→2 within a second or two, called out as
+"not accurate at all, or stable" compared to Portrait Stats. Diff against
+`E:\Portrait Stats\PortraitStats\Services\HardwareMonitorService.cs` showed
+the sensor read is identical — same LHM call, same `"GPU Core"`/`"D3D 3D"`
+Load sensor, same 1-second poll interval — and Portrait Stats doesn't smooth
+it either (`GpuUsagePercent = r.GpuUsagePercent ?? GpuUsagePercent;`, raw).
+So the two apps see the exact same real, bursty sensor value; Portrait Stats
+isn't reading it "better," it's just not the thing Matt happened to be
+watching second-by-second on a fixed dashboard card. `ProcessRankerService`
+(top CPU/GPU processes) was already a verbatim port of Portrait Stats' own
+Task-Manager-style PDH `GPU Engine` counter approach — identical in both, not
+a discrepancy.
+- [x] **CPU/GPU utilisation % — smoothed, same `EmaSmoother` already used for
+      clock speed and network throughput.** `HardwareMonitorService.Poll()` now
+      runs `cpuInfo.UtilisationPercent`/`gpuInfo.UtilisationPercent` through
+      their own `EmaSmoother` (alpha 0.15, same as clock) before publishing the
+      snapshot. Doesn't change what's real underneath — the raw sensor swings
+      just as hard as before — it damps the number Matt actually looks at,
+      the same tradeoff already made for clock speed and network.
+- [ ] Not independently re-verified live — needs Matt's own check.
 
 ## Phase 20 — Storage/network flicker recurrence
 Matt's report: HDD free space swinging between ~1100GB and ~784GB, upload

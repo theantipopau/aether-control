@@ -47,6 +47,14 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     private readonly Lazy<double> _memorySpeedMhz = new(MemorySpeedProbe.QuerySpeedMhz);
     private readonly EmaSmoother _cpuClockSmoother = new();
     private readonly Dictionary<int, EmaSmoother> _coreClockSmoothers = new();
+    // Same "confidently-wrong-vs-legitimately-jittery" story as CPU clock: LHM's "CPU Total" and
+    // "GPU Core" Load sensors are read once per second directly off the driver/OS, which genuinely
+    // swings hard poll-to-poll (e.g. GPU idle-vs-compositing-burst) — Portrait Stats reads the exact
+    // same sensor via the exact same LHM call and shows it just as raw, it just isn't displayed
+    // side-by-side with a fixed dashboard card the way Aether's is, which is what made the jitter
+    // look like an Aether-only bug. Damping the *display* the same way clock speed already is.
+    private readonly EmaSmoother _cpuLoadSmoother = new();
+    private readonly EmaSmoother _gpuLoadSmoother = new();
 
     public HardwareMonitorService(
         ILogger<HardwareMonitorService> logger,
@@ -155,12 +163,16 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
         var cpuInfo = HardwareSnapshotMapper.MapCpu(cpu);
         SmoothClockSpeeds(cpuInfo);
+        cpuInfo.UtilisationPercent = (float)_cpuLoadSmoother.Update(cpuInfo.UtilisationPercent);
+
+        var gpuInfo = HardwareSnapshotMapper.MapGpu(gpu);
+        gpuInfo.UtilisationPercent = (float)_gpuLoadSmoother.Update(gpuInfo.UtilisationPercent);
 
         var snapshot = new HardwareSnapshot
         {
             TimestampUtc = DateTimeOffset.UtcNow,
             Cpu = cpuInfo,
-            Gpu = HardwareSnapshotMapper.MapGpu(gpu),
+            Gpu = gpuInfo,
             Memory = memoryInfo,
             Motherboard = motherboardInfo,
             Drives = StorageHealthProbe.Enrich(rawStorage),
