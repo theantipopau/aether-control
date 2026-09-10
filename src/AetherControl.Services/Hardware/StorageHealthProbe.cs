@@ -13,22 +13,52 @@ namespace AetherControl.Services.Hardware;
 /// turned out not to hold poll-to-poll: WMI's enumeration order isn't
 /// guaranteed stable, so on a multi-drive system the free-space figure shown
 /// on a given card could silently swap to a different physical disk's number
-/// every second, visible as the value flicking between two readings. Model
-/// names don't change between polls, so matching on those is actually stable.
+/// every second, visible as the value flicking between two readings.
+/// <para>
+/// A DeviceId sort on the WMI side made that fallback deterministic but the
+/// swapping still recurred (reported live: one drive's free space alternating
+/// between two real values ~300GB apart — the same "wrong drive at this card
+/// position" signature, just not fully eliminated). Rather than chase the
+/// exact remaining trigger for fuzzy model-name matching being occasionally
+/// unstable, the matching itself is now only ever performed <b>once</b> per
+/// physical disk: the first successful match is cached by (LHM identifier →
+/// WMI DeviceID), and every later poll looks up that exact DeviceID instead
+/// of re-running fuzzy matching. Whatever made re-matching occasionally
+/// unstable can't matter anymore if matching only happens once.
+/// </para>
 /// </summary>
 internal static class StorageHealthProbe
 {
+    // LHM Identifier -> WMI DeviceID (e.g. "\\.\PHYSICALDRIVE0"), resolved once via fuzzy
+    // model-name matching and reused every subsequent poll. Re-resolved only if a cached
+    // DeviceID stops appearing in the current WMI results (drive unplugged/system changed).
+    private static readonly Dictionary<string, string> LhmToWmiDeviceId = new();
+
     public static IReadOnlyList<StorageDriveInfo> Enrich(IReadOnlyList<StorageDriveInfo> lhmDrives)
     {
-        var unclaimed = new List<StorageDriveInfo>(QueryPhysicalDisks());
-        var enriched = new List<StorageDriveInfo>(lhmDrives.Count);
+        var wmiDrives = QueryPhysicalDisks();
+        var wmiByDeviceId = wmiDrives.ToDictionary(d => d.DeviceId);
+        var unclaimed = new List<StorageDriveInfo>(wmiDrives);
 
+        var enriched = new List<StorageDriveInfo>(lhmDrives.Count);
         foreach (var drive in lhmDrives)
         {
-            var wmiMatch = FindBestModelMatch(drive.Model, unclaimed);
-            if (wmiMatch is not null)
+            StorageDriveInfo? wmiMatch = null;
+
+            if (LhmToWmiDeviceId.TryGetValue(drive.DeviceId, out var cachedDeviceId) &&
+                wmiByDeviceId.TryGetValue(cachedDeviceId, out var cachedMatch))
             {
-                unclaimed.Remove(wmiMatch);
+                wmiMatch = cachedMatch;
+                unclaimed.Remove(cachedMatch);
+            }
+            else
+            {
+                wmiMatch = FindBestModelMatch(drive.Model, unclaimed);
+                if (wmiMatch is not null)
+                {
+                    unclaimed.Remove(wmiMatch);
+                    LhmToWmiDeviceId[drive.DeviceId] = wmiMatch.DeviceId;
+                }
             }
 
             enriched.Add(new StorageDriveInfo
@@ -131,6 +161,18 @@ internal static class StorageHealthProbe
     {
         var freeSpaceByDiskId = new Dictionary<string, double>();
 
+        // Real evidence from Matt's machine ruled out a drive-identity mix-up: all four distinct
+        // physical drives jumped by a correlated ~1.55-1.59x at once (637→988GB, 435→680GB,
+        // 356→562GB, 335→532GB) — a pure "wrong drive shown here" bug can't move every drive in
+        // the same direction together. That points at this method double-counting a logical
+        // drive's free space into a disk's total, which WMI associator queries are known to do
+        // occasionally (duplicate rows for the same partition/disk pair, a real provider quirk,
+        // not specific to this hardware). This set makes each (logical drive, physical disk) pair
+        // contribute its free space at most once per poll, regardless of how many duplicate rows
+        // WMI returns for it that particular time — the actual per-poll trigger for the duplication
+        // itself was never pinned down, but it can't inflate a total if it's deduplicated here.
+        var countedContributions = new HashSet<(string LogicalDeviceId, string DiskId)>();
+
         foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))
         {
             var logicalDeviceId = drive.Name.TrimEnd('\\', '/');
@@ -139,25 +181,36 @@ internal static class StorageHealthProbe
                 using var partitionSearcher = new ManagementObjectSearcher(
                     $"ASSOCIATORS OF {{Win32_LogicalDisk.DeviceID='{logicalDeviceId}'}} WHERE AssocClass=Win32_LogicalDiskToPartition");
 
+                var partitionIds = new HashSet<string>();
                 foreach (ManagementBaseObject partition in partitionSearcher.Get())
                 {
                     var partitionId = partition["DeviceID"]?.ToString();
-                    if (string.IsNullOrEmpty(partitionId))
+                    if (!string.IsNullOrEmpty(partitionId))
                     {
-                        continue;
+                        partitionIds.Add(partitionId);
                     }
+                }
 
+                var diskIds = new HashSet<string>();
+                foreach (var partitionId in partitionIds)
+                {
                     using var diskSearcher = new ManagementObjectSearcher(
                         $"ASSOCIATORS OF {{Win32_DiskPartition.DeviceID='{partitionId}'}} WHERE AssocClass=Win32_DiskDriveToDiskPartition");
 
                     foreach (ManagementBaseObject disk in diskSearcher.Get())
                     {
                         var diskId = disk["DeviceID"]?.ToString();
-                        if (string.IsNullOrEmpty(diskId))
+                        if (!string.IsNullOrEmpty(diskId))
                         {
-                            continue;
+                            diskIds.Add(diskId);
                         }
+                    }
+                }
 
+                foreach (var diskId in diskIds)
+                {
+                    if (countedContributions.Add((logicalDeviceId, diskId)))
+                    {
                         freeSpaceByDiskId[diskId] = freeSpaceByDiskId.GetValueOrDefault(diskId, 0) + drive.TotalFreeSpace;
                     }
                 }

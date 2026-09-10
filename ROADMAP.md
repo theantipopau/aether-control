@@ -2,7 +2,58 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence)
+
+## Phase 20 — Storage/network flicker recurrence
+Matt's report: HDD free space swinging between ~1100GB and ~784GB, upload
+speed "pinging around" — needed to "remain consistent." A ~300GB swing isn't
+real disk activity, so this is the same signature as Phase 10's storage bug
+(wrong drive's data shown at a fixed card position), recurring despite the
+earlier DeviceId-sort fix.
+- [x] **Storage — matching is now cached, not re-run every poll.**
+      `StorageHealthProbe`'s fuzzy model-name matching (LHM drive ↔ WMI
+      `Win32_DiskDrive`) previously ran fresh every single poll — whatever
+      made that occasionally unstable (never fully identified; a real trace
+      confirmed the *underlying* free-space lookup itself was stable, so the
+      instability lives specifically in the match step), it can't matter
+      once matching only happens once. First successful match for a given
+      LHM identifier is now cached by WMI DeviceID
+      (`\\.\PHYSICALDRIVEn`, stable for the OS session); every later poll
+      does an exact dictionary lookup instead of fuzzy string matching.
+      Re-resolves only if a cached DeviceID stops appearing in current WMI
+      results (drive unplugged). Deliberately a structural fix over another
+      diagnostic-and-wait round — the exact per-poll trigger was never
+      pinned down, but eliminating repeated matching eliminates the
+      opportunity for it regardless of what it was.
+- [x] **Network upload/download — smoothed, same technique as CPU clock**
+      (Phase 10). Real throughput is genuinely bursty (background sync,
+      telemetry, prefetch) — a correct "1 Mbps then 40 then 2" per-second
+      reading looks identical to a flickering bug on a fixed dashboard card.
+      `EmaSmoother` (already built for CPU clock) now damps
+      `NetworkMonitorService`'s Upload/DownloadKbps before they're published,
+      not chasing a bug that was never actually there.
+- [ ] Not independently re-verified live (same computer-use limitation as
+      Portrait Mode — not a Start-Menu app) — needs Matt's own check.
+- [x] **Recurrence, with real evidence this time.** Two screenshots a few
+      seconds apart showed all four physical drives moving *together* —
+      637→988GB, 435→680GB, 356→562GB, 335→532GB, each a correlated
+      ~1.55-1.59x jump. That rules out the Round 1 theory (wrong drive's data
+      shown at a fixed position — a pure identity mix-up wouldn't move four
+      distinct drives in the same direction at once) and points at
+      `BuildFreeSpaceByPhysicalDisk` itself over-counting: WMI associator
+      queries (`Win32_LogicalDiskToPartition`/`Win32_DiskDriveToDiskPartition`)
+      are known to occasionally return duplicate rows for the same
+      partition/disk pair — a real provider quirk, not something specific to
+      this hardware — which would double-count that logical drive's free
+      space into its physical disk's total. Fixed by deduplicating: each
+      (logical drive, physical disk) pair now contributes its free space at
+      most once per poll via a `HashSet` guard, regardless of how many
+      duplicate rows WMI returns for it on a given poll. The exact per-poll
+      trigger for the duplication was never directly observed (no full trace,
+      just the two data points) — flagging that this is the best fix the
+      evidence supports, not a confirmed-via-trace root cause. If it recurs,
+      the next step is a real diagnostic dump of the raw associator query
+      results, not a third theory.
 
 ## Reference projects (Matt's, reused — not duplicated)
 - **Portrait Stats** (`E:\Portrait Stats`) — WPF portrait monitor app. Ported

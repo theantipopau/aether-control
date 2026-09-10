@@ -1,6 +1,7 @@
 using System.Net.NetworkInformation;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
+using AetherControl.Services.Hardware;
 using Microsoft.Extensions.Logging;
 
 namespace AetherControl.Services.Network;
@@ -19,6 +20,12 @@ public sealed class NetworkMonitorService : INetworkMonitorService
     private readonly ILogger<NetworkMonitorService> _logger;
     private readonly HttpClient _httpClient;
     private readonly Ping _ping = new();
+    // Raw byte-delta throughput is genuinely bursty (background sync, telemetry, prefetch) —
+    // a real "1 Mbps then 40 then 2" pattern reads as flickering on a fixed dashboard card even
+    // though every individual reading is correct. Same EMA technique already applied to CPU clock
+    // for the same reason: smooth the *display*, don't chase a bug that isn't there.
+    private readonly EmaSmoother _uploadSmoother = new();
+    private readonly EmaSmoother _downloadSmoother = new();
 
     private Timer? _timer;
     private NetworkInterface? _activeInterface;
@@ -86,8 +93,8 @@ public sealed class NetworkMonitorService : INetworkMonitorService
             var sentDelta = Math.Max(stats.BytesSent - _lastBytesSent, 0);
             var receivedDelta = Math.Max(stats.BytesReceived - _lastBytesReceived, 0);
 
-            info.UploadKbps = sentDelta * 8 / 1024.0 / elapsedSeconds;
-            info.DownloadKbps = receivedDelta * 8 / 1024.0 / elapsedSeconds;
+            info.UploadKbps = _uploadSmoother.Update(sentDelta * 8 / 1024.0 / elapsedSeconds);
+            info.DownloadKbps = _downloadSmoother.Update(receivedDelta * 8 / 1024.0 / elapsedSeconds);
 
             _lastBytesSent = stats.BytesSent;
             _lastBytesReceived = stats.BytesReceived;
