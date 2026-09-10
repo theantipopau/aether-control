@@ -1,0 +1,83 @@
+<Page
+    x:Class="AetherControl.App.Views.RgbPage"
+    x:Name="RootPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:AetherControl.App.Controls"
+    xmlns:converters="using:AetherControl.App.Converters"
+    Background="{StaticResource AetherBackgroundTranslucentBrush}">
+
+    <Page.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
+    </Page.Resources>
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Text="RGB Control" Style="{StaticResource PageTitleTextStyle}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <Button Content="Rescan" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.ScanCommand}" />
+                <Button Content="Launch Aura Sync" Command="{x:Bind ViewModel.LaunchAuraSyncCommand}"
+                        Visibility="{x:Bind ViewModel.AuraSyncInstalled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}" Width="18" Height="18"
+                              Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </StackPanel>
+
+            <TextBlock Text="Corsair keyboards/mice are controlled directly over USB — no iCUE, no extra software. Everything else routes through OpenRGB's SDK server (127.0.0.1:6742) if it's running."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+
+            <controls:SectionHeader Label="Detected Hardware" />
+            <TextBlock Text="Read directly from USB descriptors — shown here even before Aether Control can control it natively (Phase 12)."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.HasDetectedPeripherals, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <ItemsControl ItemsSource="{x:Bind ViewModel.DetectedPeripherals}"
+                          Visibility="{x:Bind ViewModel.HasDetectedPeripherals, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <FontIcon Glyph="&#xE7FC;" FontSize="18" Foreground="{StaticResource AetherAccentBrush}" VerticalAlignment="Center" />
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding ProductName}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                    <TextBlock Foreground="{StaticResource AetherTextSecondaryBrush}" FontSize="12">
+                                        <Run Text="{Binding VendorName}" /><Run Text="  ·  " /><Run Text="{Binding IdLabel}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <controls:SectionHeader Label="Devices" />
+
+            <Border Style="{StaticResource CardBorderStyle}"
+                    Visibility="{x:Bind ViewModel.Devices, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                <TextBlock Text="No controllable devices found. Corsair keyboards/mice are detected automatically; everything else needs OpenRGB running with its SDK server enabled, then Rescan."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+            </Border>
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Devices, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,16,0">
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                    <TextBlock Style="{StaticResource SecondaryTextStyle}">
+                                        <Run Text="{Binding DeviceType}" /><Run Text="  ·  " /><Run Text="{Binding Backend}" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Cyan" Margin="0,0,8,0"
+                                        Command="{Binding ElementName=RootPage, Path=ViewModel.SetCyanCommand}" CommandParameter="{Binding}" />
+                                <Button Grid.Column="2" Content="White"
+                                        Command="{Binding ElementName=RootPage, Path=ViewModel.SetWhiteCommand}" CommandParameter="{Binding}" />
+                            </Grid>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

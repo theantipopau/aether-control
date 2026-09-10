@@ -1,0 +1,253 @@
+<Page
+    x:Class="AetherControl.App.Views.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:AetherControl.App.Controls"
+    xmlns:converters="using:AetherControl.App.Converters"
+    Background="{StaticResource AetherBackgroundTranslucentBrush}">
+
+    <Page.Resources>
+        <converters:SeverityToneConverter x:Key="SeverityToneConverter" />
+        <converters:DriveHealthToneConverter x:Key="DriveHealthToneConverter" />
+        <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
+        <converters:StorageDetailConverter x:Key="StorageDetailConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
+        <!-- Every MetricCard on this page gets consistent spacing automatically — no per-instance Margin repeated 25 times. -->
+        <Style TargetType="controls:MetricCard">
+            <Setter Property="Margin" Value="0,0,12,12" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer Padding="24">
+        <Grid x:Name="RootGrid" ColumnSpacing="32" RowSpacing="28">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LeftColumnDef" Width="*" />
+                <ColumnDefinition x:Name="RightColumnDef" Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Hero row: the numbers a gamer glances at first. Everything else lives in the flatter
+                 metric cards below — a wall of circular gauges reads busier, not more premium. -->
+            <ScrollViewer Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                    <controls:RadialGauge
+                        Label="CPU TEMP" Unit="°C" Max="100"
+                        Value="{x:Bind ViewModel.CpuTemperature, Mode=OneWay}"
+                        Tone="{x:Bind ViewModel.CpuTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
+                    <controls:RadialGauge
+                        Label="CPU LOAD" Unit="%" Max="100"
+                        Value="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay}"
+                        Tone="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
+                    <controls:RadialGauge
+                        Label="GPU TEMP" Unit="°C" Max="100"
+                        Value="{x:Bind ViewModel.GpuTemperature, Mode=OneWay}"
+                        Tone="{x:Bind ViewModel.GpuTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
+                    <controls:RadialGauge
+                        Label="GPU LOAD" Unit="%" Max="100"
+                        Value="{x:Bind ViewModel.GpuUtilisation, Mode=OneWay}"
+                        Tone="{x:Bind ViewModel.GpuUtilisation, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
+                    <controls:RadialGauge
+                        Label="RAM" Unit="%" Max="100"
+                        Value="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay}"
+                        Tone="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <!--
+                Left column: CPU/GPU/Memory. Right column: Storage/Motherboard/Network. On a wide
+                window they sit side by side (RootGrid's VisualStateManager below); below ~1100px
+                RightColumnPanel drops to Row 2 under the left column instead of squeezing into a
+                column too narrow for its cards to wrap sensibly.
+            -->
+            <StackPanel x:Name="LeftColumnPanel" Grid.Row="1" Grid.Column="0" Spacing="28">
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="CPU" />
+                    <TextBlock Text="{x:Bind ViewModel.CpuName, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                        <controls:MetricCard Label="TEMPERATURE" NumericValue="{x:Bind ViewModel.CpuTemperature, Mode=OneWay}" Format="F0" Unit="°C"
+                                              Progress="{x:Bind ViewModel.CpuTemperature, Mode=OneWay}"
+                                              Tone="{x:Bind ViewModel.CpuTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
+                        <controls:MetricCard Label="PACKAGE POWER" NumericValue="{x:Bind ViewModel.CpuPackagePower, Mode=OneWay}" Format="F0" Unit="W" />
+                        <controls:MetricCard Label="UTILISATION" NumericValue="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay}" Format="F0" Unit="%"
+                                              Progress="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay}"
+                                              Tone="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
+                        <controls:MetricCard Label="CLOCK SPEED" NumericValue="{x:Bind ViewModel.CpuClockSpeed, Mode=OneWay}" Format="F0" Unit="MHz" />
+                        <controls:MetricCard Label="VOLTAGE" NumericValue="{x:Bind ViewModel.CpuVoltage, Mode=OneWay}" Format="F2" Unit="V"
+                                              Visibility="{x:Bind ViewModel.HasCpuVoltage, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </VariableSizedWrapGrid>
+                </StackPanel>
+
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="GPU" />
+                    <TextBlock Text="{x:Bind ViewModel.GpuName, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                        <controls:MetricCard Label="HOTSPOT" NumericValue="{x:Bind ViewModel.GpuHotspotTemperature, Mode=OneWay}" Format="F0" Unit="°C"
+                                              Progress="{x:Bind ViewModel.GpuHotspotTemperature, Mode=OneWay}"
+                                              Tone="{x:Bind ViewModel.GpuHotspotTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
+                        <controls:MetricCard Label="POWER DRAW" NumericValue="{x:Bind ViewModel.GpuPowerDraw, Mode=OneWay}" Format="F0" Unit="W" />
+                        <controls:MetricCard Label="VRAM USED" NumericValue="{x:Bind ViewModel.GpuVramUsedMb, Mode=OneWay}" Format="F0" Unit="MB" />
+                        <controls:MetricCard Label="FAN SPEED" NumericValue="{x:Bind ViewModel.GpuFanSpeedPercent, Mode=OneWay}" Format="F0" Unit="%"
+                                              Progress="{x:Bind ViewModel.GpuFanSpeedPercent, Mode=OneWay}" />
+                    </VariableSizedWrapGrid>
+                </StackPanel>
+
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="Memory" />
+                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                        <controls:MetricCard Label="USED" NumericValue="{x:Bind ViewModel.RamUsedGb, Mode=OneWay}" Format="F1" Unit="GB" />
+                        <controls:MetricCard Label="AVAILABLE" NumericValue="{x:Bind ViewModel.RamAvailableGb, Mode=OneWay}" Format="F1" Unit="GB" />
+                        <controls:MetricCard Label="UTILISATION" NumericValue="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay}" Format="F0" Unit="%"
+                                              Progress="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay}"
+                                              Tone="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
+                        <controls:MetricCard Label="SPEED" NumericValue="{x:Bind ViewModel.RamSpeedMhz, Mode=OneWay}" Format="F0" Unit="MHz" />
+                    </VariableSizedWrapGrid>
+                </StackPanel>
+
+                <!-- Ported from Portrait Stats' ProcessRankerService — "what's actually using the
+                     CPU right now", the same question Task Manager's Processes tab answers. -->
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="Top Processes" />
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="12"
+                            Visibility="{x:Bind ViewModel.TopProcessesByCpu, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                        <TextBlock Text="Nothing using meaningful CPU right now." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    </Border>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.TopProcessesByCpu, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding CpuPercent}" Format="F1" Unit="%"
+                                                      Progress="{Binding CpuPercent}"
+                                                      Tone="{Binding CpuPercent, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel x:Name="RightColumnPanel" Grid.Row="1" Grid.Column="1" Spacing="28">
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="Storage" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Drives, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="224" ItemHeight="128" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:MetricCard
+                                    CardWidth="208"
+                                    Label="{Binding Model}"
+                                    NumericValue="{Binding FreeGb}" Format="F0" Unit="GB free"
+                                    Detail="{Binding Converter={StaticResource StorageDetailConverter}}"
+                                    Progress="{Binding UsedPercent}"
+                                    Tone="{Binding Health, Converter={StaticResource DriveHealthToneConverter}}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="Motherboard" />
+                    <TextBlock Text="{x:Bind ViewModel.MotherboardModel, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+
+                    <TextBlock Text="Voltages" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="12"
+                            Visibility="{x:Bind ViewModel.MotherboardVoltages, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                        <TextBlock Text="No voltage sensors reported by this board yet." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    </Border>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardVoltages, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding Value}" Format="F2" Unit="{Binding Unit}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="VRM Temperatures" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" Margin="0,8,0,0" />
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="12"
+                            Visibility="{x:Bind ViewModel.MotherboardVrmTemperatures, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                        <TextBlock Text="No VRM temperature sensors reported by this board yet." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    </Border>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardVrmTemperatures, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding Value}" Format="F0" Unit="{Binding Unit}"
+                                                      Tone="{Binding Value, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="Fan Speeds" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" Margin="0,8,0,0" />
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="12" MaxWidth="480" HorizontalAlignment="Left"
+                            Visibility="{x:Bind ViewModel.MotherboardFanSpeeds, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                        <TextBlock Text="No fan RPM available right now — if ASUS Armoury Crate (or another vendor fan-control service) is running, it may be holding exclusive access to the Super I/O sensors."
+                                   Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    </Border>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardFanSpeeds, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding Value}" Format="F0" Unit="{Binding Unit}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="Network" />
+                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                        <controls:MetricCard Label="UPLOAD" NumericValue="{x:Bind ViewModel.NetworkUploadMbps, Mode=OneWay}" Format="F1" Unit="Mbps" />
+                        <controls:MetricCard Label="DOWNLOAD" NumericValue="{x:Bind ViewModel.NetworkDownloadMbps, Mode=OneWay}" Format="F1" Unit="Mbps" />
+                        <controls:MetricCard Label="LATENCY" NumericValue="{x:Bind ViewModel.NetworkLatencyMs, Mode=OneWay}" Format="F0" Unit="ms" />
+                        <controls:MetricCard Label="EXTERNAL IP" Value="{x:Bind ViewModel.NetworkExternalIp, Mode=OneWay}" />
+                    </VariableSizedWrapGrid>
+                </StackPanel>
+            </StackPanel>
+
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup>
+                    <VisualState x:Name="WideState">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="1180" />
+                        </VisualState.StateTriggers>
+                        <!-- Default markup above already IS the wide (two-column) layout — nothing to override here. -->
+                    </VisualState>
+                    <VisualState x:Name="NarrowState">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="0" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="RightColumnDef.Width" Value="0" />
+                            <Setter Target="RightColumnPanel.(Grid.Row)" Value="2" />
+                            <Setter Target="RightColumnPanel.(Grid.Column)" Value="0" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+        </Grid>
+    </ScrollViewer>
+</Page>

@@ -1,0 +1,229 @@
+<Page
+    x:Class="AetherControl.App.Views.OptimisationPage"
+    x:Name="RootPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:AetherControl.App.Controls"
+    xmlns:converters="using:AetherControl.App.Converters"
+    Background="{StaticResource AetherBackgroundTranslucentBrush}">
+
+    <Page.Resources>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
+        <converters:BoolToFanModeConverter x:Key="BoolToFanModeConverter" />
+        <converters:PercentDisplayConverter x:Key="PercentDisplayConverter" />
+        <converters:ImpactEstimateToBrushConverter x:Key="ImpactEstimateToBrushConverter" />
+        <converters:CountToWarningToneConverter x:Key="CountToWarningToneConverter" />
+        <Style TargetType="controls:MetricCard">
+            <Setter Property="Margin" Value="0,0,12,12" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="24" MaxWidth="760" HorizontalAlignment="Left">
+
+            <TextBlock Text="Windows Optimisation Centre" Style="{StaticResource PageTitleTextStyle}" />
+
+            <CheckBox Content="Create a system restore point before running a task" IsChecked="{x:Bind ViewModel.CreateRestorePoint, Mode=TwoWay}" />
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Tasks, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,16,0">
+                                    <TextBlock Text="{Binding Title}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Description}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Run" VerticalAlignment="Center" Style="{StaticResource AccentButtonStyle}"
+                                        Command="{Binding ElementName=RootPage, Path=ViewModel.RunTaskCommand}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Last memory-optimisation result — mirrors Radium PCs Companion's own Before/After/Freed/Trimmed cards. -->
+            <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.LastMemoryResult, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
+                <controls:SectionHeader Label="Last Memory Optimisation" />
+                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                    <controls:MetricCard Label="BEFORE" NumericValue="{x:Bind ViewModel.MemoryBeforeGb, Mode=OneWay}" Format="F1" Unit="GB" Tone="Warm" />
+                    <controls:MetricCard Label="AFTER" NumericValue="{x:Bind ViewModel.MemoryAfterGb, Mode=OneWay}" Format="F1" Unit="GB" Tone="Cool" />
+                    <controls:MetricCard Label="FREED" NumericValue="{x:Bind ViewModel.MemoryFreedGb, Mode=OneWay}" Format="F2" Unit="GB" Tone="Cool" />
+                    <controls:MetricCard Label="TRIMMED" NumericValue="{x:Bind ViewModel.ProcessesTrimmed, Mode=OneWay}" Format="F0"
+                                          Detail="{x:Bind FormatScannedDetail(ViewModel.ProcessesScanned), Mode=OneWay}" />
+                </VariableSizedWrapGrid>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <controls:SectionHeader Label="Storage Cleaner" />
+                <Button Content="Rescan" Command="{x:Bind ViewModel.ScanCleanupCommand}" />
+                <ProgressRing IsActive="{x:Bind ViewModel.IsScanningCleanup, Mode=OneWay}" Width="16" Height="16"
+                              Visibility="{x:Bind ViewModel.IsScanningCleanup, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </StackPanel>
+            <TextBlock Text="Actual on-disk size per location, not a guess — pick what to clear instead of a single blind &quot;clean everything&quot; button."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.CleanupLocations, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,6">
+                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                            <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource AetherTextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Path}" Style="{StaticResource SecondaryTextStyle}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="2" Text="{Binding SizeDisplay}" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <Button Content="Clean Selected" Style="{StaticResource AccentButtonStyle}"
+                        Command="{x:Bind ViewModel.CleanSelectedLocationsCommand}" />
+                <ProgressRing IsActive="{x:Bind ViewModel.IsCleaning, Mode=OneWay}" Width="16" Height="16"
+                              Visibility="{x:Bind ViewModel.IsCleaning, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <TextBlock Text="{x:Bind ViewModel.CleanupStatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <controls:SectionHeader Label="Gaming Profile" />
+            <TextBlock Text="Game Mode + High Performance power plan (fully reversible)"
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+            <controls:SegmentedToggle OffLabel="Off" OnLabel="Gaming Mode" HorizontalAlignment="Left"
+                                      IsOn="{x:Bind ViewModel.GamingProfileEnabled, Mode=OneWay}"
+                                      Toggled="OnGamingProfileToggled" />
+
+            <controls:SectionHeader Label="Game Profiles" />
+            <TextBlock Text="Track a game's executable — Gaming Profile applies automatically the moment it launches, and reverts once every tracked game has closed."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+
+            <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
+                <TextBox Grid.Column="0" PlaceholderText="Name (e.g. Counter-Strike 2)" Text="{x:Bind ViewModel.NewGameProfileName, Mode=TwoWay}" />
+                <TextBox Grid.Column="1" PlaceholderText="Executable (e.g. cs2.exe)" Text="{x:Bind ViewModel.NewGameProfileExecutable, Mode=TwoWay}" />
+                <Button Grid.Column="2" Content="Add" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.AddGameProfileCommand}" />
+            </Grid>
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.GameProfiles, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                          Command="{Binding ElementName=RootPage, Path=ViewModel.ToggleGameProfileEnabledCommand}"
+                                          CommandParameter="{Binding}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding ExecutableName}" Style="{StaticResource SecondaryTextStyle}" FontFamily="Cascadia Mono, Consolas" FontSize="11" />
+                                </StackPanel>
+                                <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="8" Padding="8,3"
+                                        Background="{StaticResource AetherSurfaceRaisedBrush}"
+                                        Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Text="RUNNING" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AetherAccentBrush}" />
+                                </Border>
+                                <Button Grid.Column="3" Content="Remove" VerticalAlignment="Center"
+                                        Command="{Binding ElementName=RootPage, Path=ViewModel.RemoveGameProfileCommand}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <controls:SectionHeader Label="Fan Control" />
+                <Button Content="Refresh" Command="{x:Bind ViewModel.RefreshFanChannelsCommand}" />
+                <Button Content="Reset All to Automatic" Command="{x:Bind ViewModel.ResetAllFansToAutomaticCommand}" />
+            </StackPanel>
+
+            <Border Background="{StaticResource AetherWarmBrush}" CornerRadius="8" Padding="12,10"
+                    Visibility="{x:Bind ViewModel.IsFanConflictWarningVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Text="ASUS fan-control software (Armoury Crate / AsusFanControlService) looks like it's running. It contends for the same motherboard ports — a manual curve set here may be silently overridden, or override it. Close it first for reliable control."
+                           Foreground="White" TextWrapping="Wrap" FontSize="13" />
+            </Border>
+
+            <TextBlock Text="Reads and writes motherboard PWM headers directly via LibreHardwareMonitor — no vendor software required. Software control never drops below 20% as a safety floor, and every channel resets to automatic (BIOS) control when Aether Control closes."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.HasFanChannels, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+            <Border Style="{StaticResource CardBorderStyle}"
+                    Visibility="{x:Bind ViewModel.FanChannels, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                <TextBlock Text="No software-controllable fan headers found on this Super I/O chip. Some boards only expose fan control through their own vendor utility."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+            </Border>
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.FanChannels, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="*,220,Auto,Auto" ColumnSpacing="12">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                    <TextBlock Style="{StaticResource SecondaryTextStyle}">
+                                        <Run Text="{Binding CurrentPercent, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="%" />
+                                        <Run Text="  ·  " />
+                                        <Run Text="{Binding IsSoftwareControlled, Converter={StaticResource BoolToFanModeConverter}}" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <Slider Grid.Column="1" VerticalAlignment="Center" Minimum="20" Maximum="100"
+                                        Value="{Binding CurrentPercent, Mode=OneWay}"
+                                        ValueChanged="OnFanSliderChanged" />
+                                <Button Grid.Column="2" VerticalAlignment="Center" Click="OnRenameFanChannelClicked"
+                                        ToolTipService.ToolTip="Rename this fan channel">
+                                    <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                                </Button>
+                                <Button Grid.Column="3" Content="Auto" VerticalAlignment="Center"
+                                        Command="{Binding ElementName=RootPage, Path=ViewModel.ResetFanToAutomaticCommand}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <controls:SectionHeader Label="Startup Impact" />
+
+            <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                <controls:MetricCard Label="ENABLED" NumericValue="{x:Bind ViewModel.StartupEnabledCount, Mode=OneWay}" Format="F0" />
+                <controls:MetricCard Label="HIGH IMPACT" NumericValue="{x:Bind ViewModel.StartupHighImpactCount, Mode=OneWay}" Format="F0"
+                                      Tone="{x:Bind ViewModel.StartupHighImpactCount, Mode=OneWay, Converter={StaticResource CountToWarningToneConverter}}" />
+                <controls:MetricCard Label="TOTAL ENTRIES" NumericValue="{x:Bind ViewModel.StartupTotalCount, Mode=OneWay}" Format="F0" />
+            </VariableSizedWrapGrid>
+
+            <Border Style="{StaticResource CardBorderStyle}"
+                    Visibility="{x:Bind ViewModel.StartupEntries, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                <TextBlock Text="No startup entries found." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+            </Border>
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.StartupEntries, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <ToggleSwitch Grid.Column="0" IsOn="{Binding IsEnabled, Mode=OneWay}" OnContent="" OffContent=""
+                                              Toggled="OnStartupEntryToggled" />
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Style="{StaticResource SecondaryTextStyle}" TextTrimming="CharacterEllipsis">
+                                        <Run Text="{Binding Publisher}" /><Run Text="  ·  " /><Run Text="{Binding Location}" />
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Command}" FontFamily="Cascadia Mono, Consolas" FontSize="11"
+                                               Foreground="{StaticResource AetherTextSecondaryBrush}" TextTrimming="CharacterEllipsis" Opacity="0.7" />
+                                </StackPanel>
+                                <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="10" Padding="10,4"
+                                        Background="{Binding ImpactEstimate, Converter={StaticResource ImpactEstimateToBrushConverter}}">
+                                    <TextBlock Text="{Binding ImpactEstimate}" FontSize="11" FontWeight="SemiBold" Foreground="Black" />
+                                </Border>
+                            </Grid>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap" />
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

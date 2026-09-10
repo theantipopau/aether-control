@@ -1,0 +1,47 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+out/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+.idea/
+*.DotSettings.user
+
+# VS Code
+.vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+# WinUI3 / MSIX packaging artifacts (not used — Aether Control ships unpackaged)
+AppPackages/
+BundleArtifacts/
+*.appx
+*.appxbundle
+*.appxsym
+*.msix
+*.msixbundle
+
+# Test results
+TestResults/
+*.trx
+
+# User-local data the app itself creates at runtime — never commit real
+# hardware diagnostics, settings DBs, or exported configs
+*.db
+*.db-shm
+*.db-wal
+
+# OS cruft
+Thumbs.db
+.DS_Store

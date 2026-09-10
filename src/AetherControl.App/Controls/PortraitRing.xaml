@@ -1,0 +1,11 @@
+<UserControl
+    x:Class="AetherControl.App.Controls.PortraitRing"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    SizeChanged="OnSizeChanged">
+    <Grid>
+        <Ellipse x:Name="TrackEllipse" Stroke="{StaticResource PortraitCardBorderBrush}" />
+        <Path x:Name="IndicatorPath" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+        <Ellipse x:Name="TipDot" HorizontalAlignment="Left" VerticalAlignment="Top" />
+    </Grid>
+</UserControl>

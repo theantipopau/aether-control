@@ -1,0 +1,67 @@
+<Page
+    x:Class="AetherControl.App.Views.DeviceUtilitiesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:AetherControl.App.Controls"
+    xmlns:converters="using:AetherControl.App.Converters"
+    Background="{StaticResource AetherBackgroundTranslucentBrush}">
+
+    <Page.Resources>
+        <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </Page.Resources>
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Text="Device Utilities — Mouse Centre" Style="{StaticResource PageTitleTextStyle}" />
+            <TextBlock Text="Quick links to each vendor's own DPI/configuration software, website and firmware/support pages. Aether Control does not reimplement vendor DPI tools."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+
+            <controls:SectionHeader Label="Detected Devices" />
+            <TextBlock Text="Read directly from each device's USB descriptor — no vendor software required to see what's plugged in."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.DetectedPeripherals}"
+                          Visibility="{x:Bind ViewModel.DetectedPeripherals, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <FontIcon Glyph="&#xE7FC;" FontSize="18" Foreground="{StaticResource AetherAccentBrush}" VerticalAlignment="Center" />
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding ProductName}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                    <TextBlock Foreground="{StaticResource AetherTextSecondaryBrush}" FontSize="12">
+                                        <Run Text="{Binding VendorName}" /><Run Text="  ·  " /><Run Text="{Binding IdLabel}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="No supported peripherals detected. Devices from Corsair, Logitech, Razer, SteelSeries, ASUS, Glorious and HyperX/Kingston are recognised."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.HasNoDetectedPeripherals, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+            <controls:SectionHeader Label="Vendors" />
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Vendors}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="{Binding Vendor}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                    <HyperlinkButton Content="DPI Software" NavigateUri="{Binding DpiSoftwareUrl}" Style="{StaticResource AccentHyperlinkButtonStyle}" />
+                                    <HyperlinkButton Content="Vendor Website" NavigateUri="{Binding WebsiteUrl}" Style="{StaticResource AccentHyperlinkButtonStyle}" />
+                                    <HyperlinkButton Content="Firmware/Support" NavigateUri="{Binding FirmwareUrl}" Style="{StaticResource AccentHyperlinkButtonStyle}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

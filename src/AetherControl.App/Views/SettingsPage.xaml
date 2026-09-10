@@ -1,0 +1,96 @@
+<Page
+    x:Class="AetherControl.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:AetherControl.App.Controls"
+    Background="{StaticResource AetherBackgroundTranslucentBrush}">
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="28" MaxWidth="520" HorizontalAlignment="Left">
+            <TextBlock Text="Settings" Style="{StaticResource PageTitleTextStyle}" />
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Appearance" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="16">
+                        <ComboBox Header="Theme" ItemsSource="{x:Bind ViewModel.ThemeOptions}" SelectedItem="{x:Bind ViewModel.Theme, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                        <ComboBox Header="Accent colour" ItemsSource="{x:Bind ViewModel.AccentOptions}" SelectedItem="{x:Bind ViewModel.Accent, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Performance" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="16">
+                        <NumberBox Header="Dashboard refresh rate (ms)" Value="{x:Bind ViewModel.DashboardRefreshMs, Mode=TwoWay}" SpinButtonPlacementMode="Inline" Minimum="250" Maximum="10000" />
+                        <NumberBox Header="History retention (days)" Value="{x:Bind ViewModel.HistoryRetentionDays, Mode=TwoWay}" SpinButtonPlacementMode="Inline" Minimum="1" Maximum="365" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Startup &amp; Tray" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="4">
+                        <ToggleSwitch Header="Start with Windows" IsOn="{x:Bind ViewModel.StartWithWindows, Mode=TwoWay}" />
+                        <ToggleSwitch Header="Start minimised to tray" IsOn="{x:Bind ViewModel.StartMinimisedToTray, Mode=TwoWay}" />
+                        <ToggleSwitch Header="Minimise to tray on close" IsOn="{x:Bind ViewModel.MinimiseToTrayOnClose, Mode=TwoWay}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Alerts" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="16">
+                        <ToggleSwitch Header="Notify when CPU/GPU temperature crosses a threshold" IsOn="{x:Bind ViewModel.TemperatureAlertsEnabled, Mode=TwoWay}" />
+                        <NumberBox Header="CPU temperature threshold (°C)" Value="{x:Bind ViewModel.CpuTemperatureAlertThreshold, Mode=TwoWay}" SpinButtonPlacementMode="Inline" Minimum="40" Maximum="110" />
+                        <NumberBox Header="GPU temperature threshold (°C)" Value="{x:Bind ViewModel.GpuTemperatureAlertThreshold, Mode=TwoWay}" SpinButtonPlacementMode="Inline" Minimum="40" Maximum="110" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Tray Icon" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Shown when you hover the tray icon." Style="{StaticResource SecondaryTextStyle}" Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.TrayMetricOptions, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Logging" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <ToggleSwitch Header="Logging enabled" IsOn="{x:Bind ViewModel.LoggingEnabled, Mode=TwoWay}" />
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Data" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Export your configuration to move it to another machine, or import a previously saved one." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Content="Export configuration" Command="{x:Bind ViewModel.ExportCommand}" />
+                            <Button Content="Import configuration" Command="{x:Bind ViewModel.ImportCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="Save" Command="{x:Bind ViewModel.SaveCommand}" Style="{StaticResource AccentButtonStyle}" />
+                <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

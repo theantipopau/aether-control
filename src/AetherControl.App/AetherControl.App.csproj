@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>AetherControl.App</RootNamespace>
+    <AssemblyName>AetherControl</AssemblyName>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64;arm64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- Unpackaged .exe by design — Aether Control ships as its own standalone executable, not an MSIX. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240627000" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.1.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AetherControl.Core\AetherControl.Core.csproj" />
+    <ProjectReference Include="..\AetherControl.Data\AetherControl.Data.csproj" />
+    <ProjectReference Include="..\AetherControl.Services\AetherControl.Services.csproj" />
+    <ProjectReference Include="..\AetherControl.Plugins.Abstractions\AetherControl.Plugins.Abstractions.csproj" />
+    <!-- Intentionally not a normal (assembly) reference: the fan-RPM helper is copied next to
+         the app's own executable so it can be launched as a fresh child process each poll —
+         see FanRpmProbeService for why it must be an out-of-process probe. -->
+    <ProjectReference Include="..\AetherControl.FanHelper\AetherControl.FanHelper.csproj"
+                       ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CopyFanHelperOutput" AfterTargets="Build">
+    <ItemGroup>
+      <FanHelperOutput Include="..\AetherControl.FanHelper\bin\$(Configuration)\net8.0-windows\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FanHelperOutput)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

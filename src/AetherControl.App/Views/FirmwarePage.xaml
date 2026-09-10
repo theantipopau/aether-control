@@ -1,0 +1,44 @@
+<Page
+    x:Class="AetherControl.App.Views.FirmwarePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:AetherControl.App.Controls"
+    xmlns:converters="using:AetherControl.App.Converters"
+    Background="{StaticResource AetherBackgroundTranslucentBrush}">
+
+    <Page.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+    </Page.Resources>
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Text="Firmware &amp; Driver Centre" Style="{StaticResource PageTitleTextStyle}" />
+
+            <TextBlock Text="Current versions only — Aether Control never installs updates automatically. Use the vendor link to check for and download the latest version yourself."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <controls:SectionHeader Label="Installed Components" />
+                <Button Content="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
+            </StackPanel>
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Statuses, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:HoverCard Margin="0,0,0,8">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding Component}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource SecondaryTextStyle}">
+                                    <Run Text="Current: " /><Run Text="{Binding CurrentVersion}" />
+                                </TextBlock>
+                                <HyperlinkButton Content="Vendor support page" NavigateUri="{Binding VendorPageUrl}"
+                                                 Style="{StaticResource AccentHyperlinkButtonStyle}"
+                                                 Visibility="{Binding VendorPageUrl, Converter={StaticResource StringToVisibilityConverter}}" />
+                            </StackPanel>
+                        </controls:HoverCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

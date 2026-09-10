@@ -1,0 +1,15 @@
+<UserControl
+    x:Class="AetherControl.App.Controls.SegmentedToggle"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border Background="{StaticResource AetherSurfaceBrush}" BorderBrush="{StaticResource AetherBorderBrush}"
+            BorderThickness="1" CornerRadius="18" Padding="3">
+        <StackPanel Orientation="Horizontal" Spacing="2">
+            <Button x:Name="OffButton" MinWidth="88" HorizontalContentAlignment="Center"
+                    CornerRadius="15" Padding="16,7" BorderThickness="0" Click="OnOffClicked" />
+            <Button x:Name="OnButton" MinWidth="88" HorizontalContentAlignment="Center"
+                    CornerRadius="15" Padding="16,7" BorderThickness="0" Click="OnOnClicked" />
+        </StackPanel>
+    </Border>
+</UserControl>

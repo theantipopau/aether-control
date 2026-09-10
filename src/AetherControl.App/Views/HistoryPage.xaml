@@ -1,0 +1,43 @@
+<Page
+    x:Class="AetherControl.App.Views.HistoryPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:AetherControl.App.Converters"
+    Background="{StaticResource AetherBackgroundTranslucentBrush}">
+
+    <Page.Resources>
+        <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
+    </Page.Resources>
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="16">
+            <TextBlock Text="Performance History" Style="{StaticResource PageTitleTextStyle}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <ComboBox x:Name="MetricComboBox" Header="Metric" ItemsSource="{x:Bind ViewModel.AvailableMetrics}" SelectedItem="{x:Bind ViewModel.SelectedMetric, Mode=TwoWay}" Width="200" />
+                <ComboBox x:Name="ResolutionComboBox" Header="Range" ItemsSource="{x:Bind ViewModel.AvailableResolutions}" SelectedItem="{x:Bind ViewModel.SelectedResolution, Mode=TwoWay}" Width="140" />
+                <Button Content="Load" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.LoadCommand}" VerticalAlignment="Bottom" />
+            </StackPanel>
+
+            <TextBlock Text="{x:Bind ViewModel.Summary, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+
+            <Grid>
+                <Border Style="{StaticResource CardBorderStyle}" Height="320">
+                    <Canvas x:Name="ChartCanvas" SizeChanged="OnChartCanvasSizeChanged">
+                        <Polyline
+                            x:Name="ChartLine"
+                            Stroke="{StaticResource AetherAccentBrush}"
+                            StrokeThickness="2"
+                            StrokeLineJoin="Round"
+                            StrokeStartLineCap="Round"
+                            StrokeEndLineCap="Round" />
+                    </Canvas>
+                </Border>
+                <TextBlock Text="No history loaded yet — pick a metric and range, then Load."
+                           Style="{StaticResource SecondaryTextStyle}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsHitTestVisible="False"
+                           Visibility="{x:Bind ViewModel.ChartPoints, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}" />
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

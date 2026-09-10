@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>AetherControl.Plugins.Abstractions</RootNamespace>
+    <AssemblyName>AetherControl.Plugins.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AetherControl.Core\AetherControl.Core.csproj" />
+  </ItemGroup>
+
+</Project>

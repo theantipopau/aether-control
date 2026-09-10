@@ -1,0 +1,76 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
+
+    <!--
+        Portrait Mode's own palette, ported directly from Portrait Stats' Colors.xaml — a
+        multi-accent design (CPU/GPU/RAM/FPS/Drive each get their own hue) deliberately kept
+        separate from the main app's single-accent-colour design system. This is Matt's own
+        proven design for his portrait monitor; it isn't meant to match the rest of Aether Control.
+    -->
+    <Color x:Key="PortraitPageBgColor">#0B0E14</Color>
+    <Color x:Key="PortraitCardBgColor">#151A24</Color>
+    <Color x:Key="PortraitCardBorderColor">#232A38</Color>
+
+    <SolidColorBrush x:Key="PortraitPageBgBrush" Color="{StaticResource PortraitPageBgColor}" />
+    <SolidColorBrush x:Key="PortraitCardBgBrush" Color="{StaticResource PortraitCardBgColor}" />
+    <SolidColorBrush x:Key="PortraitCardBorderBrush" Color="{StaticResource PortraitCardBorderColor}" />
+
+    <SolidColorBrush x:Key="PortraitTextPrimaryBrush" Color="#F2F4F8" />
+    <SolidColorBrush x:Key="PortraitTextSecondaryBrush" Color="#7C8598" />
+    <SolidColorBrush x:Key="PortraitTextMutedBrush" Color="#4B5468" />
+
+    <!-- Section accents — deliberately kept out of the red/amber/green range so a metric's own
+         identity colour is never mistaken for a severity state. -->
+    <SolidColorBrush x:Key="PortraitCpuAccentBrush" Color="#38BDF8" />
+    <SolidColorBrush x:Key="PortraitGpuAccentBrush" Color="#C084FC" />
+    <SolidColorBrush x:Key="PortraitRamAccentBrush" Color="#34D399" />
+    <SolidColorBrush x:Key="PortraitFpsAccentBrush" Color="#E0F2FE" />
+    <SolidColorBrush x:Key="PortraitProcessAccentBrush" Color="#64748B" />
+    <SolidColorBrush x:Key="PortraitDriveAccentBrush" Color="#818CF8" />
+
+    <SolidColorBrush x:Key="PortraitSeverityNormalBrush" Color="#F2F4F8" />
+    <SolidColorBrush x:Key="PortraitSeverityWarningBrush" Color="#FBBF24" />
+    <SolidColorBrush x:Key="PortraitSeverityCriticalBrush" Color="#F87171" />
+
+    <SolidColorBrush x:Key="PortraitAmdBrandBrush" Color="#ED1C24" />
+    <SolidColorBrush x:Key="PortraitNvidiaBrandBrush" Color="#76B900" />
+    <SolidColorBrush x:Key="PortraitIntelBrandBrush" Color="#0071C5" />
+
+    <Style x:Key="PortraitSectionHeaderText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource PortraitTextPrimaryBrush}" />
+    </Style>
+
+    <Style x:Key="PortraitCaptionLabelText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource PortraitTextSecondaryBrush}" />
+    </Style>
+
+    <Style x:Key="PortraitCardBorderStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource PortraitCardBgBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource PortraitCardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="14,12" />
+    </Style>
+
+    <!-- ButtonBase, not Button — this style is also applied to the Pin/OLED ToggleButtons, and
+         Button/ToggleButton are sibling classes under ButtonBase, not parent/child, so a
+         TargetType="Button" style throws at runtime when applied to a ToggleButton. -->
+    <Style x:Key="PortraitHeaderIconButtonStyle" TargetType="primitives:ButtonBase">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource PortraitTextSecondaryBrush}" />
+        <Setter Property="Background" Value="{StaticResource PortraitCardBgBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource PortraitCardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="15" />
+    </Style>
+
+</ResourceDictionary>

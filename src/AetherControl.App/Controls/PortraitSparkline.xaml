@@ -1,0 +1,22 @@
+<UserControl
+    x:Class="AetherControl.App.Controls.PortraitSparkline"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    SizeChanged="OnSizeChanged">
+    <Grid x:Name="RootGrid">
+        <!-- Faint quartile baseline grid — gives the line something to read its height against. -->
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition />
+            <RowDefinition />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" BorderThickness="0,0,0,1" BorderBrush="{StaticResource PortraitCardBorderBrush}" Opacity="0.6" />
+        <Border Grid.Row="1" BorderThickness="0,0,0,1" BorderBrush="{StaticResource PortraitCardBorderBrush}" Opacity="0.6" />
+        <Border Grid.Row="2" BorderThickness="0,0,0,1" BorderBrush="{StaticResource PortraitCardBorderBrush}" Opacity="0.6" />
+
+        <Polygon x:Name="FillPolygon" Grid.RowSpan="4" />
+        <Polyline x:Name="LinePolyline" Grid.RowSpan="4" StrokeThickness="1.75" StrokeLineJoin="Round" />
+        <Ellipse x:Name="EndpointDot" Grid.RowSpan="4" Width="6" Height="6" HorizontalAlignment="Left" VerticalAlignment="Top" />
+    </Grid>
+</UserControl>
