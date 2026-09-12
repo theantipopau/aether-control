@@ -2,7 +2,136 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause)
+
+## Phase 31 — 680/340 flicker: confirmed root cause
+Matt reported the 680GB/340GB alternation was still reproducible after Phase
+30, and correctly pushed back that Phase 30 only ever proved the *backend*
+(StorageHealthProbe) was stable — it never traced what the UI layer actually
+did with a value once bound. This phase instruments and traces the full
+pixel path instead, per that push-back.
+
+**Found, via a real cross-repository comparison, not guessing:** `NumberTween`
+is a direct port of Radium PCs Companion's `useAnimatedNumber.ts`
+(`E:\radiumpcs`, already a documented reference project — see Phase 10). The
+original hook coerces a non-finite (`NaN`/`Infinity`) value to 0 and
+**returns immediately** (no animation). The WinUI3 port coerced to 0 but
+**fell through** into the animation path, so a single non-finite input would
+glide the last real value down toward a fabricated 0 — for a value around
+680, visibly passing through ~340 on the way. Real, evidenced port-fidelity
+bug; fixed. However, no concrete reachable path was found for storage's own
+`FreeGb` to actually go non-finite under real WMI conditions, so this alone
+doesn't explain the report — see below for what does.
+
+**Confirmed root cause, captured directly in a live trace (not inferred):**
+Added `UiValueTraceLog` + `MetricCard.DiagnosticTag` (opt-in, temporary —
+see `StorageDiagnostics`), wired to the Storage section's cards, and ran the
+app with tracing on. The trace showed a **brand-new `MetricCard` instance
+GUID appearing roughly once every second, forever**, for every storage card
+— each one animating from 0 up to its real value over ~15 frames. For a
+value like 682GB, that climb passes through ~340 (its half) as a completely
+ordinary intermediate frame. This is not a wrong value — it's the correct
+value, climbing from zero to itself, every single second.
+- **Why**: `ObservableCollectionMergeExtensions.MergeFrom` (Phase 23)
+  replaces the collection item via the indexer whenever a fresh reading
+  differs from what's there — but `StorageHealthProbe` builds a brand-new
+  `StorageDriveInfo` every poll even when nothing changed, and plain classes
+  compare by reference, so "differs" was true on literally every poll.
+  Phase 23's own doc comment asserted that `ItemsControl` recycles the
+  container on a `Replace` and just rebinds it — **that assumption was never
+  verified and was wrong** for an `ItemsControl` backed by a
+  `VariableSizedWrapGrid` `ItemsPanel` (no virtualization support): it tears
+  the container down and rebuilds it on `Replace`, exactly like a full
+  `Reset`.
+- [x] Converted `StorageDriveInfo`, `NamedSensorValue`, `ProcessUsageInfo` to
+      `record`s (value equality) so two separately-constructed, field-
+      identical readings are actually equal.
+  - `StorageDriveInfo` further overrides `Equals`/`GetHashCode` to compare
+    at **display precision** (whole GB/°C, matching its own `"F0"` format)
+    rather than raw bytes — the system drive is under real, continuous
+    write activity (temp files, browser cache, logs), so its exact
+    `FreeBytes` differs by a few KB on nearly every poll even though the
+    *displayed* number never moves. Plain record equality (byte-exact)
+    fixed 3 of 4 drives immediately in the live trace but left the actively-
+    written system drive still rebuilding every second — caught by watching
+    the *second* live trace, not assumed.
+- [x] `ObservableCollectionMergeExtensions.MergeFrom` now skips the indexer
+      assignment entirely (no `Replace` event, no container touched) when
+      the incoming item is value-equal to what's already there. Relocated
+      from `AetherControl.App.ViewModels` to `AetherControl.Core.Collections`
+      — it has zero WinUI dependency and belongs where it can be unit tested
+      directly (the App project's TFM can't be referenced from the test
+      project's).
+- [x] `NumberTween` split into a thin WinUI3 adapter plus `TweenState`
+      (`AetherControl.Core.Animation`) — pure, no `CompositionTarget`
+      dependency, fully unit tested. This is what made the non-finite-input
+      port-fidelity fix testable at all.
+- [x] Temporary diagnostics added and left in place for now (not deleted
+      immediately per Part 8 — the fix should stay observable until Matt
+      confirms it live): `UiValueTraceLog` (writes to `ui-value-trace.log`
+      when `StorageDiagnostics.TraceEnabled`, opt-in per `MetricCard` via
+      `DiagnosticTag`), and an animation bypass
+      (`StorageDiagnostics.AnimationEnabled = false` skips `NumberTween`
+      entirely for tagged cards, writing the formatted value straight to the
+      `TextBlock`). Both are static, in-memory, non-persisted flags — not
+      wired into `AppSettings`/SQLite, since a schema migration is more risk
+      than a short-lived diagnostic warrants. **Remove `StorageDiagnostics`,
+      `UiValueTraceLog`, `MetricCard.DiagnosticTag`, and the `DiagnosticTag`
+      binding in `DashboardPage.xaml` once the fix is confirmed closed.**
+- **Live verification status**: rebuilt and relaunched with tracing on.
+  First trace run showed the bug directly (a new card GUID every second,
+  all 4 drives). After the record-equality fix, a second trace run showed
+  3 of 4 drives fully stable (exactly one card instance for the whole
+  session) — the 4th (the actively-written system drive) was still
+  rebuilding every second, which led directly to the display-precision
+  equality fix above. **That second fix has not yet been re-verified live**
+  — the running instance is elevated and couldn't be closed from this
+  session to rebuild; needs one more close/rebuild/relaunch/observe cycle.
+- [x] 6 new regression tests
+      (`ObservableCollectionMergeExtensionsTests`) pin: an unchanged reading
+      produces no `CollectionChanged` event at all and the original object
+      instance is preserved; a real change still replaces; 10 repeated
+      identical polls produce zero replaces after the first insert; a
+      value-equal `StorageDriveInfo` really does equal another
+      independently-constructed one; sub-whole-GB byte drift on an actively-
+      written drive counts as unchanged; a change large enough to cross a
+      whole-GB boundary still counts as changed.
+- [x] 9 new `TweenState` tests
+      (`TweenStateTests`) pin: a fresh state starts at 0; a non-finite
+      target is ignored outright (value stays exactly where it was, not 0,
+      not halfway); a real `0.0` target still animates normally (the fix
+      doesn't swallow legitimate zero readings); a repeated identical target
+      snaps rather than restarting; a target within the snap threshold also
+      snaps; a new target arriving mid-animation redirects from the current
+      *interpolated* value, not the original start point; a completed
+      animation clears `IsAnimating`; 20 repeated identical polls never
+      animate; large realistic GB values round-trip precisely.
+- **Cross-repository review (partial, evidence-based)**: found
+  `theantipopau/pccompanion` (public GitHub repo) — this is "PC Companion,"
+  already known locally as Radium PCs Companion (`E:\radiumpcs`, read and
+  ported from extensively in earlier phases — see Phase 10's `RadialGauge`/
+  `MetricCard`/`SeverityToneConverter`/`NumberTween` ports). Diffing
+  `useAnimatedNumber.ts` against `NumberTween.cs` directly is what surfaced
+  the non-finite-handling port-fidelity bug above — a real code-level
+  comparison, not a README feature-list comparison. The full 30-category
+  comparison matrix (OmenCore + Portrait Stats + PC Companion vs. Aether,
+  across polling/timers/portrait-detection/fan-safety/tray/automation/etc.)
+  requested alongside this was **not** completed in this pass — it's a
+  large, separate undertaking, and the one comparison actually relevant to
+  the open defect (the animation hook) was prioritized and completed instead
+  of spreading effort across all 30 categories shallowly. Logged as a
+  follow-up phase rather than rushed.
+- **UI/UX redesign (Parts 10-13 of the audit brief)**: not attempted in this
+  pass. A full navigation restructure, new visual language, accessibility
+  overhaul, and asset inventory is real, valuable work, but doing it in the
+  same pass as an active, actively-being-diagnosed data-correctness defect
+  — without the ability to visually verify any of it live (no computer-use
+  access to this unlisted app) — is exactly the "no broad UI rewrite without
+  regression validation" risk the audit brief itself warned against.
+  Deliberately deferred, not skipped.
+- [x] Build (Core, Services, App via VS MSBuild) and full `dotnet test` run
+      clean before and after every change in this phase: 38 passing after
+      Phase 30 → 40 passing at the end of this phase, 0 failures throughout.
 
 ## Phase 30 — Formal storage audit — stale-not-zero + regression tests
 A detailed audit brief described free space "flickering between ~680GB and

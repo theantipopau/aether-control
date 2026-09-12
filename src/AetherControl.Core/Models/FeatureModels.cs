@@ -91,7 +91,10 @@ public sealed class GameProfile
     public bool IsRunning { get; set; }
 }
 
-public sealed class ProcessUsageInfo
+// Record for the same reason as StorageDriveInfo (AetherControl.Core.Models.HardwareModels) — backs
+// the Top Processes ItemsControls, same "recreated every poll" exposure via
+// ObservableCollectionMergeExtensions.MergeFrom.
+public sealed record ProcessUsageInfo
 {
     public int Pid { get; init; }
     public string Name { get; init; } = string.Empty;

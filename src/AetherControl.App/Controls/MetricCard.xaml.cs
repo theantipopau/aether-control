@@ -15,6 +15,11 @@ namespace AetherControl.App.Controls;
 /// </summary>
 public sealed partial class MetricCard : UserControl
 {
+    // Assigned once per instance — the correlation id UiValueTraceLog uses to tell "the same card,
+    // updated repeatedly" apart from "a freshly recreated card at the same grid position", which is
+    // exactly the distinction a container-recycling bug (a stale card bound to the wrong volume,
+    // or a fresh card's tween restarting from zero) would show up as in the trace.
+    private readonly Guid _instanceId = Guid.NewGuid();
     private readonly NumberTween _valueTween;
     private readonly NumberTween _progressTween;
     private string _format = "F0";
@@ -49,10 +54,27 @@ public sealed partial class MetricCard : UserControl
     public static readonly DependencyProperty CardWidthProperty =
         DependencyProperty.Register(nameof(CardWidth), typeof(double), typeof(MetricCard), new PropertyMetadata(double.NaN, OnCardWidthChanged));
 
+    /// <summary>Opt-in correlation tag (e.g. a drive's DeviceId) — when non-empty, this instance
+    /// participates in the temporary storage-flicker diagnostics (see <see cref="StorageDiagnostics"/>):
+    /// it traces every NumericValue change when <see cref="StorageDiagnostics.TraceEnabled"/> is set,
+    /// and bypasses NumberTween entirely when <see cref="StorageDiagnostics.AnimationEnabled"/> is
+    /// false. Empty (the default, and every non-storage card in the app) is completely unaffected by
+    /// either flag — this only ever touches cards that explicitly opt in.</summary>
+    public static readonly DependencyProperty DiagnosticTagProperty =
+        DependencyProperty.Register(nameof(DiagnosticTag), typeof(string), typeof(MetricCard), new PropertyMetadata(string.Empty));
+
     public MetricCard()
     {
         InitializeComponent();
-        _valueTween = new NumberTween(v => ValueText.Text = v.ToString(_format));
+        _valueTween = new NumberTween(v =>
+        {
+            var text = v.ToString(_format);
+            ValueText.Text = text;
+            if (StorageDiagnostics.TraceEnabled && !string.IsNullOrEmpty(DiagnosticTag))
+            {
+                UiValueTraceLog.Write(DiagnosticTag, _instanceId, $"TextBlock.Text set: frameValue={v:R} text=\"{text}\"");
+            }
+        });
         _progressTween = new NumberTween(UpdateMeterFill);
 
         HoverBorderEffect.Attach(this, RootBorder);
@@ -125,6 +147,12 @@ public sealed partial class MetricCard : UserControl
         set => SetValue(CardWidthProperty, value);
     }
 
+    public string DiagnosticTag
+    {
+        get => (string)GetValue(DiagnosticTagProperty);
+        set => SetValue(DiagnosticTagProperty, value);
+    }
+
     private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
         ((MetricCard)d).LabelText.Text = (string)e.NewValue;
 
@@ -142,8 +170,34 @@ public sealed partial class MetricCard : UserControl
     private static void OnFormatChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
         ((MetricCard)d)._format = (string)e.NewValue;
 
-    private static void OnNumericValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
-        ((MetricCard)d)._valueTween.AnimateTo((double)e.NewValue);
+    private static void OnNumericValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var card = (MetricCard)d;
+        var newValue = (double)e.NewValue;
+        var isDiagnosticCard = !string.IsNullOrEmpty(card.DiagnosticTag);
+
+        if (isDiagnosticCard && StorageDiagnostics.TraceEnabled)
+        {
+            UiValueTraceLog.Write(card.DiagnosticTag, card._instanceId,
+                $"NumericValue changed: raw={newValue:R} formatted=\"{FormatSafely(newValue, card._format)}\" animationEnabled={StorageDiagnostics.AnimationEnabled} tweenCurrentBefore={card._valueTween.Current:R}");
+        }
+
+        if (isDiagnosticCard && !StorageDiagnostics.AnimationEnabled)
+        {
+            // Diagnostic bypass: write the formatted value straight to the TextBlock, no
+            // interpolation, no NumberTween involved at all — isolates the animation layer as a
+            // variable. If a reported "wrong value" defect disappears with this off, the defect is
+            // somewhere in NumberTween/TweenState; if it persists, it's upstream (binding, converter,
+            // model, or card identity) and this bypass proves the animation layer innocent.
+            card.ValueText.Text = FormatSafely(newValue, card._format);
+            return;
+        }
+
+        card._valueTween.AnimateTo(newValue);
+    }
+
+    private static string FormatSafely(double value, string format) =>
+        double.IsFinite(value) ? value.ToString(format) : "—";
 
     private static void OnProgressChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
         ((MetricCard)d)._progressTween.AnimateTo((double)e.NewValue);

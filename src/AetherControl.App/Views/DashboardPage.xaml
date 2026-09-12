@@ -185,7 +185,8 @@
                                     NumericValue="{Binding FreeGb}" Format="F0" Unit="GB free"
                                     Detail="{Binding Converter={StaticResource StorageDetailConverter}}"
                                     Progress="{Binding UsedPercent}"
-                                    Tone="{Binding Health, Converter={StaticResource DriveHealthToneConverter}}" />
+                                    Tone="{Binding Health, Converter={StaticResource DriveHealthToneConverter}}"
+                                    DiagnosticTag="{Binding DeviceId}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

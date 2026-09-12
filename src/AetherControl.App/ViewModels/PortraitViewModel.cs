@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using AetherControl.Core.Collections;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;

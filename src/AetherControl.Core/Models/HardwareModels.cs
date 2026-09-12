@@ -45,7 +45,18 @@ public sealed class MemoryInfo
     public double SpeedMhz { get; set; }
 }
 
-public sealed class StorageDriveInfo
+// A record, not a class — the root cause of a real, live-captured storage display bug (a card
+// visibly sweeping from 0 to its target on *every single poll*, forever) turned out to be this type
+// lacking value equality. ObservableCollectionMergeExtensions.MergeFrom replaces the object at an
+// index whenever the incoming reading "differs" from what's there — but every StorageHealthProbe
+// poll constructs a brand-new StorageDriveInfo even when every field is identical, and reference
+// equality made that look like a real change every time. ItemsControl (with a VariableSizedWrapGrid
+// ItemsPanel, no virtualization) responds to that Replace by tearing down and recreating the
+// MetricCard container from scratch — proven via a live ui-value-trace.log capture: a brand new
+// MetricCard GUID appeared every ~1 second, each one re-animating from 0. Records get value-based
+// Equals/GetHashCode for free while keeping the same { get; set; } mutable-property shape every
+// existing caller already uses.
+public sealed record StorageDriveInfo
 {
     public string DeviceId { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
@@ -72,6 +83,30 @@ public sealed class StorageDriveInfo
     // disk cannot have negative used space, so this states that fact once, here, rather than
     // needing every consumer (a meter bar, a converter, a future one) to remember to clamp it too.
     public double UsedPercent => CapacityBytes <= 0 ? 0 : Math.Clamp((CapacityBytes - FreeBytes) / CapacityBytes * 100.0, 0.0, 100.0);
+
+    // Custom equality, overriding the record default — evidenced necessary by a live trace: the
+    // system drive is under real, constant write activity (browser cache, temp files, logs), so its
+    // exact FreeBytes differs by a few KB on nearly every single poll. Byte-exact equality (what the
+    // compiler-generated record Equals would do) still called that "different" every time, still
+    // triggered a container rebuild via ObservableCollectionMergeExtensions.MergeFrom, and the
+    // rebuilt container's value animation still started from zero — for exactly the drive the
+    // reported symptom was about. Comparing at display precision (whole GB/°C, matching this card's
+    // own "F0" format) instead of raw bytes is what actually stops the every-second rebuild for a
+    // drive with real, continuous, sub-perceptible activity, without hiding a change large enough to
+    // actually move the displayed number.
+    public bool Equals(StorageDriveInfo? other) =>
+        other is not null
+        && DeviceId == other.DeviceId
+        && Model == other.Model
+        && Health == other.Health
+        && IsNvme == other.IsNvme
+        && IsFreeSpaceStale == other.IsFreeSpaceStale
+        && Math.Round(FreeGb) == Math.Round(other.FreeGb)
+        && Math.Round(CapacityGb) == Math.Round(other.CapacityGb)
+        && Math.Round(TemperatureCelsius) == Math.Round(other.TemperatureCelsius);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(DeviceId, Model, Health, IsNvme, IsFreeSpaceStale, Math.Round(FreeGb), Math.Round(CapacityGb), Math.Round(TemperatureCelsius));
 }
 
 public sealed class MotherboardInfo
@@ -83,7 +118,9 @@ public sealed class MotherboardInfo
     public IReadOnlyList<NamedSensorValue> VrmTemperatures { get; set; } = [];
 }
 
-public sealed class NamedSensorValue
+// Record for the same reason as StorageDriveInfo above — this backs the Motherboard Voltages/Fan
+// Speeds/VRM Temperatures ItemsControls, which have the identical "recreated every poll" exposure.
+public sealed record NamedSensorValue
 {
     public string Name { get; set; } = string.Empty;
     public double Value { get; set; }
