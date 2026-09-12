@@ -22,6 +22,11 @@ public sealed partial class ProcessRankerService
     // however often callers ask, is what keeps it stable regardless of the dashboard refresh setting.
     private static readonly TimeSpan MinEngineSampleInterval = TimeSpan.FromMilliseconds(950);
 
+    // Below this, a process isn't "using" the CPU/GPU in any way a person would call meaningful —
+    // it's a background service ticking over. See the two call sites for why 0.05%/any-nonzero-value
+    // let the Top Processes list rotate through a near-random set of near-idle processes every poll.
+    private const double MeaningfulUsageThresholdPercent = 1.0;
+
     private readonly Dictionary<int, (TimeSpan cpuTime, DateTime sampledAt)> _lastCpuSample = new();
     // Two independent counter sets, not one shared between the two GPU read paths: a rate-based
     // PerformanceCounter's NextValue() computes its delta from *its own* last call regardless of who
@@ -128,7 +133,13 @@ public sealed partial class ProcessRankerService
                         if (wallDelta > 0)
                         {
                             var percent = cpuDelta / wallDelta / processorCount * 100.0;
-                            if (percent > 0.05)
+                            // 0.05% let essentially every background service in — at idle, 5+
+                            // processes sit in the 0.0-0.2% range and which ones round into the top
+                            // 5 each 2-second sample is close to random, so the "Top Processes" list
+                            // visually rotated through a different set of names constantly even
+                            // though nothing was actually happening. 1% is a real floor for
+                            // "meaningful", matching what the empty-state message already promises.
+                            if (percent > MeaningfulUsageThresholdPercent)
                             {
                                 result[process.Id] = (percent, process.ProcessName);
                             }
@@ -199,9 +210,20 @@ public sealed partial class ProcessRankerService
             result[pid.Value] = result.GetValueOrDefault(pid.Value) + value;
         }
 
+        // Threshold after summing, not per-instance — a process split across several GPU engine
+        // instances (3D + Copy + Video Decode) each individually under the floor can still add up to
+        // meaningful total usage; filtering per-instance would have thrown that away.
         foreach (var key in result.Keys.ToList())
         {
-            result[key] = Math.Min(result[key], 100.0);
+            var total = Math.Min(result[key], 100.0);
+            if (total > MeaningfulUsageThresholdPercent)
+            {
+                result[key] = total;
+            }
+            else
+            {
+                result.Remove(key);
+            }
         }
 
         return result;

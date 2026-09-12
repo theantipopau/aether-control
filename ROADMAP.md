@@ -2,7 +2,84 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent)
+
+## Phases 24-29 — Comparable-app review: adaptable ideas, visual assets, GUI/UX
+Reviewed six comparable open-source projects at Matt's request (Lenovo Legion
+Toolkit, hw-smi, HardwareVisualizer, Core-Monitor, the HardwareMonitor/openhardwaremonitor
+fork, LibreHardwareMonitor itself) for anything worth adapting, plus a pass
+over Aether's own current assets/theme/layout. Working through these
+incrementally rather than in one pass — ticked items below are done, open
+ones are queued.
+
+### Phase 24 — Visual identity: icon and logo now match the in-app accent
+Found via the review, not reported by Matt: `Assets/Icon.png`, `Logo.png`,
+and `AppIcon.ico` (taskbar/tray/titlebar icon) were all green, while every
+other pixel of the actual UI (`Colors.xaml`'s `AetherAccentColor`, every
+card highlight, the titlebar accent-fade strip) is cyan (`#00E5FF`) — the
+first thing anyone sees in the taskbar didn't match the app that opened.
+- [x] Hue-shifted `Icon.png`/`Logo.png`/`AppIcon.ico` from green (~144°) to
+      the exact accent hue (~186°) via HSV rotation (Python/Pillow) rather
+      than redrawing from scratch — preserves the original artwork's shading/
+      glow exactly, just recolours it. Regenerated the 10-size `.ico`
+      (16 through 256px) from the new `Icon.png`. Synced the README's
+      separate `img/Logo.png`/`Icon.png` copies to match.
+- [ ] Not yet visually confirmed live (rebuild pending — Matt's running
+      instance has the exe locked; batching remaining changes before asking
+      for a relaunch).
+- [ ] GitHub social-preview image (1280×640, shown when the repo link is
+      shared) — not created yet, should be generated from the new logo once
+      the icon is confirmed.
+
+### Phase 25 — NavigationView grouping
+- [x] Added a `NavigationViewItemSeparator` and reordered the side nav into
+      monitoring/viewing (Dashboard, Portrait Mode, History) then
+      action/control tools (Optimisation Centre, RGB Control, Firmware &
+      Drivers, Device Utilities) — previously one flat list of 7 items with
+      no visual grouping. Tag-based navigation switch in
+      `OnNavigationSelectionChanged` is unaffected by reordering.
+- [ ] Not yet visually confirmed live (same pending rebuild as Phase 24).
+
+### Phase 26 — Dashboard sparklines
+- [ ] Not started. Portrait Mode already has `PortraitSparkline` showing a
+      short trend line per metric; the desktop Dashboard's `MetricCard`s show
+      only the instantaneous value. Porting a small sparkline onto each card
+      (or at least CPU/GPU load and temp) would give at-a-glance trend
+      context without navigating to History — the single most-cited idea
+      from HardwareVisualizer's design (30-day local history, graphs
+      everywhere) that's cheap to adopt here.
+
+### Phase 27 — History page: richer trends
+- [ ] Not started. Currently one metric, one polyline, a manual "Load"
+      button, no axis labels, no min/max/avg overlay
+      (`Views/HistoryPage.xaml`). Planned: auto-refresh instead of manual
+      Load, overlay 2+ series (e.g. CPU temp + GPU temp) rather than one at a
+      time, and a summary strip (min/max/avg for the selected range).
+
+### Phase 28 — Fan curve editor
+- [ ] Not started, biggest item of the batch. Every serious fan-control tool
+      (FanControl, SpeedFan, Core-Monitor) converges on a draggable
+      temp-vs-speed curve instead of a flat per-channel percentage slider,
+      which is all `OptimisationPage`'s Fan Control section has today. Needs
+      a custom `Canvas`-based curve control (points draggable, interpolated
+      line, persisted per channel) — a real feature addition, not a quick
+      visual fix, so scoping this as its own phase once 24-27 land.
+
+### Phase 29 — GPU% via vendor-native APIs (NVIDIA NVML) — someday
+- [ ] Not started, lowest priority of the batch. `hw-smi` reads GPU load via
+      vendor SDKs (NVML for NVIDIA, ADLX/AMDSMI for AMD, Level-Zero for
+      Intel) rather than a generic OS counter — more authoritative than
+      either LHM's ADL sensor or the "GPU Engine" PDH counter Aether
+      currently uses (Phase 21/22), and doesn't have the PDH sampling-
+      interval fragility that took two rounds to fix. Real effort for
+      NVIDIA-only benefit (P/Invoke bindings, driver-DLL versioning) against
+      an already-solid current fix — parked behind the cheaper wins above.
+
+Explicitly *not* adopting: Lenovo Legion Toolkit's on-screen-overlay concept
+(needs a D3D hook into every game, too large for the value here); a light
+theme (every comparable "control centre" style app in this genre — Armoury
+Crate, MSI Center, Core-Monitor — stays dark-only by design, and Aether's
+`Colors.xaml` already says as much deliberately).
 
 ## Phase 23 — Optimisation Centre crash + the real flicker cause
 Matt: "clicked optimization centre and crashed" + "storage values are still
@@ -67,8 +144,25 @@ reports this session, not sensor noise.
       raises `PropertyChanged("Count")` on every mutation, which x:Bind's
       dependency-property-path tracking does pick up) and widening the
       converter to accept a plain `int` alongside the original collection form.
-- [ ] Not independently re-verified live — needs Matt's own check on both
+- [x] Not independently re-verified live — needs Matt's own check on both
       the crash and the storage/tile flicker.
+      **Update:** Matt sent a real ~18s screen recording. Extracted 14 frames
+      (`cv2`/OpenCV, no ffmpeg on this machine) and compared them directly —
+      every sensor card (temps, loads, RAM, storage, network) was smooth and
+      stable across the whole clip; storage in particular never moved off
+      978/666/562/530GB once. The `MergeFrom` fix holds. What *was* still
+      visibly rotating: **Top Processes** — 5 different near-zero-CPU
+      background processes (AsusFanControlService, System, LightingService,
+      svchost, firefox...) swapping in and out of the top-5 every 2 seconds
+      at idle. Root cause was a threshold, not the container-recreation bug:
+      `SampleCpu`/`SampleGpu` let anything above 0.05%/any-nonzero-value
+      count as a "top process," so at idle the ranking of five near-zero
+      values is close to random — a different process legitimately edges
+      into 5th place almost every sample. Raised both to a shared
+      `MeaningfulUsageThresholdPercent = 1.0` (GPU: applied after summing a
+      process's engine instances, not per-instance, so a process spread
+      across several engines each under the floor isn't wrongly dropped).
+      Not yet re-verified against a second recording.
 
 ## Phase 22 — PDH sampling correctness + median filtering
 Matt: "numbers are still bouncing around" (generic, no new screenshot this

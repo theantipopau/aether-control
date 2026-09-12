@@ -82,6 +82,8 @@
             PaneDisplayMode="Left">
 
             <NavigationView.MenuItems>
+                <!-- Monitoring/viewing screens first, action/control tools after a separator —
+                     previously one flat list of 7 items with no visual grouping at all. -->
                 <NavigationViewItem Content="Dashboard" Tag="Dashboard">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE9D9;" />
@@ -92,6 +94,14 @@
                         <FontIcon Glyph="&#xE7F4;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Content="History" Tag="History">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9D2;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItemSeparator />
+
                 <NavigationViewItem Content="Optimisation Centre" Tag="Optimisation">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE945;" />
@@ -110,11 +120,6 @@
                 <NavigationViewItem Content="Device Utilities" Tag="Devices">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE7FC;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="History" Tag="History">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE9D2;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
