@@ -55,9 +55,23 @@ public sealed class StorageDriveInfo
     public double TemperatureCelsius { get; set; }
     public bool IsNvme { get; set; }
 
+    // True when this poll couldn't get a fresh free-space reading (a transient WMI failure, or the
+    // disk-to-partition association graph didn't resolve this drive that cycle) and FreeBytes/
+    // CapacityBytes are carried over from the last successful poll rather than zeroed — a missing
+    // reading is not the same fact as "0 bytes free" and must never be displayed as one.
+    public bool IsFreeSpaceStale { get; set; }
+
     public double CapacityGb => CapacityBytes / 1024 / 1024 / 1024;
     public double FreeGb => FreeBytes / 1024 / 1024 / 1024;
-    public double UsedPercent => CapacityBytes <= 0 ? 0 : (CapacityBytes - FreeBytes) / CapacityBytes * 100.0;
+
+    // Clamped, not just computed — FreeBytes can transiently exceed CapacityBytes for a real, non-
+    // buggy reason (CapacityBytes and FreeBytes are independent readings from independent WMI
+    // queries taken microseconds apart; the stale-fallback path can also carry over a last-good
+    // FreeBytes alongside a freshly-read, slightly different CapacityBytes). Without a floor this
+    // produced a literal negative "used%" (caught by a regression test, not observed live) — a
+    // disk cannot have negative used space, so this states that fact once, here, rather than
+    // needing every consumer (a meter bar, a converter, a future one) to remember to clamp it too.
+    public double UsedPercent => CapacityBytes <= 0 ? 0 : Math.Clamp((CapacityBytes - FreeBytes) / CapacityBytes * 100.0, 0.0, 100.0);
 }
 
 public sealed class MotherboardInfo

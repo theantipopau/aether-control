@@ -34,6 +34,13 @@ internal static class StorageHealthProbe
     // DeviceID stops appearing in the current WMI results (drive unplugged/system changed).
     private static readonly Dictionary<string, string> LhmToWmiDeviceId = new();
 
+    // Last successfully-read free space per WMI disk DeviceID. A transient failure (the bulk
+    // association query throwing, or one disk's partitions not resolving that specific poll) falls
+    // back to this instead of reporting 0 bytes free — "the poll failed" and "the disk is full" are
+    // different facts, and showing 0 for the former is exactly what made a failed poll look like a
+    // real, dramatic capacity change (see StorageDriveInfo.IsFreeSpaceStale).
+    private static readonly Dictionary<string, double> LastGoodFreeBytesByDiskId = new();
+
     public static IReadOnlyList<StorageDriveInfo> Enrich(IReadOnlyList<StorageDriveInfo> lhmDrives)
     {
         var wmiDrives = QueryPhysicalDisks();
@@ -69,7 +76,8 @@ internal static class StorageHealthProbe
                 IsNvme = drive.IsNvme,
                 CapacityBytes = wmiMatch?.CapacityBytes ?? 0,
                 FreeBytes = wmiMatch?.FreeBytes ?? 0,
-                Health = wmiMatch?.Health ?? DriveHealthStatus.Unknown
+                Health = wmiMatch?.Health ?? DriveHealthStatus.Unknown,
+                IsFreeSpaceStale = wmiMatch?.IsFreeSpaceStale ?? true
             });
         }
 
@@ -119,13 +127,48 @@ internal static class StorageHealthProbe
                 var capacity = disk["Size"] is not null ? Convert.ToDouble(disk["Size"]) : 0;
                 var deviceId = disk["DeviceID"]?.ToString() ?? string.Empty;
 
+                // A disk missing from this poll's association graph (transient WMI hiccup, or the
+                // bulk query throwing entirely — see BuildFreeSpaceByPhysicalDisk) falls back to the
+                // last successfully-read value for this exact DeviceID, marked stale, rather than 0.
+                // Confirmed via code audit (not a live-captured trace) that the previous behaviour —
+                // GetValueOrDefault(deviceId, 0) — made a transient failure display as "0 bytes
+                // free", and MetricCard's NumberTween would then glide the previous good value down
+                // to 0 and back up on the next successful poll, visually passing through the
+                // midpoint. That's a plausible, code-verified mechanism for a value that looks like
+                // it's "flickering between X and half of X" — not something caught in the act on
+                // this machine, since the association graph hasn't failed once in ~6300 logged polls.
+                double freeBytes;
+                bool isStale;
+                if (freeSpaceByDiskId.TryGetValue(deviceId, out var freshFreeBytes))
+                {
+                    freeBytes = freshFreeBytes;
+                    isStale = false;
+                    LastGoodFreeBytesByDiskId[deviceId] = freshFreeBytes;
+                }
+                else if (LastGoodFreeBytesByDiskId.TryGetValue(deviceId, out var lastGoodFreeBytes))
+                {
+                    freeBytes = lastGoodFreeBytes;
+                    isStale = true;
+                    StorageDiagnosticLog.Write($"{deviceId} STALE — no fresh free-space reading this poll, using last good {freeBytes / 1024.0 / 1024.0 / 1024.0:0.00}GB");
+                }
+                else
+                {
+                    // Never seen a real value for this disk at all yet (first poll, or genuinely
+                    // new hardware) — there is no "last good" to fall back to, so 0 here means
+                    // "unknown", not "confirmed empty". Still marked stale so the UI doesn't present
+                    // it as a trustworthy reading.
+                    freeBytes = 0;
+                    isStale = true;
+                }
+
                 results.Add(new StorageDriveInfo
                 {
                     DeviceId = deviceId,
                     Model = disk["Model"]?.ToString() ?? string.Empty,
                     CapacityBytes = capacity,
-                    FreeBytes = freeSpaceByDiskId.GetValueOrDefault(deviceId, 0),
-                    Health = health
+                    FreeBytes = freeBytes,
+                    Health = health,
+                    IsFreeSpaceStale = isStale
                 });
             }
 
@@ -171,9 +214,8 @@ internal static class StorageHealthProbe
     /// </summary>
     private static Dictionary<string, double> BuildFreeSpaceByPhysicalDisk()
     {
-        var freeSpaceByDiskId = new Dictionary<string, double>();
-        var partitionsByLogicalDisk = new Dictionary<string, HashSet<string>>();
-        var disksByPartition = new Dictionary<string, HashSet<string>>();
+        var logicalToPartitionLinks = new List<(string PartitionId, string LogicalDeviceId)>();
+        var diskToPartitionLinks = new List<(string DiskId, string PartitionId)>();
 
         try
         {
@@ -182,18 +224,10 @@ internal static class StorageHealthProbe
             {
                 var partitionId = ExtractDeviceId(link["Antecedent"]?.ToString());
                 var logicalDeviceId = ExtractDeviceId(link["Dependent"]?.ToString());
-                if (partitionId is null || logicalDeviceId is null)
+                if (partitionId is not null && logicalDeviceId is not null)
                 {
-                    continue;
+                    logicalToPartitionLinks.Add((partitionId, logicalDeviceId));
                 }
-
-                if (!partitionsByLogicalDisk.TryGetValue(logicalDeviceId, out var partitions))
-                {
-                    partitions = [];
-                    partitionsByLogicalDisk[logicalDeviceId] = partitions;
-                }
-
-                partitions.Add(partitionId);
             }
 
             using var diskToPartition = new ManagementObjectSearcher("SELECT * FROM Win32_DiskDriveToDiskPartition");
@@ -201,40 +235,86 @@ internal static class StorageHealthProbe
             {
                 var diskId = ExtractDeviceId(link["Antecedent"]?.ToString());
                 var partitionId = ExtractDeviceId(link["Dependent"]?.ToString());
-                if (diskId is null || partitionId is null)
+                if (diskId is not null && partitionId is not null)
                 {
-                    continue;
+                    diskToPartitionLinks.Add((diskId, partitionId));
                 }
-
-                if (!disksByPartition.TryGetValue(partitionId, out var disks))
-                {
-                    disks = [];
-                    disksByPartition[partitionId] = disks;
-                }
-
-                disks.Add(diskId);
             }
         }
         catch (ManagementException ex)
         {
             StorageDiagnosticLog.Write($"BULK QUERY EXCEPTION: {ex.Message}");
-            return freeSpaceByDiskId;
+            // Empty on a failed bulk query — every disk falls back to QueryPhysicalDisks' own
+            // last-good-value/stale handling rather than this method inventing a 0 of its own.
+            return new Dictionary<string, double>();
         }
 
-        // Each (logical drive, physical disk) pair contributes its free space at most once per
-        // poll, regardless of how many partition hops connect them — guards against the WMI
-        // duplicate-association-row quirk that caused a real, evidence-confirmed over-count before
-        // (see git history), now structurally impossible to hit twice for the same pair.
+        var readyDrives = DriveInfo.GetDrives()
+            .Where(d => d.IsReady)
+            .Select(d => (LogicalDeviceId: d.Name.TrimEnd('\\', '/'), FreeBytes: (double)d.TotalFreeSpace))
+            .ToList();
+
+        var result = ComputeFreeSpaceByPhysicalDisk(logicalToPartitionLinks, diskToPartitionLinks, readyDrives, StorageDiagnosticLog.Write);
+
+        StorageDiagnosticLog.Write(
+            $"RESULT: {string.Join(" | ", result.Select(kv => $"{kv.Key}={kv.Value / 1024.0 / 1024.0 / 1024.0:0.00}GB"))}");
+
+        return result;
+    }
+
+    /// <summary>
+    /// Pure core of the free-space computation — no WMI, no <see cref="DriveInfo"/>, just the
+    /// association graph and each ready logical drive's own reported free space. Deterministic and
+    /// unit-testable: <see cref="StorageHealthProbeTests"/> exercises one-disk/one-volume,
+    /// one-disk/many-volumes, many-disks, duplicate association rows, and out-of-order input against
+    /// this directly, none of which need a real machine's WMI provider to reproduce.
+    /// </summary>
+    internal static Dictionary<string, double> ComputeFreeSpaceByPhysicalDisk(
+        IReadOnlyCollection<(string PartitionId, string LogicalDeviceId)> logicalToPartitionLinks,
+        IReadOnlyCollection<(string DiskId, string PartitionId)> diskToPartitionLinks,
+        IReadOnlyCollection<(string LogicalDeviceId, double FreeBytes)> readyLogicalDrives,
+        Action<string>? log = null)
+    {
+        var partitionsByLogicalDisk = new Dictionary<string, HashSet<string>>();
+        foreach (var (partitionId, logicalDeviceId) in logicalToPartitionLinks)
+        {
+            if (!partitionsByLogicalDisk.TryGetValue(logicalDeviceId, out var partitions))
+            {
+                partitions = [];
+                partitionsByLogicalDisk[logicalDeviceId] = partitions;
+            }
+
+            // A HashSet, not a List — the same (partition, logical disk) association appearing as a
+            // duplicate WMI row more than once collapses to one membership instead of inflating any
+            // downstream count. This is what "duplicate enumeration records" resolves to here.
+            partitions.Add(partitionId);
+        }
+
+        var disksByPartition = new Dictionary<string, HashSet<string>>();
+        foreach (var (diskId, partitionId) in diskToPartitionLinks)
+        {
+            if (!disksByPartition.TryGetValue(partitionId, out var disks))
+            {
+                disks = [];
+                disksByPartition[partitionId] = disks;
+            }
+
+            disks.Add(diskId);
+        }
+
+        var freeSpaceByDiskId = new Dictionary<string, double>();
+
+        // Each (logical drive, physical disk) pair contributes its free space at most once,
+        // regardless of how many partition hops connect them or how many times either association
+        // table lists the same link — guards against the WMI duplicate-association-row quirk that
+        // caused a real, evidence-confirmed over-count before (see git history: e8402db).
         var countedContributions = new HashSet<(string LogicalDeviceId, string DiskId)>();
 
-        foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))
+        foreach (var (logicalDeviceId, freeBytes) in readyLogicalDrives)
         {
-            var logicalDeviceId = drive.Name.TrimEnd('\\', '/');
-            var freeGb = drive.TotalFreeSpace / 1024.0 / 1024.0 / 1024.0;
-
             if (!partitionsByLogicalDisk.TryGetValue(logicalDeviceId, out var partitionIds))
             {
-                StorageDiagnosticLog.Write($"{logicalDeviceId} free={freeGb:0.00}GB NO PARTITIONS FOUND");
+                log?.Invoke($"{logicalDeviceId} free={freeBytes / 1024.0 / 1024.0 / 1024.0:0.00}GB NO PARTITIONS FOUND");
                 continue;
             }
 
@@ -247,24 +327,20 @@ internal static class StorageHealthProbe
                 }
             }
 
-            StorageDiagnosticLog.Write(
-                $"{logicalDeviceId} free={freeGb:0.00}GB partitions=[{string.Join(",", partitionIds)}] disks=[{string.Join(",", diskIds)}]");
+            log?.Invoke($"{logicalDeviceId} free={freeBytes / 1024.0 / 1024.0 / 1024.0:0.00}GB partitions=[{string.Join(",", partitionIds)}] disks=[{string.Join(",", diskIds)}]");
 
             foreach (var diskId in diskIds)
             {
                 if (countedContributions.Add((logicalDeviceId, diskId)))
                 {
-                    freeSpaceByDiskId[diskId] = freeSpaceByDiskId.GetValueOrDefault(diskId, 0) + drive.TotalFreeSpace;
+                    freeSpaceByDiskId[diskId] = freeSpaceByDiskId.GetValueOrDefault(diskId, 0) + freeBytes;
                 }
                 else
                 {
-                    StorageDiagnosticLog.Write($"  {logicalDeviceId} -> {diskId} SKIPPED (already counted this poll)");
+                    log?.Invoke($"  {logicalDeviceId} -> {diskId} SKIPPED (already counted this poll)");
                 }
             }
         }
-
-        StorageDiagnosticLog.Write(
-            $"RESULT: {string.Join(" | ", freeSpaceByDiskId.Select(kv => $"{kv.Key}={kv.Value / 1024.0 / 1024.0 / 1024.0:0.00}GB"))}");
 
         return freeSpaceByDiskId;
     }

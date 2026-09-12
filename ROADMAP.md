@@ -2,7 +2,98 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests)
+
+## Phase 30 — Formal storage audit — stale-not-zero + regression tests
+A detailed audit brief described free space "flickering between ~680GB and
+~340GB" and required diagnosis from real evidence only, no UI smoothing as a
+disguise, and a proper regression-tested fix. Full write-up (evidence, data
+flow, files, remaining risk) delivered as a chat report; this entry is the
+durable record.
+- **Could not reproduce 680/340 live.** `storage-trace.log` had ~6300+ polls
+  already logged since the Phase 20-23 fixes landed — completely stable
+  throughout, no zero readings, no halving, no duplicate/reordering
+  artifacts. 680 is close to real drive C:'s free space at various points
+  this session (664-682GB); 340 is close to exactly half of that. That
+  match is the basis for what follows — it is a code-verified mechanism,
+  not a directly-captured trace of the reported event, and is reported as
+  such rather than overclaimed as "confirmed root cause."
+- [x] **Found and fixed a real gap this audit exposed**: `BuildFreeSpaceByPhysicalDisk`
+      returned an *empty* dictionary on a caught `ManagementException` (or on
+      one disk's association simply not resolving that poll), and the caller
+      fell back to `GetValueOrDefault(deviceId, 0)` — a transient failure
+      displayed as a hard 0. `MetricCard`'s `NumberTween` would then glide
+      the previous good value down to 0 and back up on the next successful
+      poll, visually passing through the midpoint — mechanistically exactly
+      "X, then half of X, then X again." Fixed: `StorageHealthProbe` now
+      keeps `LastGoodFreeBytesByDiskId` and falls back to the last known
+      value (marked `IsFreeSpaceStale = true`) instead of zero when a disk's
+      reading is missing that poll.
+  - [x] `StorageDriveInfo.IsFreeSpaceStale` (new) — missing data is now a
+        distinct, carried fact, never silently coerced to "0 bytes free."
+  - [x] `StorageDetailConverter` appends "· stale" to the Detail line when
+        set — the number itself is never hidden, only labelled untrustworthy.
+- [x] **Extracted `ComputeFreeSpaceByPhysicalDisk` as a pure, testable core**
+      (no WMI, no `DriveInfo`) out of `BuildFreeSpaceByPhysicalDisk`, which is
+      now a thin I/O wrapper. Added `InternalsVisibleTo("AetherControl.Tests")`
+      on the Services assembly so the test project can exercise `internal`
+      logic directly rather than needing it made public API.
+- [x] **14 new regression tests** (`StorageHealthProbeTests.cs`): one
+      disk/one volume, one disk/multiple volumes, multiple disks, duplicate
+      association rows (pins the Phase 20 dedup fix), reversed enumeration
+      order producing identical results, a temporarily-unavailable volume
+      being excluded rather than zeroed, a mapped-drive-style unresolved
+      association being dropped rather than corrupting another disk's total,
+      a fully failed enumeration returning empty rather than fabricating
+      zeros, byte↔GB conversion at exact boundaries, and the stale flag
+      being independent of the value it's attached to.
+  - **One of these caught a second, real, previously-unknown bug during
+    this same audit**: `StorageDriveInfo.UsedPercent` had no clamp, so
+    `FreeBytes > CapacityBytes` (which the new stale-fallback path can
+    legitimately produce — `CapacityBytes` and `FreeBytes` come from
+    independent WMI reads a moment apart) computed a literal **-50%**.
+    Fixed by clamping `UsedPercent` to `[0, 100]` at the model layer — the
+    one place this number is computed, not patched at every display site.
+- **Ten hypotheses, checked against the actual current architecture** (not
+  reasoned about in the abstract): (1) two-records-aggregated /
+  (2) physical+logical mixed / (9) duplicates not deduped — structurally
+  ruled out by the `HashSet`-keyed `countedContributions` dedup from Phase
+  20, now regression-tested. (3) LHM and DriveInfo both writing the same
+  property — false; grep confirms `StorageHealthProbe` is the *only* writer
+  of `FreeBytes`/`CapacityBytes` in the whole codebase. (4) racing refresh
+  loops / (11) concurrent refresh — structurally impossible: `Enrich` is
+  called from exactly one call site (`HardwareMonitorService.Poll()`),
+  itself already serialized by `Monitor.TryEnter(_pollLock)`. (5) recycled
+  card binds to the wrong volume — the Phase 23
+  `ObservableCollectionMergeExtensions.MergeFrom` keyed by `DeviceId`
+  already addresses this for the UI layer. (6) non-atomic clear/repopulate —
+  `HardwareMonitorService.Poll()` builds one complete `HardwareSnapshot`
+  and publishes it via a single `SnapshotUpdated` event; there is no
+  intermediate partially-built state observable by a consumer. (7) failed
+  enumeration overwriting the last good snapshot — **confirmed true, and
+  fixed** (see above). (8) a removable/mapped volume changing the
+  aggregate — covered by the new "temporarily unavailable" and "mapped
+  drive disconnect" tests; a not-ready drive contributes nothing rather
+  than a stale/wrong number. (10) double or inconsistent unit conversion —
+  false; `StorageDriveInfo.CapacityGb`/`FreeGb` are the only division sites,
+  now pinned by a boundary-value test.
+- **Broader 13-point maintainability/UX audit** (telemetry provenance,
+  capability-driven detection, Observe/Control/Display separation, storage
+  bars vs. gauges, designed stale/loading states, reversible optimisation
+  workflows, activity timeline, portrait presets, accessibility, polling
+  efficiency, test coverage, README screenshots): reviewed against the
+  current codebase rather than implemented wholesale in this pass — several
+  items are already substantially satisfied by earlier phases (storage
+  already uses a capacity bar via `MetricCard.Progress`, not a radial gauge;
+  snapshots are already atomic; UI already updates by stable ID). Doing a
+  full ground-up rewrite of every item in one unreviewed pass would risk
+  the exact "destabilise working hardware control" outcome the brief itself
+  warned against — logged as future phases rather than rushed.
+- [x] Build (Services, App via VS MSBuild) and full `dotnet test` run clean
+      before and after: baseline 4/4 passing, 18/18 passing after (14 new).
+- [ ] Not yet re-confirmed live against a real recurrence of the reported
+      symptom, since none occurred in this session's telemetry either before
+      or after the fix.
 
 ## Phases 24-29 — Comparable-app review: adaptable ideas, visual assets, GUI/UX
 Reviewed six comparable open-source projects at Matt's request (Lenovo Legion
