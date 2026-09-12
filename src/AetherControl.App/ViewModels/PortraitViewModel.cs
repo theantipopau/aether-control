@@ -76,8 +76,19 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
     // row from scratch each time, which for Fans meant a mid-rename TextBox got its in-progress
     // edit wiped roughly every second.
     public ObservableCollection<PortraitFanRow> Fans { get; } = [];
-    public ObservableCollection<ProcessUsageInfo> TopCpuProcesses { get; } = [];
-    public ObservableCollection<ProcessUsageInfo> TopGpuProcesses { get; } = [];
+
+    // Long-lived per-process view models (see StorageDriveViewModel's doc comment for why) — a
+    // process that stays in the ranking across polls has a CpuPercent/GpuPercent that legitimately
+    // jitters by fractions of a percent almost every poll, which made plain-record MergeFrom
+    // recreate its row every time.
+    private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topCpuProcessesSync =
+        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
+
+    private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topGpuProcessesSync =
+        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
+
+    public ObservableCollection<ProcessUsageViewModel> TopCpuProcesses => _topCpuProcessesSync.Items;
+    public ObservableCollection<ProcessUsageViewModel> TopGpuProcesses => _topGpuProcessesSync.Items;
 
     public PortraitViewModel(
         IHardwareMonitorService hardwareMonitor,
@@ -176,8 +187,8 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
         var byGpu = _processRanker.GetTopByGpu(5);
         _dispatcherQueue.TryEnqueue(() =>
         {
-            TopCpuProcesses.MergeFrom(byCpu, p => p.Pid);
-            TopGpuProcesses.MergeFrom(byGpu, p => p.Pid);
+            _topCpuProcessesSync.Sync(byCpu);
+            _topGpuProcessesSync.Sync(byGpu);
         });
     }
 

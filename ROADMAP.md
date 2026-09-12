@@ -2,7 +2,95 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture)
+
+## Phase 32 — Per-device view models: the real architecture
+Matt: C: was stable after Phase 31, but a second SSD was still repeatedly
+jumping, and correctly pushed back on the display-precision-equality
+approach — patching `StorageDriveInfo.Equals` to exclude another volatile
+field every time one was found is a losing game, not a fix. Live trace
+(`/nvme/0`, 454 distinct card instances over 14 minutes) confirmed the
+push-back: exact record equality fixed 3 of 4 drives but the one under
+continuous real write activity kept regenerating.
+
+**Root fix, not another equality patch**: separated stable identity from
+volatile telemetry entirely, per the requested design.
+- [x] `LiveCollectionSync<TViewModel, TSnapshot, TKey>`
+      (`AetherControl.Core.Collections`) — owns an `ObservableCollection<TViewModel>`
+      and keeps it in sync with a fresh snapshot list every poll: `Add` only
+      for a genuinely new key, `Remove` only after a key has been absent for
+      `maxMissedSyncs` consecutive polls (default 3 — absorbs one transient
+      miss without visibly dropping a card), and for every key still
+      present, an in-place `Apply` call onto the *same* view-model instance.
+      **No `Replace` is ever issued for an existing key.**
+- [x] `StorageDriveViewModel`, `NamedSensorValueViewModel`, `ProcessUsageViewModel`
+      (`AetherControl.App.ViewModels`) — long-lived, one per stable identity
+      (DeviceId / sensor name / Pid), created once, `Apply()`'d in place
+      forever after. Each field is a normal `[ObservableProperty]` —
+      CommunityToolkit's generated setter already compares old/new per field
+      and only raises `PropertyChanged` for what actually changed, which is
+      "raise PropertyChanged only for properties that materially changed"
+      with no whole-object equality needed at all. `StorageDriveViewModel`
+      also traces exactly which field(s) changed on each `Apply` when
+      `StorageDiagnostics.TraceEnabled` (answers "which field causes each
+      replacement" with evidence, even though there's no more replacement
+      to cause).
+- [x] `StorageDriveInfo.Equals`/`GetHashCode` **override removed** — reverted
+      to plain, byte-exact record equality. Per the explicit design
+      constraint this phase was built to: domain-model equality must not
+      depend on display precision, and with per-field view-model updates
+      there's no code path left that needs whole-object equality for
+      storage at all. `StorageDriveInfo` stays exactly what it always was:
+      an immutable, byte-precise service-layer snapshot.
+- [x] `DashboardViewModel.Drives`/`MotherboardVoltages`/`MotherboardFanSpeeds`/
+      `MotherboardVrmTemperatures`/`TopProcessesByCpu` and
+      `PortraitViewModel.TopCpuProcesses`/`TopGpuProcesses` all migrated to
+      `LiveCollectionSync` + their view-model type. `PortraitViewModel.Fans`
+      deliberately left on plain `MergeFrom` — `PortraitFanRow`'s `RpmText`
+      is already a pre-formatted, rounded string, so record equality on it
+      is already precision-correct with no risk of the same failure mode;
+      migrating it would have been unnecessary churn.
+      `StorageDetailConverter` removed — a converter over a *whole* bound
+      object only re-runs when the DataContext reference itself is swapped,
+      not when `ObservableObject` raises `PropertyChanged` for one of
+      several fields it reads, so it couldn't stay reactive under this
+      design. Replaced with `StorageDriveViewModel.DetailText`, a computed
+      property refreshed via `OnHealthChanged`/`OnTemperatureCelsiusChanged`/
+      `OnIsFreeSpaceStaleChanged` partial hooks — the same pattern already
+      used for `FreeGb`/`CapacityGb`/`UsedPercent`.
+- [x] 16 new tests: 9 in `LiveCollectionSyncTests` (new device creates one
+      card; changed volatile field updates in place, same instance; changed
+      value updates in place; same key retains the same instance across 50
+      polls with continuous tiny drift; enumeration order never recreates
+      either card; a removed device survives one transient miss but is
+      removed after reaching the absence threshold; reappearing before the
+      threshold cancels the miss counter and reuses the same instance;
+      multiple independent devices each get their own stable card) plus
+      2 replacing the removed display-precision tests in
+      `ObservableCollectionMergeExtensionsTests` (now framed around what
+      `MergeFrom` is actually still used for — Portrait's Fans list).
+      44 → 47 net after removing the 2 tests that specifically pinned the
+      now-reverted precision-equality behaviour.
+- **Live verification blocked, not skipped**: Windows Smart App Control
+      started blocking launches of this dev build mid-session
+      (`Microsoft-Windows-CodeIntegrity/Operational` event ID 3077/3118 —
+      "did not meet the Enterprise signing level requirements"), almost
+      certainly triggered by how many times this unsigned binary was
+      rebuilt and relaunched with a different hash in one session. Code is
+      complete, builds clean, and all 47 tests pass; the final live trace
+      confirming the second SSD is now stable needs Matt to either launch
+      the build himself or clear the Smart App Control block.
+- **Not done, explicitly out of scope for this phase**: an
+      `IIncrementallyUpdatable<TSnapshot>` interface was suggested as one
+      possible shape; `LiveCollectionSync`'s constructor-injected delegates
+      (`create`/`apply`) were used instead, since the view-model types
+      already differ enough in constructor requirements
+      (`StorageDriveViewModel` needs `DeviceId` from the snapshot at
+      construction, others don't) that a single interface didn't fit more
+      cleanly than delegates. Network adapters, GPUs, and plugin widgets
+      were named in the review request but don't exist as multi-item
+      collections in the current codebase (Aether shows one GPU and one
+      network adapter as scalar properties) — nothing to migrate there.
 
 ## Phase 31 — 680/340 flicker: confirmed root cause
 Matt reported the 680GB/340GB alternation was still reproducible after Phase

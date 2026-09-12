@@ -55,15 +55,36 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private string motherboardModel = "—";
 
-    // Persistent collections, mutated in place (see ObservableCollectionMergeExtensions) rather than
-    // reassigned every poll — reassigning the reference (as these were before, via [ObservableProperty])
-    // forces every bound ItemsControl to tear down and recreate its MetricCard containers from
-    // scratch each time, which restarts each card's NumberTween glide from zero every single poll.
-    public ObservableCollection<StorageDriveInfo> Drives { get; } = [];
-    public ObservableCollection<NamedSensorValue> MotherboardVoltages { get; } = [];
-    public ObservableCollection<NamedSensorValue> MotherboardFanSpeeds { get; } = [];
-    public ObservableCollection<NamedSensorValue> MotherboardVrmTemperatures { get; } = [];
-    public ObservableCollection<ProcessUsageInfo> TopProcessesByCpu { get; } = [];
+    // Each device/sensor/process gets a long-lived view model, created once per stable identity and
+    // updated in place forever after (LiveCollectionSync.Sync issues Add only for a new key and
+    // Remove only once a key's been absent for several consecutive polls — never Replace for an
+    // existing one). This replaced an earlier ObservableCollectionMergeExtensions.MergeFrom approach
+    // that compared whole immutable snapshot records for equality: any single naturally-volatile
+    // field (temperature, a voltage's ripple, CPU% jitter) made two otherwise-identical readings
+    // compare unequal, which degenerated into repeatedly recreating the bound MetricCard/NumberTween
+    // for a device under continuous real activity (confirmed via a live UI-layer trace — see
+    // ROADMAP.md Phase 32). A view model raising PropertyChanged only for the specific field that
+    // actually changed doesn't have this failure mode at all.
+    private readonly LiveCollectionSync<StorageDriveViewModel, StorageDriveInfo, string> _drivesSync =
+        new(snapshotKey: d => d.DeviceId, viewModelKey: vm => vm.DeviceId, create: s => new StorageDriveViewModel(s), apply: (vm, s) => vm.Apply(s));
+
+    private readonly LiveCollectionSync<NamedSensorValueViewModel, NamedSensorValue, string> _voltagesSync =
+        new(snapshotKey: v => v.Name, viewModelKey: vm => vm.Name, create: s => new NamedSensorValueViewModel(s), apply: (vm, s) => vm.Apply(s));
+
+    private readonly LiveCollectionSync<NamedSensorValueViewModel, NamedSensorValue, string> _fanSpeedsSync =
+        new(snapshotKey: v => v.Name, viewModelKey: vm => vm.Name, create: s => new NamedSensorValueViewModel(s), apply: (vm, s) => vm.Apply(s));
+
+    private readonly LiveCollectionSync<NamedSensorValueViewModel, NamedSensorValue, string> _vrmTemperaturesSync =
+        new(snapshotKey: v => v.Name, viewModelKey: vm => vm.Name, create: s => new NamedSensorValueViewModel(s), apply: (vm, s) => vm.Apply(s));
+
+    private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topProcessesSync =
+        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
+
+    public ObservableCollection<StorageDriveViewModel> Drives => _drivesSync.Items;
+    public ObservableCollection<NamedSensorValueViewModel> MotherboardVoltages => _voltagesSync.Items;
+    public ObservableCollection<NamedSensorValueViewModel> MotherboardFanSpeeds => _fanSpeedsSync.Items;
+    public ObservableCollection<NamedSensorValueViewModel> MotherboardVrmTemperatures => _vrmTemperaturesSync.Items;
+    public ObservableCollection<ProcessUsageViewModel> TopProcessesByCpu => _topProcessesSync.Items;
 
     // Not every board/CPU/LHM-version combination exposes a real core-voltage sensor (confirmed via
     // a real sensor dump: this AMD Ryzen 7 9800X3D only reports "VID" — the VRM's target, not a
@@ -95,7 +116,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     private void RefreshTopProcesses()
     {
         var top = _processRanker.GetTopByCpu(5);
-        _dispatcherQueue.TryEnqueue(() => TopProcessesByCpu.MergeFrom(top, p => p.Pid));
+        _dispatcherQueue.TryEnqueue(() => _topProcessesSync.Sync(top));
     }
 
     private void OnSnapshotUpdated(object? sender, SensorsUpdatedEventArgs e)
@@ -134,11 +155,11 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         NetworkLatencyMs = snapshot.Network.LatencyMs;
         NetworkExternalIp = string.IsNullOrEmpty(snapshot.Network.ExternalIpAddress) ? "—" : snapshot.Network.ExternalIpAddress;
 
-        Drives.MergeFrom(snapshot.Drives, d => d.DeviceId);
+        _drivesSync.Sync(snapshot.Drives);
         MotherboardModel = snapshot.Motherboard.Model;
-        MotherboardVoltages.MergeFrom(snapshot.Motherboard.Voltages, v => v.Name);
-        MotherboardFanSpeeds.MergeFrom(snapshot.Motherboard.FanSpeeds, f => f.Name);
-        MotherboardVrmTemperatures.MergeFrom(snapshot.Motherboard.VrmTemperatures, t => t.Name);
+        _voltagesSync.Sync(snapshot.Motherboard.Voltages);
+        _fanSpeedsSync.Sync(snapshot.Motherboard.FanSpeeds);
+        _vrmTemperaturesSync.Sync(snapshot.Motherboard.VrmTemperatures);
     }
 
     public void Dispose()

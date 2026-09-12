@@ -84,29 +84,19 @@ public sealed record StorageDriveInfo
     // needing every consumer (a meter bar, a converter, a future one) to remember to clamp it too.
     public double UsedPercent => CapacityBytes <= 0 ? 0 : Math.Clamp((CapacityBytes - FreeBytes) / CapacityBytes * 100.0, 0.0, 100.0);
 
-    // Custom equality, overriding the record default — evidenced necessary by a live trace: the
-    // system drive is under real, constant write activity (browser cache, temp files, logs), so its
-    // exact FreeBytes differs by a few KB on nearly every single poll. Byte-exact equality (what the
-    // compiler-generated record Equals would do) still called that "different" every time, still
-    // triggered a container rebuild via ObservableCollectionMergeExtensions.MergeFrom, and the
-    // rebuilt container's value animation still started from zero — for exactly the drive the
-    // reported symptom was about. Comparing at display precision (whole GB/°C, matching this card's
-    // own "F0" format) instead of raw bytes is what actually stops the every-second rebuild for a
-    // drive with real, continuous, sub-perceptible activity, without hiding a change large enough to
-    // actually move the displayed number.
-    public bool Equals(StorageDriveInfo? other) =>
-        other is not null
-        && DeviceId == other.DeviceId
-        && Model == other.Model
-        && Health == other.Health
-        && IsNvme == other.IsNvme
-        && IsFreeSpaceStale == other.IsFreeSpaceStale
-        && Math.Round(FreeGb) == Math.Round(other.FreeGb)
-        && Math.Round(CapacityGb) == Math.Round(other.CapacityGb)
-        && Math.Round(TemperatureCelsius) == Math.Round(other.TemperatureCelsius);
-
-    public override int GetHashCode() =>
-        HashCode.Combine(DeviceId, Model, Health, IsNvme, IsFreeSpaceStale, Math.Round(FreeGb), Math.Round(CapacityGb), Math.Round(TemperatureCelsius));
+    // Deliberately plain, byte-exact record equality (no override) — a prior version of this class
+    // overrode Equals to compare at display precision (whole GB) specifically to stop
+    // ObservableCollectionMergeExtensions.MergeFrom from recreating a storage card whenever the
+    // system drive's real, continuous write activity changed its exact FreeBytes by a few KB. That
+    // was domain-model equality shaped around a UI-layer/formatting concern, and it would have kept
+    // needing a new exclusion for the next volatile field someone added (activity, read/write rate,
+    // ...). The real fix is architectural, not an equality tweak: Dashboard/PortraitViewModel now
+    // hold a long-lived StorageDriveViewModel per DeviceId (LiveCollectionSync,
+    // AetherControl.Core.Collections) and call its Apply(StorageDriveInfo) every poll, which sets
+    // each field directly — CommunityToolkit's generated property setters already raise
+    // PropertyChanged only when a field actually changed, per field, with no need to compare whole
+    // snapshot objects at all. This type stays a plain immutable, byte-precise snapshot exactly as
+    // StorageHealthProbe produces it every poll.
 }
 
 public sealed class MotherboardInfo

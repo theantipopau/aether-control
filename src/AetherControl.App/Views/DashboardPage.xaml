@@ -10,7 +10,6 @@
         <converters:SeverityToneConverter x:Key="SeverityToneConverter" />
         <converters:DriveHealthToneConverter x:Key="DriveHealthToneConverter" />
         <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
-        <converters:StorageDetailConverter x:Key="StorageDetailConverter" />
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:PercentDisplayConverter x:Key="PercentDisplayConverter" />
 
@@ -183,7 +182,7 @@
                                     CardWidth="208"
                                     Label="{Binding Model}"
                                     NumericValue="{Binding FreeGb}" Format="F0" Unit="GB free"
-                                    Detail="{Binding Converter={StaticResource StorageDetailConverter}}"
+                                    Detail="{Binding DetailText}"
                                     Progress="{Binding UsedPercent}"
                                     Tone="{Binding Health, Converter={StaticResource DriveHealthToneConverter}}"
                                     DiagnosticTag="{Binding DeviceId}" />
