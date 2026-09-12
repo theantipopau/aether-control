@@ -11,11 +11,15 @@ namespace AetherControl.App.ViewModels;
 public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 {
     private static readonly TimeSpan ProcessRankingInterval = TimeSpan.FromSeconds(2);
+    // Matches Portrait Mode's own sparkline window — a minute of history at the default 1s poll.
+    private const int TrendHistoryCapacity = 60;
 
     private readonly IHardwareMonitorService _hardwareMonitor;
     private readonly ProcessRankerService _processRanker;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Timer _processRankingTimer;
+    private readonly PortraitHistory _cpuUsageHistory = new(TrendHistoryCapacity);
+    private readonly PortraitHistory _gpuUsageHistory = new(TrendHistoryCapacity);
 
     [ObservableProperty] private string cpuName = "—";
     [ObservableProperty] private double cpuTemperature;
@@ -23,6 +27,11 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double cpuUtilisation;
     [ObservableProperty] private double cpuClockSpeed;
     [ObservableProperty] private double cpuVoltage;
+    // Reassigned wholesale each poll like the scalar properties above, not merged like the
+    // ObservableCollections below — safe here because PortraitSparkline is one long-lived control
+    // instance bound directly (Mode=OneWay), not an ItemsControl generating a container per item, so
+    // there's no container-recreation cost to a fresh IReadOnlyList<double> reference every second.
+    [ObservableProperty] private IReadOnlyList<double> cpuUsageHistory = [];
 
     [ObservableProperty] private string gpuName = "—";
     [ObservableProperty] private double gpuTemperature;
@@ -31,6 +40,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double gpuPowerDraw;
     [ObservableProperty] private double gpuVramUsedMb;
     [ObservableProperty] private double gpuFanSpeedPercent;
+    [ObservableProperty] private IReadOnlyList<double> gpuUsageHistory = [];
 
     [ObservableProperty] private double ramUsedGb;
     [ObservableProperty] private double ramAvailableGb;
@@ -100,6 +110,8 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         CpuUtilisation = snapshot.Cpu.UtilisationPercent;
         CpuClockSpeed = snapshot.Cpu.ClockSpeedMhz;
         CpuVoltage = snapshot.Cpu.CoreVoltage;
+        _cpuUsageHistory.Add(snapshot.Cpu.UtilisationPercent);
+        CpuUsageHistory = _cpuUsageHistory.Snapshot();
 
         GpuName = snapshot.Gpu.Name;
         GpuTemperature = snapshot.Gpu.TemperatureCelsius;
@@ -108,6 +120,8 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         GpuPowerDraw = snapshot.Gpu.PowerDrawWatts;
         GpuVramUsedMb = snapshot.Gpu.VramUsedMb;
         GpuFanSpeedPercent = snapshot.Gpu.FanSpeedPercent;
+        _gpuUsageHistory.Add(snapshot.Gpu.UtilisationPercent);
+        GpuUsageHistory = _gpuUsageHistory.Snapshot();
 
         RamUsedGb = snapshot.Memory.UsedBytes / 1024 / 1024 / 1024;
         RamAvailableGb = snapshot.Memory.AvailableBytes / 1024 / 1024 / 1024;

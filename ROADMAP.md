@@ -41,13 +41,22 @@ first thing anyone sees in the taskbar didn't match the app that opened.
 - [ ] Not yet visually confirmed live (same pending rebuild as Phase 24).
 
 ### Phase 26 — Dashboard sparklines
-- [ ] Not started. Portrait Mode already has `PortraitSparkline` showing a
-      short trend line per metric; the desktop Dashboard's `MetricCard`s show
-      only the instantaneous value. Porting a small sparkline onto each card
-      (or at least CPU/GPU load and temp) would give at-a-glance trend
-      context without navigating to History — the single most-cited idea
-      from HardwareVisualizer's design (30-day local history, graphs
-      everywhere) that's cheap to adopt here.
+- [x] Added a "Trends" section at the top of the Dashboard's left column
+      (CPU/GPU load, last 60 samples), reusing `PortraitSparkline` directly
+      rather than retrofitting it into `MetricCard`. Deliberately didn't
+      embed the sparkline inside `MetricCard` itself — that control is shared
+      across Dashboard *and* Optimisation Centre inside fixed-height
+      `VariableSizedWrapGrid` cells (`ItemHeight="106"`), and the Dashboard's
+      own responsive layout already has a `VisualStateManager` that
+      repositions `RightColumnPanel` into `Grid.Row="2"` below ~1180px width
+      — retrofitting card height or grid rows risked breaking either without
+      being able to visually verify every window-width case. A dedicated
+      section sidesteps both: same proven control Portrait Mode already
+      uses, no shared-control or grid-row risk.
+      `DashboardViewModel` gained `CpuUsageHistory`/`GpuUsageHistory`
+      (`PortraitHistory`, 60-sample ring buffer — same class, same capacity,
+      as Portrait Mode's own).
+- [ ] Not yet visually confirmed live.
 
 ### Phase 27 — History page: richer trends
 - [ ] Not started. Currently one metric, one polyline, a manual "Load"
