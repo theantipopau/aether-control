@@ -17,6 +17,7 @@ public sealed partial class HistoryPage : Page
         InitializeComponent();
         ViewModel = new HistoryViewModel(App.Services.GetRequiredService<IHistoryService>());
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        Unloaded += (_, _) => ViewModel.Dispose();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

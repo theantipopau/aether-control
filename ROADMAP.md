@@ -59,11 +59,23 @@ first thing anyone sees in the taskbar didn't match the app that opened.
 - [ ] Not yet visually confirmed live.
 
 ### Phase 27 — History page: richer trends
-- [ ] Not started. Currently one metric, one polyline, a manual "Load"
-      button, no axis labels, no min/max/avg overlay
-      (`Views/HistoryPage.xaml`). Planned: auto-refresh instead of manual
-      Load, overlay 2+ series (e.g. CPU temp + GPU temp) rather than one at a
-      time, and a summary strip (min/max/avg for the selected range).
+Correction on the original review: `HistoryViewModel.LoadAsync` already
+computes min/max/avg — it just wasn't visible until you clicked Load, and
+never updated after that.
+- [x] Auto-refresh: `HistoryViewModel` now loads immediately on construction
+      (previously needed a click even to see the page's own default
+      selection) and re-loads automatically every 30s (`Timer`, marshaled
+      back via `DispatcherQueue`) plus whenever the metric or resolution
+      selection changes (`OnSelectedMetricChanged`/`OnSelectedResolutionChanged`
+      partial hooks) — no longer needs the manual "Load" click for the
+      common case, though the button still works for an on-demand refresh.
+      Made `HistoryViewModel` `IDisposable` to stop the timer on navigation
+      away; wired via `HistoryPage`'s `Unloaded`.
+- [ ] Not done: overlaying 2+ series at once (e.g. CPU temp + GPU temp) and
+      axis labels/gridlines on the chart itself — bigger changes to the
+      `Canvas`/`Polyline` rendering in `HistoryPage.xaml.cs`, left for a
+      later pass.
+- [ ] Not yet visually confirmed live.
 
 ### Phase 28 — Fan curve editor
 - [ ] Not started, biggest item of the batch. Every serious fan-control tool
