@@ -94,6 +94,24 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to open LibreHardwareMonitor computer session");
+            // No ILogger provider is wired up anywhere in the App project, so LogError above goes
+            // nowhere — Open() failing here otherwise means every sensor reads zero for the rest of
+            // the process's life with zero visible error anywhere. A version-mismatch regression
+            // (LibreHardwareMonitorLib bumped without also bumping the System.Management it needs)
+            // took real diagnostic effort to find specifically because of this silence, so this one
+            // startup-critical failure point gets a permanent, minimal, best-effort file log — same
+            // idea as AetherControl.App's own UnhandledExceptionLog, just for Services, which can't
+            // reference the App project.
+            try
+            {
+                var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Aether Control", "hardware-open-failed.log");
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {ex}\n\n");
+            }
+            catch
+            {
+                // best-effort diagnostic only
+            }
         }
     }
 
