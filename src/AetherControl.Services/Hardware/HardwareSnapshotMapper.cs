@@ -1,3 +1,4 @@
+using AetherControl.Core.Enums;
 using AetherControl.Core.Models;
 using LibreHardwareMonitor.Hardware;
 
@@ -149,12 +150,18 @@ internal static class HardwareSnapshotMapper
         var results = new List<StorageDriveInfo>();
         foreach (var device in storageDevices)
         {
-            var temperature = FindValue(device, SensorType.Temperature, "Temperature", "Drive");
+            // A drive with no real SMART temperature sensor exposed (common on some external/USB
+            // enclosures, and older or bridge-chip drives) used to silently report 0°C via
+            // FindValue's fallback-to-zero — indistinguishable on screen from a genuinely-measured
+            // 0°C. TryFindValue reports whether an actual sensor was found, not inferred from the
+            // value, so that gets surfaced as MetricQuality.Unsupported instead (Phase 33).
+            var (temperature, hasTemperatureSensor) = TryFindValue(device, SensorType.Temperature, "Temperature", "Drive");
             results.Add(new StorageDriveInfo
             {
                 DeviceId = device.Identifier.ToString(),
                 Model = device.Name,
                 TemperatureCelsius = temperature,
+                TemperatureQuality = hasTemperatureSensor ? MetricQuality.Good : MetricQuality.Unsupported,
                 IsNvme = device.Name.Contains("NVMe", StringComparison.OrdinalIgnoreCase)
             });
         }
@@ -183,6 +190,25 @@ internal static class HardwareSnapshotMapper
 
         var firstOfType = hardware.Sensors.FirstOrDefault(s => s.SensorType == type);
         return firstOfType?.Value ?? 0f;
+    }
+
+    /// <summary>Like <see cref="FindValue"/>, but reports whether an actual sensor was found rather
+    /// than silently folding "not found" and "found, value happens to be 0" into the same 0f — see
+    /// MapStorage's use of this for why that distinction matters for a display quality state.</summary>
+    private static (float Value, bool Found) TryFindValue(IHardware hardware, SensorType type, params string[] nameCandidates)
+    {
+        foreach (var candidate in nameCandidates)
+        {
+            var sensor = hardware.Sensors.FirstOrDefault(s =>
+                s.SensorType == type && s.Name.Contains(candidate, StringComparison.OrdinalIgnoreCase));
+            if (sensor?.Value is { } value)
+            {
+                return (value, true);
+            }
+        }
+
+        var firstOfType = hardware.Sensors.FirstOrDefault(s => s.SensorType == type);
+        return firstOfType?.Value is { } fallback ? (fallback, true) : (0f, false);
     }
 
     /// <summary>Like <see cref="FindValue"/> but returns 0 on a miss instead of grabbing the first sensor of the type — for callers that have their own, more targeted fallback.</summary>

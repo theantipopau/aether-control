@@ -1,3 +1,4 @@
+using AetherControl.Core.Enums;
 using AetherControl.Services.Hardware;
 
 namespace AetherControl.Tests;
@@ -200,25 +201,25 @@ public class StorageHealthProbeTests
     [Fact]
     public void FreeSpace_NeverExceedsCapacity_UsedPercentStaysNonNegative()
     {
-        // A momentarily-stale FreeBytes (carried over from IsFreeSpaceStale handling) racing ahead
-        // of a just-updated smaller CapacityBytes must not produce a negative "used%" that would
-        // render as a nonsensical over-full or negative bar.
+        // A momentarily-stale FreeBytes (carried over from a FreeSpaceQuality.Stale fallback) racing
+        // ahead of a just-updated smaller CapacityBytes must not produce a negative "used%" that
+        // would render as a nonsensical over-full or negative bar.
         var drive = new AetherControl.Core.Models.StorageDriveInfo { CapacityBytes = 100, FreeBytes = 150 };
 
         Assert.InRange(drive.UsedPercent, -0.0001, 100.0001);
     }
 
     [Fact]
-    public void StaleFlag_IsIndependentOfTheFreeBytesValueItself()
+    public void QualityState_IsIndependentOfTheFreeBytesValueItself()
     {
-        // The model doesn't infer staleness from the number (e.g. "is it 0, therefore stale?") —
-        // it's a distinct, explicitly-set fact, which is what lets StorageHealthProbe carry over a
-        // real last-good FreeBytes value alongside IsFreeSpaceStale = true.
-        var staleButNonZero = new AetherControl.Core.Models.StorageDriveInfo { FreeBytes = 682 * OneGib, IsFreeSpaceStale = true };
-        var freshZero = new AetherControl.Core.Models.StorageDriveInfo { FreeBytes = 0, IsFreeSpaceStale = false };
+        // The model doesn't infer quality from the number (e.g. "is it 0, therefore stale?") — it's
+        // a distinct, explicitly-set fact, which is what lets StorageHealthProbe carry over a real
+        // last-good FreeBytes value alongside FreeSpaceQuality.Stale.
+        var staleButNonZero = new AetherControl.Core.Models.StorageDriveInfo { FreeBytes = 682 * OneGib, FreeSpaceQuality = MetricQuality.Stale };
+        var freshZero = new AetherControl.Core.Models.StorageDriveInfo { FreeBytes = 0, FreeSpaceQuality = MetricQuality.Good };
 
-        Assert.True(staleButNonZero.IsFreeSpaceStale);
+        Assert.Equal(MetricQuality.Stale, staleButNonZero.FreeSpaceQuality);
         Assert.Equal(682 * OneGib, staleButNonZero.FreeBytes);
-        Assert.False(freshZero.IsFreeSpaceStale);
+        Assert.Equal(MetricQuality.Good, freshZero.FreeSpaceQuality);
     }
 }

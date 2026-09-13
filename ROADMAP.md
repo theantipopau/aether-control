@@ -2,7 +2,38 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage)
+
+## Phase 33 — Shared metric-quality model — storage
+Continuing `docs/ROADMAP.md`'s "Next" sequence after Phase 32 closed. Added
+`MetricQuality` (`AetherControl.Core.Enums`: Good/Stale/Unavailable/
+Unsupported/PermissionRequired/Conflicting/Disconnected/Error) and applied
+it to storage — the two metrics in `docs/ROADMAP.md`'s "Initial rollout"
+list that already had a codebase to attach it to.
+- [x] `StorageDriveInfo.IsFreeSpaceStale` (bool) → `FreeSpaceQuality:
+      MetricQuality`. `StorageHealthProbe.QueryPhysicalDisks` now correctly
+      distinguishes `Stale` (real prior reading, just not fresh this poll)
+      from `Unavailable` (never had a reading for this disk at all) —
+      previously both were the same `true`.
+- [x] New `TemperatureQuality` field — caught and fixed a real, previously-
+      silent bug while wiring this up: `HardwareSnapshotMapper.MapStorage`'s
+      `FindValue` fallback-to-zero pattern meant a drive with no real SMART
+      temperature sensor exposed displayed a fabricated "0°C", indistinguishable
+      from a genuine 0°C reading. Added `TryFindValue` (reports whether a
+      sensor was actually found) and set `TemperatureQuality = Unsupported`
+      when none is. `StorageDriveViewModel.DetailText` shows "temp n/a" for
+      these drives instead.
+- [x] Build (Core/Services/App) clean, all 47 tests pass, app launches and
+      runs without a crash on the rebuilt binary.
+- **Deliberately deferred**: CPU/GPU temperature, fan RPM, network
+      throughput, RTSS FPS — each would touch `HardwareSnapshotMapper` (more
+      sensors), `DashboardViewModel`, `PortraitViewModel`,
+      `TrayReadoutFormatter`, and `HistoryService`/alerts, a materially
+      larger blast radius with no currently-evidenced failure mode (unlike
+      storage, which had two real, live-captured bugs). Rolling this out
+      further without a specific reported problem to anchor each change
+      risks the exact "destabilise working hardware control" outcome the
+      product roadmap itself warns against.
 
 ## Phase 32 — Per-device view models: the real architecture
 Matt: C: was stable after Phase 31, but a second SSD was still repeatedly

@@ -29,7 +29,8 @@ public sealed partial class StorageDriveViewModel : ObservableObject
     [ObservableProperty] private double freeBytes;
     [ObservableProperty] private double temperatureCelsius;
     [ObservableProperty] private bool isNvme;
-    [ObservableProperty] private bool isFreeSpaceStale;
+    [ObservableProperty] private MetricQuality freeSpaceQuality = MetricQuality.Good;
+    [ObservableProperty] private MetricQuality temperatureQuality = MetricQuality.Good;
 
     public double CapacityGb => CapacityBytes / 1024 / 1024 / 1024;
     public double FreeGb => FreeBytes / 1024 / 1024 / 1024;
@@ -38,11 +39,22 @@ public sealed partial class StorageDriveViewModel : ObservableObject
     // CapacityBytes are independent readings and can transiently disagree.
     public double UsedPercent => CapacityBytes <= 0 ? 0 : Math.Clamp((CapacityBytes - FreeBytes) / CapacityBytes * 100.0, 0.0, 100.0);
 
-    // A computed property combining three fields, not a converter over the whole object — a classic
-    // {Binding Converter=...} with an empty path only re-evaluates when the DataContext reference
-    // itself is swapped, not when ObservableObject raises PropertyChanged for one of several
-    // properties a converter reads. Refreshed explicitly below whenever any of its three inputs change.
-    public string DetailText => $"{Health} · {TemperatureCelsius:F0}°C{(IsFreeSpaceStale ? " · stale" : string.Empty)}";
+    // A computed property combining several fields, not a converter over the whole object — a
+    // classic {Binding Converter=...} with an empty path only re-evaluates when the DataContext
+    // reference itself is swapped, not when ObservableObject raises PropertyChanged for one of
+    // several properties a converter reads. Refreshed explicitly below whenever any input changes.
+    // A drive with no real temperature sensor shows "temp n/a" rather than a fabricated "0°C" —
+    // MetricQuality.Unsupported means HardwareSnapshotMapper never found a real sensor to read, not
+    // that one exists and happens to read zero.
+    public string DetailText
+    {
+        get
+        {
+            var tempText = TemperatureQuality == MetricQuality.Good ? $"{TemperatureCelsius:F0}°C" : "temp n/a";
+            var qualitySuffix = FreeSpaceQuality == MetricQuality.Good ? string.Empty : $" · {QualityLabel(FreeSpaceQuality)}";
+            return $"{Health} · {tempText}{qualitySuffix}";
+        }
+    }
 
     public StorageDriveViewModel(StorageDriveInfo snapshot)
     {
@@ -69,7 +81,8 @@ public sealed partial class StorageDriveViewModel : ObservableObject
 
     partial void OnHealthChanged(DriveHealthStatus value) => OnPropertyChanged(nameof(DetailText));
     partial void OnTemperatureCelsiusChanged(double value) => OnPropertyChanged(nameof(DetailText));
-    partial void OnIsFreeSpaceStaleChanged(bool value) => OnPropertyChanged(nameof(DetailText));
+    partial void OnFreeSpaceQualityChanged(MetricQuality value) => OnPropertyChanged(nameof(DetailText));
+    partial void OnTemperatureQualityChanged(MetricQuality value) => OnPropertyChanged(nameof(DetailText));
 
     public void Apply(StorageDriveInfo snapshot)
     {
@@ -84,8 +97,21 @@ public sealed partial class StorageDriveViewModel : ObservableObject
         FreeBytes = snapshot.FreeBytes;
         TemperatureCelsius = snapshot.TemperatureCelsius;
         IsNvme = snapshot.IsNvme;
-        IsFreeSpaceStale = snapshot.IsFreeSpaceStale;
+        FreeSpaceQuality = snapshot.FreeSpaceQuality;
+        TemperatureQuality = snapshot.TemperatureQuality;
     }
+
+    private static string QualityLabel(MetricQuality quality) => quality switch
+    {
+        MetricQuality.Stale => "stale",
+        MetricQuality.Unavailable => "unavailable",
+        MetricQuality.Unsupported => "unsupported",
+        MetricQuality.PermissionRequired => "permission required",
+        MetricQuality.Conflicting => "conflicting",
+        MetricQuality.Disconnected => "disconnected",
+        MetricQuality.Error => "error",
+        _ => string.Empty
+    };
 
     /// <summary>Answers, per poll, exactly which field(s) changed and by how much — added to settle
     /// "which field causes each replacement" with evidence rather than another guess. There is no
@@ -101,7 +127,8 @@ public sealed partial class StorageDriveViewModel : ObservableObject
         if (FreeBytes != snapshot.FreeBytes) changes.Add($"FreeBytes {FreeBytes:R}->{snapshot.FreeBytes:R} (ΔGB={((snapshot.FreeBytes - FreeBytes) / 1024 / 1024 / 1024):F6})");
         if (TemperatureCelsius != snapshot.TemperatureCelsius) changes.Add($"TemperatureCelsius {TemperatureCelsius:R}->{snapshot.TemperatureCelsius:R}");
         if (IsNvme != snapshot.IsNvme) changes.Add($"IsNvme {IsNvme}->{snapshot.IsNvme}");
-        if (IsFreeSpaceStale != snapshot.IsFreeSpaceStale) changes.Add($"IsFreeSpaceStale {IsFreeSpaceStale}->{snapshot.IsFreeSpaceStale}");
+        if (FreeSpaceQuality != snapshot.FreeSpaceQuality) changes.Add($"FreeSpaceQuality {FreeSpaceQuality}->{snapshot.FreeSpaceQuality}");
+        if (TemperatureQuality != snapshot.TemperatureQuality) changes.Add($"TemperatureQuality {TemperatureQuality}->{snapshot.TemperatureQuality}");
 
         UiValueTraceLog.Write(DeviceId, Guid.Empty,
             changes.Count == 0 ? "Apply: no field changed" : $"Apply: {string.Join("; ", changes)}");

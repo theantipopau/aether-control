@@ -216,6 +216,39 @@ Review collection-update semantics for:
 
 # Phase 33: Telemetry integrity and metric quality
 
+**Status: started — storage done, initial rollout list otherwise pending.**
+Added `MetricQuality` (Good/Stale/Unavailable/Unsupported/PermissionRequired/
+Conflicting/Disconnected/Error) in `AetherControl.Core.Enums` and applied it
+to both storage metrics already named in the initial rollout list below:
+
+- **Storage free space**: `StorageDriveInfo.IsFreeSpaceStale` (a bool)
+  generalized to `FreeSpaceQuality: MetricQuality`. `StorageHealthProbe` now
+  distinguishes `Stale` (a real prior reading exists, just not confirmed
+  this poll) from `Unavailable` (never obtained a reading for this disk at
+  all) — previously both cases were folded into a single `true`.
+- **Storage temperature**: new `TemperatureQuality` field. Found and fixed a
+  real, previously-silent violation of the "never represent unavailable as
+  zero" principle — `HardwareSnapshotMapper.MapStorage` used `FindValue`'s
+  fallback-to-zero pattern, so a drive with no real SMART temperature
+  sensor exposed (common on some external/bridge-chip enclosures) displayed
+  a fabricated "0°C" indistinguishable from a genuine reading. Added
+  `TryFindValue` (reports whether a sensor was actually found, not inferred
+  from the value) and wired `TemperatureQuality = Unsupported` when none is.
+  `StorageDriveViewModel.DetailText` now shows "temp n/a" instead of "0°C"
+  for these drives.
+- Deferred, explicitly out of scope for this pass: CPU temperature, GPU
+  temperature, fan RPM, network throughput, RTSS FPS. Each would need
+  touching `HardwareSnapshotMapper` (more sensors), `DashboardViewModel`,
+  `PortraitViewModel`, `TrayReadoutFormatter`, and `HistoryService`/alerts —
+  a materially larger blast radius across code with no currently-known,
+  evidenced failure mode (unlike storage, which had two real, live-captured
+  bugs this quarter). Rolling the model out further without a specific
+  reported problem to anchor each change risks exactly the "destabilise
+  working hardware control" outcome this whole roadmap warns against.
+- `HistoryService`/alerts consuming `MetricQuality` (rather than just the
+  raw metric value) is not yet wired — the model exists, but nothing
+  downstream of storage's own display path reads it yet.
+
 ## Objective
 
 Create a consistent quality and provenance model for every displayed metric.

@@ -38,7 +38,7 @@ internal static class StorageHealthProbe
     // association query throwing, or one disk's partitions not resolving that specific poll) falls
     // back to this instead of reporting 0 bytes free — "the poll failed" and "the disk is full" are
     // different facts, and showing 0 for the former is exactly what made a failed poll look like a
-    // real, dramatic capacity change (see StorageDriveInfo.IsFreeSpaceStale).
+    // real, dramatic capacity change (see StorageDriveInfo.FreeSpaceQuality).
     private static readonly Dictionary<string, double> LastGoodFreeBytesByDiskId = new();
 
     public static IReadOnlyList<StorageDriveInfo> Enrich(IReadOnlyList<StorageDriveInfo> lhmDrives)
@@ -73,11 +73,12 @@ internal static class StorageHealthProbe
                 DeviceId = drive.DeviceId,
                 Model = drive.Model,
                 TemperatureCelsius = drive.TemperatureCelsius,
+                TemperatureQuality = drive.TemperatureQuality,
                 IsNvme = drive.IsNvme,
                 CapacityBytes = wmiMatch?.CapacityBytes ?? 0,
                 FreeBytes = wmiMatch?.FreeBytes ?? 0,
                 Health = wmiMatch?.Health ?? DriveHealthStatus.Unknown,
-                IsFreeSpaceStale = wmiMatch?.IsFreeSpaceStale ?? true
+                FreeSpaceQuality = wmiMatch?.FreeSpaceQuality ?? MetricQuality.Unavailable
             });
         }
 
@@ -138,27 +139,27 @@ internal static class StorageHealthProbe
                 // it's "flickering between X and half of X" — not something caught in the act on
                 // this machine, since the association graph hasn't failed once in ~6300 logged polls.
                 double freeBytes;
-                bool isStale;
+                MetricQuality freeSpaceQuality;
                 if (freeSpaceByDiskId.TryGetValue(deviceId, out var freshFreeBytes))
                 {
                     freeBytes = freshFreeBytes;
-                    isStale = false;
+                    freeSpaceQuality = MetricQuality.Good;
                     LastGoodFreeBytesByDiskId[deviceId] = freshFreeBytes;
                 }
                 else if (LastGoodFreeBytesByDiskId.TryGetValue(deviceId, out var lastGoodFreeBytes))
                 {
+                    // A real prior reading exists — just not confirmed as of this poll.
                     freeBytes = lastGoodFreeBytes;
-                    isStale = true;
+                    freeSpaceQuality = MetricQuality.Stale;
                     StorageDiagnosticLog.Write($"{deviceId} STALE — no fresh free-space reading this poll, using last good {freeBytes / 1024.0 / 1024.0 / 1024.0:0.00}GB");
                 }
                 else
                 {
                     // Never seen a real value for this disk at all yet (first poll, or genuinely
                     // new hardware) — there is no "last good" to fall back to, so 0 here means
-                    // "unknown", not "confirmed empty". Still marked stale so the UI doesn't present
-                    // it as a trustworthy reading.
+                    // "unknown", not "confirmed empty".
                     freeBytes = 0;
-                    isStale = true;
+                    freeSpaceQuality = MetricQuality.Unavailable;
                 }
 
                 results.Add(new StorageDriveInfo
@@ -168,7 +169,7 @@ internal static class StorageHealthProbe
                     CapacityBytes = capacity,
                     FreeBytes = freeBytes,
                     Health = health,
-                    IsFreeSpaceStale = isStale
+                    FreeSpaceQuality = freeSpaceQuality
                 });
             }
 

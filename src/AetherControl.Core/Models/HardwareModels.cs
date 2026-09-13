@@ -66,11 +66,20 @@ public sealed record StorageDriveInfo
     public double TemperatureCelsius { get; set; }
     public bool IsNvme { get; set; }
 
-    // True when this poll couldn't get a fresh free-space reading (a transient WMI failure, or the
-    // disk-to-partition association graph didn't resolve this drive that cycle) and FreeBytes/
-    // CapacityBytes are carried over from the last successful poll rather than zeroed — a missing
-    // reading is not the same fact as "0 bytes free" and must never be displayed as one.
-    public bool IsFreeSpaceStale { get; set; }
+    // Was a plain bool (IsFreeSpaceStale) — generalized to the shared MetricQuality model (Phase 33)
+    // so "no fresh reading this poll, but a real prior value exists" (Stale) and "never obtained a
+    // reading for this disk at all" (Unavailable) are distinct facts instead of both being "stale".
+    // Default Good, not because every caller verifies freshness, but because the two places that
+    // actually determine this (StorageHealthProbe.QueryPhysicalDisks/Enrich) always set it
+    // explicitly — a default of Good only matters for test/ad-hoc construction, where "trust it
+    // unless told otherwise" is the reasonable assumption.
+    public MetricQuality FreeSpaceQuality { get; set; } = MetricQuality.Good;
+
+    // A drive with no real SMART temperature sensor (or one this poll couldn't reach) used to
+    // silently report 0°C via HardwareSnapshotMapper's fallback-to-zero pattern — indistinguishable
+    // from a genuinely-measured 0°C. Set by HardwareSnapshotMapper.MapStorage based on whether an
+    // actual sensor was found, not inferred from the value itself.
+    public MetricQuality TemperatureQuality { get; set; } = MetricQuality.Good;
 
     public double CapacityGb => CapacityBytes / 1024 / 1024 / 1024;
     public double FreeGb => FreeBytes / 1024 / 1024 / 1024;
