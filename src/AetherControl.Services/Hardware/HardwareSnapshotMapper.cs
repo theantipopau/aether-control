@@ -92,22 +92,6 @@ internal static class HardwareSnapshotMapper
         return info;
     }
 
-    public static MemoryInfo MapMemory(IHardware? memory)
-    {
-        var info = new MemoryInfo();
-        if (memory is null)
-        {
-            return info;
-        }
-
-        var usedGb = FindValue(memory, SensorType.Data, "Memory Used");
-        var availableGb = FindValue(memory, SensorType.Data, "Memory Available");
-        info.UsedBytes = usedGb * 1024 * 1024 * 1024;
-        info.AvailableBytes = availableGb * 1024 * 1024 * 1024;
-        info.TotalBytes = info.UsedBytes + info.AvailableBytes;
-        return info;
-    }
-
     public static MotherboardInfo MapMotherboard(IHardware? motherboard)
     {
         var info = new MotherboardInfo();

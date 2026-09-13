@@ -81,7 +81,11 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         {
             IsCpuEnabled = true,
             IsGpuEnabled = true,
-            IsMemoryEnabled = true,
+            // Deliberately off — see MemoryStatusProbe. LibreHardwareMonitorLib's Memory group (its
+            // RAM SPD/thermal detection) reported physically impossible usage on this machine and
+            // crashed outright with a NullReferenceException when unelevated; RAM is read directly
+            // via Win32 instead, so there's no reason to pay for this group's cost or risk at all.
+            IsMemoryEnabled = false,
             IsMotherboardEnabled = true,
             IsStorageEnabled = true,
             IsNetworkEnabled = false // handled by NetworkMonitorService for finer-grained throughput/latency
@@ -168,7 +172,6 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
         var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
         var gpu = SelectPrimaryGpu();
-        var memory = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory);
         var motherboard = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Motherboard);
         // _computer.Hardware's enumeration order isn't guaranteed stable poll-to-poll. Each drive's
         // own values are correctly matched by model name (see StorageHealthProbe), but if the LIST
@@ -189,8 +192,17 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
             motherboardInfo.FanSpeeds = _fanProbe.LatestFanSpeeds;
         }
 
-        var memoryInfo = HardwareSnapshotMapper.MapMemory(memory);
-        memoryInfo.SpeedMhz = _memorySpeedMhz.Value; // WMI SPD data — doesn't change at runtime, queried once and cached
+        // Not sourced from LibreHardwareMonitorLib's own Memory hardware node — see MemoryStatusProbe
+        // for why (its RAM SPD/thermal detection reported physically impossible numbers on this
+        // machine and crashed outright when unelevated).
+        var (totalMemoryBytes, availableMemoryBytes) = MemoryStatusProbe.Query();
+        var memoryInfo = new MemoryInfo
+        {
+            TotalBytes = totalMemoryBytes,
+            AvailableBytes = availableMemoryBytes,
+            UsedBytes = totalMemoryBytes - availableMemoryBytes,
+            SpeedMhz = _memorySpeedMhz.Value // WMI SPD data — doesn't change at runtime, queried once and cached
+        };
 
         var cpuInfo = HardwareSnapshotMapper.MapCpu(cpu);
         SmoothClockSpeeds(cpuInfo);
