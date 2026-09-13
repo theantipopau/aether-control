@@ -21,9 +21,12 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     private static readonly TimeSpan FanProbeInterval = TimeSpan.FromSeconds(3);
 
     // Best-effort — exact service names aren't publicly documented and vary by ASUS software
-    // version. "AsusFanControlService" is the one confirmed by this board's own empty fan-RPM
-    // readings (see FanRpmProbeService); the others are commonly reported Armoury Crate services.
-    // A miss here just means the warning doesn't show, not that control silently fails worse.
+    // version. This list previously claimed "AsusFanControlService" was confirmed to blank out fan
+    // RPM readings; that was disproven by a live A/B test (see FanRpmProbeService) — the real cause
+    // of the empty readings was a LibreHardwareMonitorLib version gap, not this service. It's kept
+    // here purely as a plausible source of *write* conflicts (two programs both trying to drive the
+    // same fan-control channel), which was never actually tested either way. A miss here just means
+    // the warning doesn't show, not that control silently fails worse.
     private static readonly string[] ConflictingProcessNames =
     [
         "AsusFanControlService",

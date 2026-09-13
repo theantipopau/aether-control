@@ -2,12 +2,17 @@
 // short cadence (a few seconds) rather than read continuously from the main app's long-lived
 // LibreHardwareMonitor Computer instance.
 //
-// Why a separate process: on real ASUS boards (e.g. PRIME B650EM-A WIFI / Nuvoton NCT6701D),
-// AsusFanControlService reclaims the Super I/O LPC ports immediately after LibreHardwareMonitor's
-// first read, so a long-lived Computer instance's fan RPM sticks at 0 after the first poll. A
-// fresh Computer per poll avoids this — and since LibreHardwareMonitorLib's Ring0/MSR driver
-// access is global per-process, running that fresh instance in a genuinely separate OS process
-// means closing it can never corrupt the main app's own CPU/GPU sensor state.
+// The out-of-process design predates a since-corrected diagnosis: an earlier version of this
+// comment claimed AsusFanControlService reclaiming the Super I/O LPC ports was why fan RPM stuck
+// at 0/absent. That was never actually true — a live A/B test (elevated fresh Computer instance,
+// AsusFanControlService fully stopped vs. running) showed identical behaviour either way: on this
+// board (PRIME B650EM-A WIFI / Nuvoton NCT6701D), LibreHardwareMonitorLib 0.9.4 didn't create a
+// SuperIO sub-hardware node at all, elevated or not, service running or not. The real cause was a
+// library gap — NCT6701D support landed after 0.9.4 — fixed by bumping to a newer
+// LibreHardwareMonitorLib release (see AetherControl.FanHelper.csproj / AetherControl.Services.csproj).
+// Kept as a separate process anyway: LibreHardwareMonitorLib's Ring0/MSR driver access is global
+// per-process, so an out-of-process probe still guarantees a bad fan read can never corrupt the
+// main app's own CPU/GPU sensor state, independent of the original (wrong) contention theory.
 //
 // Output: one "Name\tRpm" line per fan header currently reporting non-zero RPM. No output and
 // exit code 0 both mean "no live fan data this poll" as far as the caller is concerned.

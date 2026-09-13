@@ -6,16 +6,21 @@ namespace AetherControl.Services.Hardware;
 
 /// <summary>
 /// Fan RPM is deliberately not read from <see cref="HardwareMonitorService"/>'s
-/// long-lived LibreHardwareMonitor instance. On real ASUS boards,
-/// <c>AsusFanControlService</c> reclaims the Super I/O LPC ports right after
-/// the first read, so a long-lived instance's fan sensors stick at 0 forever
-/// after poll one. Instead this launches <c>AetherControl.FanHelper.exe</c> —
-/// a tiny console app that opens a fresh, motherboard-only Computer, prints
-/// "Name&#9;Rpm" lines, and exits — on its own short cadence. A fresh process
-/// each time means a clean driver load that outruns the contention, and
-/// because LibreHardwareMonitor's Ring0/MSR access is global per-process,
-/// running it out-of-process guarantees it can never corrupt the main app's
-/// own CPU/GPU sensor state either.
+/// long-lived LibreHardwareMonitor instance. Instead this launches
+/// <c>AetherControl.FanHelper.exe</c> — a tiny console app that opens a fresh,
+/// motherboard-only Computer, prints "Name&#9;Rpm" lines, and exits — on its
+/// own short cadence.
+/// This used to be explained as working around <c>AsusFanControlService</c>
+/// reclaiming the Super I/O LPC ports after the first read. That explanation
+/// was wrong: a live A/B test (fresh elevated Computer instance, service
+/// stopped vs. running) showed identical behaviour either way — on this board
+/// (PRIME B650EM-A WIFI / Nuvoton NCT6701D), LibreHardwareMonitorLib 0.9.4
+/// simply never created a SuperIO sub-hardware node at all. The real fix was
+/// bumping LibreHardwareMonitorLib past 0.9.4 (NCT6701D support landed later).
+/// Kept out-of-process anyway: LibreHardwareMonitor's Ring0/MSR access is
+/// global per-process, so running the probe in a genuinely separate OS
+/// process still guarantees a bad fan read can never corrupt the main app's
+/// own CPU/GPU sensor state, independent of the original contention theory.
 /// </summary>
 public sealed class FanRpmProbeService : IDisposable
 {
