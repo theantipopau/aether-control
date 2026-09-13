@@ -71,15 +71,28 @@ volatile telemetry entirely, per the requested design.
       `MergeFrom` is actually still used for — Portrait's Fans list).
       44 → 47 net after removing the 2 tests that specifically pinned the
       now-reverted precision-equality behaviour.
-- **Live verification blocked, not skipped**: Windows Smart App Control
-      started blocking launches of this dev build mid-session
-      (`Microsoft-Windows-CodeIntegrity/Operational` event ID 3077/3118 —
-      "did not meet the Enterprise signing level requirements"), almost
-      certainly triggered by how many times this unsigned binary was
-      rebuilt and relaunched with a different hash in one session. Code is
-      complete, builds clean, and all 47 tests pass; the final live trace
-      confirming the second SSD is now stable needs Matt to either launch
-      the build himself or clear the Smart App Control block.
+- [x] **Live verification: confirmed.** The Smart App Control block
+      (`Microsoft-Windows-CodeIntegrity/Operational` event 3077/3118 —
+      almost certainly triggered by how many times this unsigned binary was
+      rebuilt/relaunched with a different hash in one session) cleared on
+      its own on the next launch attempt. Ran the build live with tracing
+      on for ~90 seconds and checked `ui-value-trace.log` directly: **every
+      one of the 4 drives — including `/nvme/0`, the one that had shown 454
+      distinct card instances over 14 minutes before this phase — held
+      exactly one real `MetricCard` GUID for the entire session.** Real,
+      sub-perceptible telemetry changes (`Apply: FreeBytes
+      717264080896->717264076800 (ΔGB=-0.000004)`, genuine filesystem
+      activity) were applied in place with zero card recreation. The
+      original 680/340-style oscillation cannot occur under this
+      architecture — there is no code path left that tears down and
+      recreates a card for an unchanged or trivially-changed reading.
+      Per `docs/ROADMAP.md`'s own "Definition of done for the storage
+      issue," every listed criterion is now satisfied. Gated
+      `StorageDiagnostics.TraceEnabled` back to `false` (default,
+      no-overhead) now that it's done its job — the infrastructure stays
+      in the codebase rather than being deleted, since it's what actually
+      cracked this, and the exact same trace could catch a future
+      "card flickers" report the same way.
 - **Not done, explicitly out of scope for this phase**: an
       `IIncrementallyUpdatable<TSnapshot>` interface was suggested as one
       possible shape; `LiveCollectionSync`'s constructor-injected delegates
