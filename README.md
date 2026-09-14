@@ -172,6 +172,14 @@ Aether Control ships as its own standalone `.exe` — unpackaged, not MSIX.
   rotating which CPU cores are active at idle looks identical to a flicker
   bug at a glance) — see [ROADMAP.md](ROADMAP.md) Phase 10 for the full story
   of chasing that down with a real diagnostic trace instead of a fourth guess.
+- **A vendor library's own number isn't automatically the right one.** GPU%
+  is read from the same Windows GPU-engine performance counter Task Manager
+  itself uses rather than LibreHardwareMonitor's driver-level load sensor
+  (confirmed, side by side, to measure something different); RAM usage is
+  read via `GlobalMemoryStatusEx` directly after LibreHardwareMonitor's own
+  Memory sensor was caught — via a live diagnostic — reporting physically
+  impossible numbers on real hardware. When a metric can be sourced two
+  ways, the one that matches what the OS itself reports wins.
 - **Reversibility for anything touching live hardware state.** Fan control
   clamps away from 0% and always reverts to automatic/BIOS control on exit;
   memory optimisation never terminates a process; Storage Cleaner previews
@@ -185,15 +193,19 @@ code:
 
 - **Portrait Stats** — CPU/GPU/RAM sensor name-matching (AMD `Tctl/Tdie`,
   `Core Max`, `Cores (Average)` fallbacks), best-GPU-by-VRAM selection for
-  multi-GPU systems, the reason fan RPM is read by a **separate short-lived
-  process** (`AetherControl.FanHelper.exe`) instead of the main long-lived
-  LibreHardwareMonitor instance (on real ASUS boards, `AsusFanControlService`
-  reclaims the Super I/O ports right after the first read, sticking RPM at 0
-  forever after), `FanLabelStore` (user-assigned fan channel names),
+  multi-GPU systems, `FanLabelStore` (user-assigned fan channel names),
   `ProcessRankerService` (CPU/GPU top-process ranking), `RtssFpsSource`
   (direct RTSS shared-memory FPS reads), and Portrait Mode's entire layout
-  and control set (`RadialGauge`, `Sparkline`, `MetricTile`, `VendorBadge`,
-  colour palette) — ported rather than reinvented, at Matt's own request.
+  and control set (`RadialGauge`, `Sparkline`, `MetricTile`, `VendorBadge`)
+  — ported rather than reinvented, at Matt's own request. Fan RPM is still
+  read by a **separate short-lived process** (`AetherControl.FanHelper.exe`)
+  rather than the main long-lived LibreHardwareMonitor instance, but not for
+  the reason originally assumed: a live A/B test (service stopped vs.
+  running) proved `AsusFanControlService` was never actually the cause of
+  fan RPM sticking at 0 — the real cause was a LibreHardwareMonitorLib
+  version gap (see ROADMAP.md). Portrait Mode's colour palette was later
+  unified with Aether Control's own single-accent theme instead of staying
+  a separate port.
 - **OmenCore** — `CorsairHidDirect` ported into `CorsairHidDirectService`:
   direct-HID Corsair keyboard/mouse RGB control (no iCUE, no OpenRGB),
   including the full known-product table and per-PID HID report layouts
