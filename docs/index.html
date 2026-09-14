@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Aether Control</title>
+<meta name="description" content="An all-in-one control suite for custom gaming PCs — hardware monitoring, a real portrait-display mode, a Windows optimisation centre, RGB control without extra software, and per-game automation." />
+<link rel="icon" href="https://raw.githubusercontent.com/theantipopau/aether-control/main/img/Icon.png" />
+<style>
+  :root {
+    --bg: #0F1113;
+    --bg-translucent: #0F1113cc;
+    --surface: #1A1D1F;
+    --surface-raised: #232629;
+    --border: #2C3033;
+    --text-primary: #FFFFFF;
+    --text-secondary: #9BA1A6;
+    --accent: #00E5FF;
+    --accent-dim: #00B8CC;
+    --warm: #F5C86B;
+    --hot: #FF6D6D;
+    --max-width: 1080px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: "Segoe UI", "Segoe UI Variable", system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+
+  header.nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-translucent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  header.nav .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .brand img { width: 24px; height: 24px; border-radius: 6px; }
+  nav.links { display: flex; gap: 22px; font-size: 13px; color: var(--text-secondary); }
+  nav.links a { color: var(--text-secondary); }
+  nav.links a:hover { color: var(--text-primary); text-decoration: none; }
+
+  .hero {
+    padding: 96px 0 64px;
+    text-align: center;
+    background:
+      radial-gradient(circle at 50% -10%, #00e5ff14, transparent 60%),
+      var(--bg);
+  }
+  .hero img.logo {
+    width: 108px;
+    height: 108px;
+    border-radius: 24px;
+    box-shadow: 0 0 0 1px var(--border), 0 20px 60px -20px #00e5ff33;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 700;
+    margin: 28px 0 12px;
+    letter-spacing: -0.02em;
+  }
+  .hero p.tagline {
+    max-width: 640px;
+    margin: 0 auto;
+    color: var(--text-secondary);
+    font-size: 17px;
+  }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 24px 0 0; }
+  .badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: var(--surface);
+  }
+  .badge.accent { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 32px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    transition: transform 120ms ease, border-color 120ms ease;
+  }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); }
+  .btn.primary { background: var(--accent); color: #00191c; border-color: var(--accent); }
+  .btn.primary:hover { background: #33ebff; }
+  .btn.secondary { background: var(--surface); color: var(--text-primary); }
+  .btn.secondary:hover { border-color: var(--accent); }
+
+  section { padding: 64px 0; border-top: 1px solid var(--border); }
+  section.no-border { border-top: none; }
+
+  h2.section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  h3.section-heading {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 20px;
+    letter-spacing: -0.01em;
+  }
+  p.lede {
+    color: var(--text-secondary);
+    font-size: 16px;
+    max-width: 720px;
+    margin: 0 0 36px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+  }
+  .card h4 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card h4 .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+  }
+  .card p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+  .card code { background: var(--surface-raised); border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
+
+  .principles { display: grid; gap: 14px; }
+  .principle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .principle strong { display: block; margin-bottom: 4px; font-size: 15px; }
+  .principle span { color: var(--text-secondary); font-size: 14px; }
+  .principle code { background: var(--surface-raised); border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
+
+  table.stack {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  table.stack th, table.stack td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.stack th { color: var(--text-secondary); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  table.stack td.tfm { color: var(--accent); white-space: nowrap; font-family: Consolas, monospace; }
+  table.stack tr:last-child td { border-bottom: none; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 6px 16px; overflow-x: auto; }
+
+  .status-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .status-col h4 { font-size: 14px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .status-col ul { margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 14px; }
+  .status-col li { margin-bottom: 8px; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .pill.shipped { background: #00e5ff22; color: var(--accent); }
+  .pill.deferred { background: #ff6d6d22; color: var(--hot); }
+  .pill.progress { background: #f5c86b22; color: var(--warm); }
+
+  .provenance { display: grid; gap: 12px; }
+  .provenance .card p { font-size: 13.5px; }
+
+  footer { padding: 48px 0 64px; text-align: center; color: var(--text-secondary); font-size: 13px; }
+  footer a { color: var(--text-secondary); }
+  footer a:hover { color: var(--accent); }
+  footer .foot-links { display: flex; gap: 18px; justify-content: center; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand">
+      <img src="https://raw.githubusercontent.com/theantipopau/aether-control/main/img/Icon.png" alt="" />
+      Aether Control
+    </div>
+    <nav class="links">
+      <a href="#features">Features</a>
+      <a href="#principles">Design</a>
+      <a href="#stack">Architecture</a>
+      <a href="#status">Roadmap</a>
+      <a href="https://github.com/theantipopau/aether-control">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero no-border">
+  <div class="wrap">
+    <img class="logo" src="https://raw.githubusercontent.com/theantipopau/aether-control/main/img/Logo.png" alt="Aether Control logo" />
+    <h1>Aether Control</h1>
+    <p class="tagline">
+      An all-in-one control suite for custom gaming PCs — hardware monitoring,
+      a real portrait-display mode, a Windows optimisation centre, RGB control
+      without extra software, and per-game automation. One clean, fast,
+      unpackaged Windows app.
+    </p>
+    <div class="badges">
+      <span class="badge">Windows 10 / 11</span>
+      <span class="badge">.NET 8.0</span>
+      <span class="badge">WinUI 3</span>
+      <span class="badge accent">Active development</span>
+    </div>
+    <div class="cta-row">
+      <a class="btn primary" href="https://github.com/theantipopau/aether-control">View on GitHub</a>
+      <a class="btn secondary" href="https://github.com/theantipopau/aether-control/blob/main/README.md">Read the README</a>
+      <a class="btn secondary" href="https://github.com/theantipopau/aether-control/blob/main/ROADMAP.md">Full build log</a>
+    </div>
+  </div>
+</section>
+
+<section class="no-border">
+  <div class="wrap">
+    <h2 class="section-title">Why</h2>
+    <h3 class="section-heading">Every existing option asks for a trade-off</h3>
+    <p class="lede" style="margin-bottom:0;">
+      Every existing option is either bloated and slow (HWiNFO's sheer density,
+      Armoury Crate's background services), locked to one vendor's ecosystem
+      (NZXT CAM, ASUS Aura), or asks you to install something else first
+      (OpenRGB, RTSS, iCUE) just to see your own hardware. Aether Control is
+      built to be significantly cleaner, faster, and more focused than any of
+      them — real sensor data, real RGB control, real Windows tuning, with as
+      few extra moving parts as the platform allows.
+    </p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2 class="section-title">Features</h2>
+    <h3 class="section-heading">What it actually does</h3>
+    <div class="grid">
+      <div class="card">
+        <h4><span class="dot"></span>Dashboard</h4>
+        <p>Live CPU / GPU / RAM / Storage / Motherboard / Network monitoring with radial gauges, sparkline history, and tone-based severity colouring. A Top Processes panel answers "what's using my CPU right now" without opening Task Manager.</p>
+      </div>
+      <div class="card">
+        <h4><span class="dot"></span>Portrait Mode</h4>
+        <p>A dedicated layout for a second monitor rotated to portrait — usage rings with history sparklines, per-fan RPM with click-to-rename, RAM/drive temp, live FPS via RTSS shared memory, and a top-processes panel. Drag it onto any monitor and one-click fill the screen.</p>
+      </div>
+      <div class="card">
+        <h4><span class="dot"></span>Optimisation Centre</h4>
+        <p>Memory optimisation with a before/after/freed readout, a Storage Cleaner that scans real on-disk sizes before touching anything, a Startup Manager with publisher/impact per entry, Fan Control that reads <em>and</em> writes PWM headers with a safety floor, and Game Profiles that auto-apply a performance plan while a tracked game is running.</p>
+      </div>
+      <div class="card">
+        <h4><span class="dot"></span>RGB Control</h4>
+        <p>Corsair keyboards and mice controlled directly over USB — no iCUE, no OpenRGB, nothing to install. Everything else routes through OpenRGB's SDK server if it's running. Peripheral detection works independently and needs zero vendor software either.</p>
+      </div>
+      <div class="card">
+        <h4><span class="dot"></span>Device Utilities &amp; Firmware</h4>
+        <p>Detected peripherals by vendor, quick links to each vendor's own configuration software, and a current-version-only firmware/driver overview. Aether Control never auto-installs updates — only tells you what you have and links you to check.</p>
+      </div>
+      <div class="card">
+        <h4><span class="dot"></span>Alerts, Tray &amp; History</h4>
+        <p>Toast notifications when CPU/GPU temperature crosses a threshold you set, with hysteresis so it doesn't spam you at the line. Live metrics on tray hover. Daily/weekly/monthly rollups of every tracked metric, charted.</p>
+      </div>
+      <div class="card">
+        <h4><span class="dot"></span>Plugin framework</h4>
+        <p><code>IAetherPlugin</code> plus optional capability interfaces (<code>IDashboardWidgetProvider</code>, <code>ITrayMetricProvider</code>, <code>IOptimisationTaskProvider</code>). Each plugin loads into its own collectible <code>AssemblyLoadContext</code> — add or remove one without restarting the app.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="principles">
+  <div class="wrap">
+    <h2 class="section-title">Design principles</h2>
+    <h3 class="section-heading">Ideas that shaped real decisions</h3>
+    <div class="principles">
+      <div class="principle">
+        <strong>No extra software required, wherever avoidable</strong>
+        <span>Corsair RGB is controlled directly over USB HID — the same wire-level access OpenRGB itself uses, just without needing OpenRGB installed. FPS reads RTSS's shared memory segment directly rather than requiring a plugin.</span>
+      </div>
+      <div class="principle">
+        <strong>Confidently wrong is worse than honestly unavailable</strong>
+        <span>When a sensor doesn't exist for a given board/CPU, the UI hides that card rather than display a plausible-looking wrong number.</span>
+      </div>
+      <div class="principle">
+        <strong>Trace real data before fixing</strong>
+        <span>More than one "obvious" sensor-mapping bug turned out to be real hardware/OS behaviour (Windows core-parking rotating which CPU cores are active at idle looks identical to a flicker bug at a glance) — chased down with a real diagnostic trace instead of a fourth guess.</span>
+      </div>
+      <div class="principle">
+        <strong>A vendor library's own number isn't automatically the right one</strong>
+        <span>GPU% is read from the same Windows GPU-engine performance counter Task Manager itself uses rather than LibreHardwareMonitor's driver-level load sensor; RAM usage is read via <code>GlobalMemoryStatusEx</code> directly after LibreHardwareMonitor's own Memory sensor was caught, via a live diagnostic, reporting physically impossible numbers on real hardware.</span>
+      </div>
+      <div class="principle">
+        <strong>Reversibility for anything touching live hardware state</strong>
+        <span>Fan control clamps away from 0% and always reverts to automatic/BIOS control on exit; memory optimisation never terminates a process; Storage Cleaner previews real sizes before deleting anything.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="stack">
+  <div class="wrap">
+    <h2 class="section-title">Architecture</h2>
+    <h3 class="section-heading">What's in the solution</h3>
+    <div class="table-wrap">
+      <table class="stack">
+        <thead><tr><th>Project</th><th>TFM</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>AetherControl.Core</code></td><td class="tfm">net8.0</td><td>Models, enums, service interfaces, events — no dependencies</td></tr>
+          <tr><td><code>AetherControl.Plugins.Abstractions</code></td><td class="tfm">net8.0</td><td><code>IAetherPlugin</code> and capability interfaces third-party modules implement</td></tr>
+          <tr><td><code>AetherControl.Data</code></td><td class="tfm">net8.0</td><td>SQLite schema, migrations, repositories (settings, history, layouts)</td></tr>
+          <tr><td><code>AetherControl.Services</code></td><td class="tfm">net8.0-windows</td><td>Hardware monitoring, optimisation, RGB (Corsair direct HID + OpenRGB), firmware/driver detection, plugin loading</td></tr>
+          <tr><td><code>AetherControl.FanHelper</code></td><td class="tfm">net8.0-windows</td><td>Standalone console probe for motherboard fan RPM</td></tr>
+          <tr><td><code>AetherControl.App</code></td><td class="tfm">net8.0-windows10.0.19041.0</td><td>WinUI 3 shell — dashboard, portrait mode, tray, all feature pages</td></tr>
+          <tr><td><code>AetherControl.Plugins.Sample</code></td><td class="tfm">net8.0</td><td>Reference plugin (system uptime widget)</td></tr>
+          <tr><td><code>tests/AetherControl.Tests</code></td><td class="tfm">net8.0-windows</td><td>xUnit tests against the Data/Services layer</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede" style="margin-top:24px;margin-bottom:0;">
+      MVVM throughout the app layer (<code>CommunityToolkit.Mvvm</code>), one safe
+      LibreHardwareMonitor session shared across the whole app, SQLite (WAL mode)
+      for durable state, and small JSON stores for state that doesn't need a
+      relational shape. Ships as its own standalone <code>.exe</code> —
+      unpackaged, not MSIX.
+    </p>
+  </div>
+</section>
+
+<section id="status">
+  <div class="wrap">
+    <h2 class="section-title">Roadmap</h2>
+    <h3 class="section-heading">Where things stand</h3>
+    <p class="lede">
+      Built in tracked phases — <a href="https://github.com/theantipopau/aether-control/blob/main/ROADMAP.md">ROADMAP.md</a>
+      is the full, honest build log: what's done, what's deliberately deferred
+      and why, and bugs that were root-caused with real diagnostic traces
+      rather than guessed at.
+    </p>
+    <div class="status-cols">
+      <div class="status-col">
+        <h4><span class="pill shipped">Shipped</span></h4>
+        <ul>
+          <li>Full hardware dashboard with radial gauges, sparklines, tone-based severity</li>
+          <li>Portrait Mode — a real, complete port, not a stub</li>
+          <li>Optimisation Centre: memory, storage, startup, fan control, game profiles</li>
+          <li>RGB Control: direct-HID Corsair + OpenRGB, merged behind one interface</li>
+          <li>Peripheral detection by USB vendor ID, zero vendor software required</li>
+          <li>Temperature alerts, tray live metrics, accent theming</li>
+          <li>Plugin framework with a working sample plugin</li>
+        </ul>
+      </div>
+      <div class="status-col">
+        <h4><span class="pill progress">In progress / next</span></h4>
+        <ul>
+          <li>Bundled OpenRGB management for non-Corsair RGB devices</li>
+          <li>Logitech/Razer direct control, same approach as Corsair</li>
+          <li>Product-style imagery on device/drive cards</li>
+          <li>NavigationView pane visual polish</li>
+        </ul>
+      </div>
+      <div class="status-col">
+        <h4><span class="pill deferred">Deliberately not done</span></h4>
+        <ul>
+          <li>Undervolting — needs a kernel-mode driver and register values tuned for different silicon</li>
+          <li>HP-style BIOS auto-checking — the reference is laptop-specific and mostly just links out</li>
+          <li>Per-game RGB profiles — possible now, just not wired up yet</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Provenance</h2>
+    <h3 class="section-heading">Reused from Matt's existing projects</h3>
+    <p class="lede">Rather than re-deriving hardware-sensor behaviour from scratch, the parts that needed real-hardware validation were ported from proven, already-tested code.</p>
+    <div class="provenance grid">
+      <div class="card">
+        <h4><span class="dot"></span>Portrait Stats</h4>
+        <p>CPU/GPU/RAM sensor name-matching, best-GPU-by-VRAM selection, <code>FanLabelStore</code>, <code>ProcessRankerService</code>, <code>RtssFpsSource</code>, and Portrait Mode's entire layout and control set.</p>
+      </div>
+      <div class="card">
+        <h4><span class="dot"></span>OmenCore</h4>
+        <p><code>CorsairHidDirect</code> ported into <code>CorsairHidDirectService</code> — direct-HID Corsair RGB control, including the full known-product table and per-PID HID report layouts.</p>
+      </div>
+      <div class="card">
+        <h4><span class="dot"></span>Radium PCs Companion</h4>
+        <p>Visual reference for radial gauges, animated numbers, severity-based tone colouring, the RAM cleaner technique, and Startup Manager's layout.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-links">
+      <a href="https://github.com/theantipopau/aether-control">Repository</a>
+      <a href="https://github.com/theantipopau/aether-control/blob/main/README.md">README</a>
+      <a href="https://github.com/theantipopau/aether-control/blob/main/ROADMAP.md">Roadmap</a>
+      <a href="https://github.com/theantipopau/aether-control/issues">Issues</a>
+    </div>
+    All rights reserved. This is Matt's personal project, shared publicly for visibility; no license is granted for reuse without permission.
+  </div>
+</footer>
+
+</body>
+</html>
