@@ -64,4 +64,18 @@ public partial class App : Application
         MainWindow = new MainWindow();
         MainWindow.Activate();
     }
+
+    /// <summary>
+    /// Disposes the background services <see cref="OnLaunched"/> starts that nothing else in the
+    /// process ever tears down — <see cref="TemperatureAlertService"/> and <see cref="IGameProfileService"/>
+    /// each subscribe to a long-lived singleton's event (<c>IHardwareMonitorService.SnapshotUpdated</c>)
+    /// or run their own background <see cref="Timer"/>, and were previously never disposed at all.
+    /// Must be called from <see cref="MainWindow"/>'s shutdown path BEFORE anything UI-facing
+    /// (tray icon, windows) is disposed — see that class's own ordered-shutdown comment for why.
+    /// </summary>
+    public void StopBackgroundServices()
+    {
+        _temperatureAlertService?.Dispose();
+        Services.GetRequiredService<IGameProfileService>().Dispose();
+    }
 }

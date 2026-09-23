@@ -28,6 +28,7 @@ public sealed partial class MainWindow : Window
     ];
 
     private bool _exitRequested;
+    private bool _isClosing;
     private PortraitWindow? _portraitWindow;
     private IReadOnlyList<TrayMetricPreference> _trayPreferences = DefaultTrayPreferences;
 
@@ -83,7 +84,17 @@ public sealed partial class MainWindow : Window
     {
         // Fires on HardwareMonitorService's background polling thread — TrayIcon is a UI-thread object.
         var readout = TrayReadoutFormatter.Format(e.Snapshot, _trayPreferences);
-        DispatcherQueue.TryEnqueue(() => TrayIcon.ToolTipText = string.IsNullOrWhiteSpace(readout) ? "Aether Control" : readout);
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            // A callback can already be sitting in the UI-thread dispatch queue (enqueued from a
+            // poll moments before the user closed the window) by the time OnWindowClosed disposes
+            // TrayIcon — unsubscribing there stops NEW callbacks, this guard is what stops one
+            // that's already queued from touching the now-closed TrayIcon.
+            if (!_isClosing)
+            {
+                TrayIcon.ToolTipText = string.IsNullOrWhiteSpace(readout) ? "Aether Control" : readout;
+            }
+        });
     }
 
     private void ConfigureTitleBarButtons()
@@ -149,13 +160,29 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        // Ordered shutdown. A recurring crash signature (RO_E_CLOSED / combase.dll, roughly weekly,
+        // usually within ~30s of launch — i.e. shortly after open-then-close) matches this exactly:
+        // OnSnapshotUpdatedForTray's DispatcherQueue.TryEnqueue callback, already queued from a
+        // background poll moments before the user closed the window, running AFTER TrayIcon.Dispose()
+        // below and touching the now-closed WinRT object. Stop everything that can enqueue new UI
+        // work FIRST (unsubscribe + the _isClosing guard above), then dispose UI objects, then the
+        // hardware session itself — not the reverse.
+        _isClosing = true;
+        var hardwareMonitor = App.Services.GetRequiredService<IHardwareMonitorService>();
+        hardwareMonitor.SnapshotUpdated -= OnSnapshotUpdatedForTray;
+
+        // TemperatureAlertService and IGameProfileService each subscribe to a long-lived singleton's
+        // event or run their own background Timer, and previously were never disposed at all.
+        ((App)Microsoft.UI.Xaml.Application.Current).StopBackgroundServices();
+
+        _portraitWindow?.ForceClose();
+
         // H.NotifyIcon's TaskbarIcon owns a hidden native window for the tray icon that
         // Application.Exit() doesn't know about — without disposing it explicitly here, the
         // process stays alive (and the icon lingers in the tray) even after every XAML window closes.
-        _portraitWindow?.ForceClose();
         TrayIcon.Dispose();
 
-        App.Services.GetRequiredService<IHardwareMonitorService>().Dispose();
+        hardwareMonitor.Dispose();
         Microsoft.Windows.AppNotifications.AppNotificationManager.Default.Unregister();
 
         Microsoft.UI.Xaml.Application.Current.Exit();
