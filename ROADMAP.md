@@ -2,7 +2,57 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race)
+
+## Phase 35 — Ordered shutdown: tray-icon crash race
+Stage 1's second item: the audit found 4 crash dumps in 30 days, most with a
+`RO_E_CLOSED` / `combase.dll` signature roughly 30s after launch. No native
+debugger is installed on this machine (WinDbg/cdb) to read the dumps
+directly, so this was root-caused by code-path analysis instead — reasoned
+through every step of `MainWindow.OnWindowClosed`, cross-checked against the
+crash signature and timing, then verified by closing the specific race it
+implicates.
+- **Root cause**: `OnSnapshotUpdatedForTray` (subscribed for the app's whole
+      life, fires on the hardware poll's background thread) does
+      `DispatcherQueue.TryEnqueue(() => TrayIcon.ToolTipText = ...)`.
+      `OnWindowClosed` disposed `TrayIcon` before ever stopping the hardware
+      monitor's timer or unsubscribing that handler. `TryEnqueue` is
+      asynchronous — a callback already sitting in the UI-thread dispatch
+      queue (enqueued a moment before the user closed the window) runs
+      *after* `TrayIcon.Dispose()` and touches the now-closed WinRT object.
+      `RO_E_CLOSED` is exactly "the object has been closed."
+- [x] Unsubscribe `SnapshotUpdated -= OnSnapshotUpdatedForTray` as the first
+      thing in the real-shutdown branch — stops any *new* callback.
+- [x] `_isClosing` guard inside the already-queued callback itself — stops
+      the one edge case unsubscribing can't (a callback enqueued before
+      `OnWindowClosed` even started running).
+- [x] Reordered: unsubscribe → dispose background services → dispose
+      `_portraitWindow` → dispose `TrayIcon` → dispose the hardware session
+      itself → unregister notifications → exit. Not the previous order.
+- [x] **Found a second real bug while auditing this same path**:
+      `TemperatureAlertService` and `IGameProfileService` are both
+      `IDisposable`, each subscribe to a long-lived singleton's event (or run
+      their own background `Timer`), and neither was ever disposed anywhere
+      — a plain resource leak independent of the crash, not just a shutdown-
+      ordering issue. New `App.StopBackgroundServices()` disposes both,
+      called from `MainWindow`'s shutdown path.
+- [x] 53/53 tests still pass; full solution rebuild clean.
+- [x] Verified via 6 real graceful-close cycles — `taskkill` *without* `/F`
+      (an actual `WM_CLOSE` through `OnWindowClosed`, not a force-kill that
+      bypasses application code entirely) against a live, elevated instance.
+      Had to temporarily flip `minimise_to_tray_on_close` off in the SQLite
+      settings DB first — with it on (the default), a graceful close just
+      hides to tray rather than exercising the real shutdown path at all,
+      which is itself worth knowing. All 6 exited cleanly; zero new crash
+      dumps; setting restored to its default afterward.
+- **Honest limit**: the original crash was roughly weekly, i.e. rare — 6
+      clean cycles is not a statistical disproof of a rare race. What's
+      actually verified is that the specific mechanism the crash signature
+      implicates is now structurally closed (unsubscribe-before-dispose plus
+      a guard on the one already-queued case), not that six trials happened
+      not to hit it. Installing a native debugger (WinDbg/cdb — not present
+      on this machine) to read the existing crash dumps directly would give
+      real confirmation; flagged as a possible follow-up if a crash recurs.
 
 ## Phase 34 — Single hardware owner + self-healing Super I/O reads
 Opus 5.5 audited the whole project live on Matt's machine (crash dumps, event
