@@ -15,18 +15,43 @@ namespace AetherControl.Services.Hardware;
 /// <see cref="HardwareSnapshot"/> on every tick. CPU package sensors and some
 /// SMBus-based motherboard sensors require the process to run elevated;
 /// when it isn't, those readings simply come back as zero rather than throwing.
+/// <para>
+/// This is the ONLY thing <em>in this process</em> allowed to touch Super I/O (motherboard
+/// voltages/fans). A prior design (<c>AetherControl.FanHelper.exe</c>, a second process spawned
+/// every 3 seconds to read fan RPM) was removed after a live A/B test (2026-09-23) proved two
+/// concurrent Super I/O readers/writers on the same Nuvoton chip make BOTH sides read back 0xFF
+/// persistently — every voltage pinned at 2.04V/4.08V, every fan 0 RPM. Fan RPM is now read
+/// directly from this session's own SuperIO sensors, same as every other motherboard sensor, via
+/// <see cref="HardwareSnapshotMapper.MapMotherboard"/>.
+/// </para>
+/// <para>
+/// That alone isn't sufficient, though: real ASUS/vendor software already installed on the machine
+/// (Armoury Crate, iCUE, etc. — see <see cref="ConflictingProcessNames"/>) polls the same chip on
+/// its own schedule regardless of anything Aether does. Confirmed by live testing (2026-09-23) with
+/// nothing of Aether's own running concurrently: a fresh <c>Computer.Open()</c> sometimes gets a
+/// poisoned first read, and a poisoned read never self-corrects — 30 consecutive one-second polls
+/// all reproduced the identical invalid pattern — until the whole session is closed and reopened.
+/// A live system also re-poisons roughly every ~11 seconds on an otherwise idle poll loop, an
+/// unmistakably periodic cadence, not random noise. <see cref="EnsureSuperIoReadsAreValid"/> and
+/// the mid-session check in <see cref="Poll"/> handle both: detect via <see cref="LooksPoisoned"/>,
+/// serve the last known-good motherboard reading rather than publish impossible values, and reopen
+/// (rate-limited by <see cref="ReopenCooldown"/> so sustained contention can't turn into a Close/Open
+/// every single poll) until a clean read comes back.
+/// </para>
 /// </summary>
 public sealed class HardwareMonitorService : IHardwareMonitorService, IFanControlService
 {
-    private static readonly TimeSpan FanProbeInterval = TimeSpan.FromSeconds(3);
-
     // Best-effort — exact service names aren't publicly documented and vary by ASUS software
-    // version. This list previously claimed "AsusFanControlService" was confirmed to blank out fan
-    // RPM readings; that was disproven by a live A/B test (see FanRpmProbeService) — the real cause
-    // of the empty readings was a LibreHardwareMonitorLib version gap, not this service. It's kept
-    // here purely as a plausible source of *write* conflicts (two programs both trying to drive the
-    // same fan-control channel), which was never actually tested either way. A miss here just means
-    // the warning doesn't show, not that control silently fails worse.
+    // version. An earlier version of this comment claimed "AsusFanControlService" specifically was
+    // confirmed to blank out fan RPM readings and that this was disproven; the disproof was correct
+    // (the empty-readings bug then was a LibreHardwareMonitorLib version gap) but the general
+    // premise — vendor software on this list contending for the same Super I/O chip — was later
+    // confirmed true a different way: a live idle system (2026-09-23, nothing of Aether's own
+    // running concurrently) re-poisoned its own Super I/O reads on an unmistakably periodic ~11
+    // second cadence with Armoury Crate + iCUE both running, which is what EnsureSuperIoReadsAreValid
+    // and Poll's mid-session check now self-heal from (see this class's own doc comment). This list
+    // is a best-effort UI warning for *write* conflicts specifically (two programs both trying to
+    // drive the same fan-control channel) — a miss here just means the warning doesn't show.
     private static readonly string[] ConflictingProcessNames =
     [
         "AsusFanControlService",
@@ -42,13 +67,16 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
     private readonly ILogger<HardwareMonitorService> _logger;
     private readonly INetworkMonitorService _networkMonitor;
-    private readonly FanRpmProbeService _fanProbe;
     private readonly ProcessRankerService _processRanker;
     private readonly Computer _computer;
     private readonly HardwareUpdateVisitor _visitor = new();
 
+    private static readonly TimeSpan ReopenCooldown = TimeSpan.FromSeconds(10);
+
     private Timer? _timer;
     private readonly object _pollLock = new();
+    private bool _reopenPending;
+    private DateTime _lastReopenAttemptUtc = DateTime.MinValue;
     private readonly Lazy<double> _memorySpeedMhz = new(MemorySpeedProbe.QuerySpeedMhz);
     private readonly EmaSmoother _cpuClockSmoother = new();
     private readonly Dictionary<int, EmaSmoother> _coreClockSmoothers = new();
@@ -70,12 +98,10 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     public HardwareMonitorService(
         ILogger<HardwareMonitorService> logger,
         INetworkMonitorService networkMonitor,
-        FanRpmProbeService fanProbe,
         ProcessRankerService processRanker)
     {
         _logger = logger;
         _networkMonitor = networkMonitor;
-        _fanProbe = fanProbe;
         _processRanker = processRanker;
         _computer = new Computer
         {
@@ -106,16 +132,94 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
             // startup-critical failure point gets a permanent, minimal, best-effort file log — same
             // idea as AetherControl.App's own UnhandledExceptionLog, just for Services, which can't
             // reference the App project.
-            try
+            LogStartupDiagnostic("hardware-open-failed.log", ex.ToString());
+        }
+
+        EnsureSuperIoReadsAreValid();
+    }
+
+    private const int MaxSuperIoOpenAttempts = 5;
+
+    /// <summary>
+    /// A fresh <see cref="Computer.Open"/> on this board (Nuvoton NCT6701D) sometimes gets a
+    /// "poisoned" first Super I/O read that never self-corrects for that session's lifetime — proven
+    /// via a live capture (2026-09-23): 30 consecutive one-second polls all read back the exact same
+    /// invalid pattern (every voltage rail collapsed to one of two identical values — Vcore = AVCC =
+    /// CMOS Battery = 2.04V or 4.08V, which is physically impossible; real boards report many
+    /// genuinely distinct rails). A real hardware/driver quirk, not a multi-process contention issue —
+    /// it reproduced with nothing else touching the chip. Detected by counting distinct voltage
+    /// values; if too few for this many sensors, the whole <see cref="Computer"/> session is closed
+    /// and reopened (a fresh native driver handle) and re-checked, up to a few times.
+    /// </summary>
+    private void EnsureSuperIoReadsAreValid()
+    {
+        for (var attempt = 1; attempt <= MaxSuperIoOpenAttempts; attempt++)
+        {
+            var superIo = FindSuperIo();
+            if (superIo is null)
             {
-                var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Aether Control", "hardware-open-failed.log");
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {ex}\n\n");
+                return; // no Super I/O chip on this board — nothing to validate
             }
-            catch
+
+            superIo.Update();
+            var (poisoned, distinctCount, sensorCount) = LooksPoisoned(VoltageValues(superIo.Sensors));
+            if (!poisoned)
             {
-                // best-effort diagnostic only
+                if (attempt > 1)
+                {
+                    LogStartupDiagnostic("superio-reopen.log", $"Recovered after {attempt} attempt(s) — {distinctCount} distinct voltage values.");
+                }
+
+                return;
             }
+
+            LogStartupDiagnostic("superio-reopen.log",
+                $"Startup attempt {attempt}/{MaxSuperIoOpenAttempts}: poisoned read ({distinctCount} distinct value(s) across {sensorCount} voltage sensors) — reopening the hardware session.");
+
+            if (attempt == MaxSuperIoOpenAttempts)
+            {
+                break; // don't reopen again just to fall out of the loop unused
+            }
+
+            _computer.Close();
+            Thread.Sleep(300);
+            _computer.Open();
+        }
+
+        LogStartupDiagnostic("superio-reopen.log", $"Still poisoned after {MaxSuperIoOpenAttempts} attempts — voltages/fans will read wrong until Aether Control is restarted.");
+    }
+
+    private static IEnumerable<double> VoltageValues(IEnumerable<ISensor> sensors) =>
+        sensors.Where(s => s.SensorType == SensorType.Voltage && s.Value.HasValue).Select(s => (double)s.Value!.Value);
+
+    /// <summary>
+    /// Real hardware reports many genuinely distinct voltage rails (Vcore, +3.3V, AVCC, CPU
+    /// termination, ...) — the poisoned read this guards against collapses ALL of them into one or
+    /// two identical values instead. &gt;= 4 distinct values is a conservative real-hardware threshold
+    /// (this board's 15 voltage sensors cover at least 6 genuinely different rails when reading
+    /// correctly). Boards with very few voltage sensors to begin with just won't trip this check.
+    /// Pure and <c>internal</c> (not tied to <see cref="ISensor"/>) specifically so it's directly
+    /// unit-testable against the exact values captured from the live poisoned/healthy reads this
+    /// guards against (see <c>SuperIoPoisonDetectionTests</c>).
+    /// </summary>
+    internal static (bool Poisoned, int DistinctCount, int SensorCount) LooksPoisoned(IEnumerable<double> voltageValues)
+    {
+        var values = voltageValues.Select(v => Math.Round(v, 2)).ToList();
+        var distinct = values.Distinct().Count();
+        return (values.Count >= 4 && distinct < 4, distinct, values.Count);
+    }
+
+    private static void LogStartupDiagnostic(string fileName, string message)
+    {
+        try
+        {
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Aether Control", fileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}\n");
+        }
+        catch
+        {
+            // best-effort diagnostic only
         }
     }
 
@@ -126,7 +230,6 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     public void Start(TimeSpan pollingInterval)
     {
         _networkMonitor.Start(pollingInterval);
-        _fanProbe.Start(FanProbeInterval);
         _timer?.Dispose();
         _timer = new Timer(_ => SafePoll(), null, TimeSpan.Zero, pollingInterval);
     }
@@ -136,7 +239,6 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         _timer?.Dispose();
         _timer = null;
         _networkMonitor.Stop();
-        _fanProbe.Stop();
     }
 
     public void SetPollingInterval(TimeSpan interval)
@@ -168,6 +270,20 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
     private void Poll()
     {
+        if (_reopenPending)
+        {
+            // Deferred from the end of the previous poll rather than done immediately when detected —
+            // this poll's cpu/gpu/motherboard/storage IHardware references are all about to be
+            // re-fetched fresh below, so there's no risk of using objects from a session that's
+            // already been closed underneath them. Reuses the same verify-and-retry loop startup
+            // uses rather than a single blind reopen — a bare reopen with no verification was found
+            // (2026-09-23, live test) to sometimes re-poison itself on its own very next read (the
+            // same "first read after Open() can be bad" quirk EnsureSuperIoReadsAreValid guards
+            // against), producing an infinite poison→reopen→poison loop with no external cause at all.
+            _reopenPending = false;
+            EnsureSuperIoReadsAreValid();
+        }
+
         _computer.Accept(_visitor);
 
         var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
@@ -185,11 +301,30 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
         var rawStorage = HardwareSnapshotMapper.MapStorage(storageDevices);
         var motherboardInfo = HardwareSnapshotMapper.MapMotherboard(motherboard);
-        if (_fanProbe.LatestFanSpeeds.Count > 0)
+        var superIoSensors = motherboard?.SubHardware.FirstOrDefault(h => h.HardwareType == HardwareType.SuperIO)?.Sensors;
+        if (superIoSensors is not null && LooksPoisoned(VoltageValues(superIoSensors)) is { Poisoned: true } poisonCheck)
         {
-            // Overlay the out-of-process probe's readings — see FanRpmProbeService for why the
-            // long-lived Computer instance's own Fan sensors aren't trusted for this.
-            motherboardInfo.FanSpeeds = _fanProbe.LatestFanSpeeds;
+            // Same signature EnsureSuperIoReadsAreValid checks at startup, but found mid-session —
+            // proven (2026-09-23) to happen with nothing else touching the chip and to never
+            // self-correct without a full Close/Open. Falls back to the last known-good motherboard
+            // reading for this one tick (same "stale beats garbage" convention as storage free-space)
+            // rather than publish impossible voltages/fans.
+            if (LatestSnapshot is not null)
+            {
+                motherboardInfo = LatestSnapshot.Motherboard;
+            }
+
+            // Cooldown, not "reopen on every poisoned poll" — sustained real contention (another
+            // program polling Super I/O continuously) would otherwise mean a Close/Open every single
+            // second forever. Serving last-known-good between attempts is the safe degraded state;
+            // there's no need to hammer the driver to get there.
+            if (DateTime.UtcNow - _lastReopenAttemptUtc >= ReopenCooldown)
+            {
+                LogStartupDiagnostic("superio-reopen.log",
+                    $"Mid-session poisoned read ({poisonCheck.DistinctCount} distinct value(s) across {poisonCheck.SensorCount} voltage sensors) — using last-known-good reading, reopening before next poll.");
+                _reopenPending = true;
+                _lastReopenAttemptUtc = DateTime.UtcNow;
+            }
         }
 
         // Not sourced from LibreHardwareMonitorLib's own Memory hardware node — see MemoryStatusProbe
@@ -260,6 +395,11 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     public bool IsConflictingVendorSoftwareRunning() =>
         ConflictingProcessNames.Any(name => Process.GetProcessesByName(name).Length > 0);
 
+    // Always true now that this session is the only thing in the process touching Super I/O — see
+    // this class's own doc comment. Kept as a real property (not a literal `true` at every call
+    // site) so a future second reader/writer (e.g. a plugin) has one obvious place to turn this off.
+    public bool IsSoftwareControlSafe => true;
+
     public IReadOnlyList<FanControlChannel> GetChannels()
     {
         lock (_pollLock)
@@ -287,6 +427,11 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
     public void SetPercent(string channelId, int percent)
     {
+        if (!IsSoftwareControlSafe)
+        {
+            return;
+        }
+
         var clamped = Math.Clamp(percent, MinSoftwareFanPercent, 100);
         lock (_pollLock)
         {

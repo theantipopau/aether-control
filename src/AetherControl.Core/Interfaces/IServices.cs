@@ -132,10 +132,19 @@ public interface IFanControlService
     /// fight over the same Super I/O ports — the UI should warn before a custom curve is applied.</summary>
     bool IsConflictingVendorSoftwareRunning();
 
+    /// <summary>False while a second process (previously <c>AetherControl.FanHelper.exe</c>) could
+    /// still be sharing Super I/O access with this session — confirmed by live A/B testing (2026-09-23)
+    /// that a second reader/writer on the same Nuvoton chip makes BOTH sides read back 0xFF (fans 0,
+    /// voltages pinned at 2.04V/4.08V) persistently, not just transiently. Writing a PWM duty cycle
+    /// while readback is scrambled risks writing to the wrong register. The UI must disable manual
+    /// control while this is false rather than let a write through silently.</summary>
+    bool IsSoftwareControlSafe { get; }
+
     IReadOnlyList<FanControlChannel> GetChannels();
 
     /// <summary>Applies a manual duty cycle to one channel. Implementations clamp away from 0% —
-    /// software fan control has no thermal-protection fallback if the app crashes mid-curve.</summary>
+    /// software fan control has no thermal-protection fallback if the app crashes mid-curve. No-op
+    /// (does not throw) when <see cref="IsSoftwareControlSafe"/> is false.</summary>
     void SetPercent(string channelId, int percent);
 
     void ResetToAutomatic(string channelId);

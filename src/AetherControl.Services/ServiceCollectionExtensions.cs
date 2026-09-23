@@ -30,7 +30,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHistoryService, HistoryService>();
 
         services.AddHttpClient<INetworkMonitorService, NetworkMonitorService>();
-        services.AddSingleton<FanRpmProbeService>();
         services.AddSingleton<FanLabelStore>();
         services.AddSingleton<AlertSettingsStore>();
         // HardwareMonitorService implements both interfaces but must stay a single instance —

@@ -108,7 +108,6 @@ remove one without restarting or touching the core app.
 | `AetherControl.Plugins.Abstractions` | net8.0 | `IAetherPlugin` and capability interfaces third-party modules implement |
 | `AetherControl.Data` | net8.0 | SQLite schema, migrations, repositories (settings, history, layouts) |
 | `AetherControl.Services` | net8.0-windows | Hardware monitoring (LibreHardwareMonitor), optimisation, RGB (Corsair direct HID + OpenRGB), firmware/driver detection, plugin loading |
-| `AetherControl.FanHelper` | net8.0-windows | Standalone console probe for motherboard fan RPM (see below for why) |
 | `AetherControl.App` | net8.0-windows10.0.19041.0 | WinUI 3 shell — dashboard, portrait mode, tray, all feature pages |
 | `AetherControl.Plugins.Sample` | net8.0 | Reference plugin (system uptime widget) |
 | `tests/AetherControl.Tests` | net8.0-windows | xUnit tests against the Data/Services layer |
@@ -120,7 +119,6 @@ dotnet build src/AetherControl.Core
 dotnet build src/AetherControl.Data
 dotnet build src/AetherControl.Plugins.Abstractions
 dotnet build src/AetherControl.Services
-dotnet build src/AetherControl.FanHelper
 dotnet build src/AetherControl.Plugins.Sample
 dotnet test  tests/AetherControl.Tests
 ```
@@ -150,11 +148,19 @@ Aether Control ships as its own standalone `.exe` — unpackaged, not MSIX.
   overrides, and the optimisation run log — plus small standalone JSON
   stores (fan labels, alert thresholds, game profiles) for state that
   doesn't need a relational shape.
-- **One safe hardware session** — LibreHardwareMonitor doesn't support
-  multiple concurrent `Computer` instances safely, so exactly one service
-  owns it; fan RPM specifically is read via a fresh out-of-process probe
-  every few seconds instead (see below), and fan *control* reuses the same
-  single session rather than opening a second one.
+- **One safe hardware session, with self-healing reads.** LibreHardwareMonitor
+  doesn't support multiple concurrent `Computer` instances safely, so exactly
+  one service owns it — fan RPM is read from that same session, not a second
+  process (see below for why an earlier out-of-process design was removed).
+  Already-installed vendor software (Armoury Crate, iCUE) still polls the same
+  motherboard chip on its own schedule regardless of anything Aether does, and
+  a live capture confirmed a real board can return an impossible "poisoned"
+  read (every voltage rail collapsed to one of two identical values) that
+  never self-corrects on its own. `HardwareMonitorService` detects this,
+  serves the last known-good reading instead of publishing garbage, and
+  reopens the session (rate-limited) until a clean read returns — confirmed
+  self-healing in under 2 seconds against a real ~11-second periodic
+  collision on this machine.
 
 ## Design principles that shaped real decisions
 
@@ -197,15 +203,18 @@ code:
   `ProcessRankerService` (CPU/GPU top-process ranking), `RtssFpsSource`
   (direct RTSS shared-memory FPS reads), and Portrait Mode's entire layout
   and control set (`RadialGauge`, `Sparkline`, `MetricTile`, `VendorBadge`)
-  — ported rather than reinvented, at Matt's own request. Fan RPM is still
-  read by a **separate short-lived process** (`AetherControl.FanHelper.exe`)
-  rather than the main long-lived LibreHardwareMonitor instance, but not for
-  the reason originally assumed: a live A/B test (service stopped vs.
-  running) proved `AsusFanControlService` was never actually the cause of
-  fan RPM sticking at 0 — the real cause was a LibreHardwareMonitorLib
-  version gap (see ROADMAP.md). Portrait Mode's colour palette was later
-  unified with Aether Control's own single-accent theme instead of staying
-  a separate port.
+  — ported rather than reinvented, at Matt's own request. Fan RPM used to be
+  read by a separate short-lived process (`AetherControl.FanHelper.exe`),
+  under the assumption that `AsusFanControlService` reclaiming the Super I/O
+  ports caused RPM to stick at 0. A live A/B test disproved that specific
+  claim — the real cause then was a LibreHardwareMonitorLib version gap — but
+  a second process reading the same chip turned out to cause a *worse*,
+  related problem: two concurrent readers can make both sides read back
+  garbage persistently. `AetherControl.FanHelper.exe` was removed; fan RPM is
+  now read from the single shared session, which self-heals from genuine
+  external contention instead (see "One safe hardware session" above).
+  Portrait Mode's colour palette was later unified with Aether Control's own
+  single-accent theme instead of staying a separate port.
 - **OmenCore** — `CorsairHidDirect` ported into `CorsairHidDirectService`:
   direct-HID Corsair keyboard/mouse RGB control (no iCUE, no OpenRGB),
   including the full known-product table and per-PID HID report layouts

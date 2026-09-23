@@ -30,22 +30,10 @@
     <ProjectReference Include="..\AetherControl.Data\AetherControl.Data.csproj" />
     <ProjectReference Include="..\AetherControl.Services\AetherControl.Services.csproj" />
     <ProjectReference Include="..\AetherControl.Plugins.Abstractions\AetherControl.Plugins.Abstractions.csproj" />
-    <!-- Intentionally not a normal (assembly) reference: the fan-RPM helper is copied next to
-         the app's own executable so it can be launched as a fresh child process each poll —
-         see FanRpmProbeService for why it must be an out-of-process probe. -->
-    <ProjectReference Include="..\AetherControl.FanHelper\AetherControl.FanHelper.csproj"
-                       ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
-  <Target Name="CopyFanHelperOutput" AfterTargets="Build">
-    <ItemGroup>
-      <FanHelperOutput Include="..\AetherControl.FanHelper\bin\$(Configuration)\net8.0-windows\**\*.*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(FanHelperOutput)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-  </Target>
 
 </Project>

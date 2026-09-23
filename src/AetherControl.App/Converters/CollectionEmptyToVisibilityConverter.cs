@@ -8,9 +8,9 @@ namespace AetherControl.App.Converters;
 /// Shows an element only when the bound collection is empty — pairs with a
 /// "no data yet" placeholder next to an <c>ItemsControl</c> that would
 /// otherwise just render nothing when a sensor group isn't available (e.g.
-/// motherboard fan RPM on a board where a vendor service is holding the
-/// Super I/O ports — see FanRpmProbeService). Pass ConverterParameter
-/// "Invert" to get the opposite (visible only when non-empty).
+/// motherboard fan RPM on a board with no Super I/O chip LibreHardwareMonitor
+/// recognises). Pass ConverterParameter "Invert" to get the opposite
+/// (visible only when non-empty).
 /// <para>
 /// Accepts either the collection itself or a plain <c>int</c> count. The persistent
 /// <c>ObservableCollection&lt;T&gt;</c> properties (see ObservableCollectionMergeExtensions) never

@@ -2,7 +2,92 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads)
+
+## Phase 34 — Single hardware owner + self-healing Super I/O reads
+Opus 5.5 audited the whole project live on Matt's machine (crash dumps, event
+log, a live sensor dump, an A/B contention test) and produced a 5-stage plan;
+Matt approved two immediate decisions (disable fan writes until fixed; do the
+background-service split right after this stage) and asked to work through
+the plan. This is Stage 1's first and largest item.
+- [x] **Removed `AetherControl.FanHelper.exe` entirely** (project, solution
+      entry, `ProjectReference`/copy-target, DI registration). A live A/B test
+      (2026-09-23) proved this app's own out-of-process fan-RPM probe was the
+      thing breaking motherboard reads: two concurrent Super I/O readers on
+      the same Nuvoton NCT6701D chip make BOTH sides read back a poisoned
+      pattern (every voltage rail collapsed to one of two identical values —
+      Vcore = AVCC = CMOS Battery = 2.04V or 4.08V) persistently. Fan RPM is
+      now read from `HardwareMonitorService`'s own single session, same as
+      every other motherboard sensor.
+- [x] **`IFanControlService.IsSoftwareControlSafe`** — per Matt's approval,
+      `SetPercent` no-ops unless this is true. Returns `true` now that the
+      contention source is removed (`ResetToAutomatic`/`ResetAllToAutomatic`
+      were never gated — returning to BIOS default is always the safe
+      direction).
+- [x] **A much deeper problem, found while verifying the above**: removing
+      FanHelper alone did NOT fully fix it. A fresh `Computer.Open()` on this
+      board sometimes gets a poisoned first Super I/O read that never
+      self-corrects for that session's lifetime — reproduced with a live
+      capture showing 30 consecutive one-second polls all reading the
+      identical invalid pattern, with nothing else touching the chip.
+      Separately, already-installed vendor software (Armoury Crate, iCUE —
+      both running throughout testing) genuinely does poll the same chip on
+      its own schedule: an idle system with nothing of Aether's own running
+      concurrently re-poisoned on an unmistakably periodic ~11-second
+      cadence.
+- [x] **`HardwareMonitorService.LooksPoisoned`** (`internal static`, pure —
+      takes plain voltage values, not `ISensor`, specifically so it's
+      unit-testable) — flags a read where 4+ voltage sensors collapse into
+      fewer than 4 distinct values. Real boards report many genuinely
+      different rails; this board's 15 sensors cover at least 8 when reading
+      correctly (measured), 2 when poisoned.
+- [x] **`EnsureSuperIoReadsAreValid`** — called once at startup after
+      `Computer.Open()`: detects, and if poisoned, Close()/Open()s and
+      re-checks, up to 5 attempts.
+- [x] **Mid-session self-healing in `Poll()`** — the same detection runs on
+      every poll. A poisoned tick falls back to the last known-good
+      motherboard reading (same "stale beats garbage" convention already used
+      for storage free-space) rather than publish impossible values, and
+      schedules a reopen for the *start* of the next poll (not mid-tick —
+      this poll's already-fetched `IHardware` references stay valid for the
+      rest of this tick). Rate-limited to once per 10 seconds
+      (`ReopenCooldown`) so sustained real contention can't turn into a
+      Close/Open on every single poll.
+- [x] **Found and fixed a self-inflicted infinite loop while testing this**:
+      the first version of the mid-session recovery did one blind
+      Close()+Open() with no verification. Because a reopen's own very next
+      read can *also* be poisoned (same root quirk), this could re-trigger
+      the mid-session check on the very next poll forever, with zero external
+      cause — confirmed live (continuous poison/reopen pairs ~2s apart,
+      unbounded, after all external test processes had already exited). Fixed
+      by routing the mid-session recovery through the same verify-and-retry
+      `EnsureSuperIoReadsAreValid` startup uses, plus the cooldown above.
+- [x] **`hardware-open-failed.log` / `superio-reopen.log`** — permanent,
+      minimal, best-effort file logs (`%APPDATA%\Aether Control\`) for
+      `Computer.Open()` failure and every poison/recover/reopen event. No
+      `ILogger` provider is wired up anywhere in the App project (it goes to
+      the Windows Event Log, not nowhere — corrected a wrong claim from an
+      earlier session), so this is the only place a future regression like
+      this is visible without a live diagnostic session.
+- [x] **`SuperIoPoisonDetectionTests`** (6 tests) — pins the detection logic
+      against the *exact* voltage values captured live from both the
+      poisoned and healthy reads on this machine, plus the sensor-count and
+      boundary edge cases. 53/53 tests pass overall.
+- [x] Verified end-to-end multiple ways: (1) external probe vs. Aether
+      running/closed — matched the pre-fix baseline; (2) 30 consecutive polls
+      from Aether's own live session; (3) 6 then 5 confirmed launch/kill
+      cycles with no poisoning; (4) a deliberate 20-request hammer against a
+      running session — detected and recovered every time, no garbage ever
+      reached `LatestSnapshot`; (5) a single gentle probe against normal
+      operation — caught a real collision, self-healed in ~2.4s.
+- [x] README/docs site updated (FanHelper removed from the project table,
+      build instructions, and provenance section; "One safe hardware
+      session" bullet now describes the self-healing behaviour).
+- **Not yet done** (rest of Stage 1): crash-dump analysis (no native debugger
+      installed — `cdb`/WinDbg still needed), ordered shutdown, sensor-mapping
+      accuracy fixes (effective clocks, real Vcore, named board temps, unused
+      data), wiring up or removing the 6 dead settings, a diagnostics/support-
+      bundle page, and hardware-fixture tests for the CPU/GPU mapper.
 
 ## Phase 33 — Shared metric-quality model — storage
 Continuing `docs/ROADMAP.md`'s "Next" sequence after Phase 32 closed. Added
