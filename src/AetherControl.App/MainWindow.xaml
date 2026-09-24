@@ -122,6 +122,11 @@
                         <FontIcon Glyph="&#xE7FC;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Content="Diagnostics" Tag="Diagnostics">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9CE;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <Frame x:Name="ContentFrame">

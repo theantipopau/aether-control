@@ -1,0 +1,115 @@
+<Page
+    x:Class="AetherControl.App.Views.DiagnosticsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:AetherControl.App.Controls"
+    Background="{StaticResource AetherBackgroundTranslucentBrush}">
+
+    <Page.Resources>
+        <Style x:Key="DiagnosticRowLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource SecondaryTextStyle}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="DiagnosticRowValueStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource AetherTextPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="28" MaxWidth="620" HorizontalAlignment="Left">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Diagnostics" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="What Aether Control detected on this machine, and a one-click export for bug reports."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Environment" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <Grid ColumnSpacing="16" RowSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="App version" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.AppVersion}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="LibreHardwareMonitorLib version" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.LibreHardwareMonitorVersion}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Operating system" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.OsDescription}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Running elevated" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.IsElevated}" Style="{StaticResource DiagnosticRowValueStyle}" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Detected Hardware" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <Grid ColumnSpacing="16" RowSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="CPU" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.CpuName}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="GPU" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.GpuName}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Motherboard" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.MotherboardModel}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Voltage sensors reported" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.VoltageSensorCount}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Fan sensors reported" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{x:Bind ViewModel.FanSensorCount}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Temperature sensors reported" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{x:Bind ViewModel.TemperatureSensorCount}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Drives detected" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{x:Bind ViewModel.DriveCount}" Style="{StaticResource DiagnosticRowValueStyle}" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
+                <controls:SectionHeader Label="Support Bundle" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Packages the report above, the latest full sensor snapshot, and the last 3 days of log files into one zip — attach it to a bug report instead of describing your setup by hand."
+                                   Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                        <TextBlock Text="{x:Bind ViewModel.LogDirectoryDisplayPath, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" FontSize="12" TextWrapping="Wrap" />
+                        <Button Content="Export support bundle" Command="{x:Bind ViewModel.ExportSupportBundleCommand}" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Left" />
+                        <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

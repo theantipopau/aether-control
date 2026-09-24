@@ -127,6 +127,7 @@ public sealed partial class MainWindow : Window
             "Firmware" => typeof(FirmwarePage),
             "Devices" => typeof(DeviceUtilitiesPage),
             "History" => typeof(HistoryPage),
+            "Diagnostics" => typeof(DiagnosticsPage),
             _ => typeof(DashboardPage)
         };
 
