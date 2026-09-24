@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.5-pre429" />
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.5" />
     <!-- Must stay in lockstep with whatever LibreHardwareMonitorLib itself was built against — it
          calls into System.Management directly (Motherboard.Lpc.Ipmi.IsBmcPresent), and .NET's
          strong-name assembly loading is exact-version, not "compatible or newer": pinning this
@@ -17,12 +17,12 @@
          app's hardware readings at zero with no error visible anywhere (see git history — this
          exact regression happened when LibreHardwareMonitorLib was bumped to 0.9.5-pre429 without
          also bumping this). -->
-    <PackageReference Include="System.Management" Version="9.0.7" />
+    <PackageReference Include="System.Management" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
-    <PackageReference Include="HidSharp" Version="2.1.0" />
+    <PackageReference Include="HidSharp" Version="2.6.4" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.1" />
   </ItemGroup>
 
