@@ -161,7 +161,14 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
             DriveTempSeverity = PortraitSeverityThresholds.ForTemp(primaryDrive.TemperatureCelsius, warn: 50, critical: 60);
         }
 
+        // A 0 RPM header is almost always an unpopulated fan header on this board, not a real fan
+        // that stopped — Dashboard still shows every header raw (that page's job is "show the board
+        // exactly as it reports"), but Portrait Mode is meant to be a compact, glanceable panel, and
+        // 3-4 permanently-dead rows out of 7 just eat space for nothing. A real fan idling at
+        // genuinely 0 RPM (a zero-RPM BIOS curve) will also disappear here while it's at 0 — an
+        // accepted tradeoff for a smaller, real-signal-only list.
         var fanRows = snapshot.Motherboard.FanSpeeds
+            .Where(f => f.Value > 0)
             .Select(f => new PortraitFanRow(f.Name, _fanLabelStore.GetLabel(f.Name, f.Name), $"{f.Value:F0} RPM"))
             .ToList();
         Fans.MergeFrom(fanRows, f => f.FanId);
