@@ -2,7 +2,76 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap)
+
+## Phase 37 — Mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap
+Stage 1's last two items: pin the sensor-mapping fixes from Phase 36 against
+real captured data (not just live spot-checks), and give the diagnostics/
+support-bundle page a UI. Also found and worked around a real, currently-live
+break in this machine's `dotnet build` toolchain unrelated to app code.
+
+**`HardwareSnapshotMapper` fixture tests** (`HardwareSnapshotMapperTests.cs`,
+new `Fakes/FakeHardware.cs` — minimal hand-written `IHardware`/`ISensor`
+implementations, since the real ones come from a sealed vendor library with
+no test seam):
+- Pins the "Cores (Average Effective)" vs. "Cores (Average)" clock
+  preference, using the exact 5395/1535 MHz pair from Phase 36's live
+  capture — regresses loudly if a future change silently prefers the boost
+  ceiling again.
+- Pins that per-core clock never blends a "Core #1" (ceiling) and
+  "Core #1 (Effective)" (real) sensor into one meaningless average.
+- Pins that `CoreVoltage` rejects a `"Core #1 VID"` name (VID request, not a
+  measurement) and accepts real rail names (`"CPU Core"`, etc).
+- Pins the Board Temperatures fallback to all Super I/O temperature sensors
+  when none match a VRM/MOS name, and that named VRM sensors are still
+  preferred when they exist.
+- Pins motherboard voltage sort order (stable display position across polls).
+- 9 new tests, all passing; 62/62 total in the suite (was 53).
+
+**Diagnostics page** (`Views/DiagnosticsPage.xaml(.cs)`,
+`ViewModels/DiagnosticsViewModel.cs`, new nav item):
+- Capability report: app version, the *loaded* LibreHardwareMonitorLib
+  assembly version (not just what the csproj asks for), OS description,
+  whether the process is actually elevated, detected CPU/GPU/motherboard
+  names, and live voltage/fan/temperature/drive sensor counts.
+- "Export support bundle": one button writes a zip to
+  `Documents\Aether Control\` containing the capability report as text, the
+  full latest `HardwareSnapshot` as JSON, and the last 3 days of log files
+  from `AppFileLoggerProvider`'s log directory — then reveals it in
+  Explorer. Follows the same fixed-path, no-picker convention
+  `SettingsViewModel.ExportAsync` already uses for config export.
+
+**Found and worked around: this machine's `dotnet build`/`dotnet test` CLI
+can no longer build the WinUI3 App project at all**, restore or no restore —
+`Microsoft.Build.Packaging.Pri.Tasks.dll` (the Appx PRI-resource MSBuild
+task) is missing from all three installed .NET SDKs (8.0.422/9.0.318/
+10.0.401), confirmed absent on disk under all three. `AetherControl.pri` in
+the last successful build output is dated 2026-09-23, a day before this was
+hit — something removed the file between then and now; the dotnet SDKs
+themselves never shipped it in the first place, a real Visual Studio install
+does. Confirmed a working Visual Studio Community 2022 install already
+exists on this machine at
+`C:\Program Files\Microsoft Visual Studio\2022\Community` with the task DLL
+present under its own `MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\`.
+**Workaround**: build the App project with VS's own `MSBuild.exe`
+(`...\2022\Community\MSBuild\Current\Bin\amd64\MSBuild.exe`) instead of
+`dotnet build`/`dotnet publish` — confirmed this restores and builds the App
+project cleanly. `Core`/`Data`/`Services`/`Tests` are unaffected either way
+(no Appx/WinUI tooling involved) and keep building fine via plain
+`dotnet build`/`dotnet test`. No system files were modified to work around
+this — it's a build-invocation change, not a fix to the missing component.
+- [ ] Not a real fix — a full Visual Studio or Build Tools repair (or
+      reinstalling the "Universal Windows Platform build tools" /
+      "Windows App SDK C# Templates" workload) would be the actual fix, so
+      `dotnet build`/`dotnet publish` on the App project works again without
+      needing to know this detour. Not attempted — installing/repairing
+      software is a system change outside this session's scope without
+      asking first.
+
+62/62 tests pass; App project rebuilds clean via VS's MSBuild with 0
+warnings; Diagnostics page not yet live-verified in a running instance —
+blocked by Smart App Control flagging the freshly-rebuilt .exe (the same
+transient block seen earlier this session), still clearing as of writing.
 
 ## Phase 36 — Sensor-mapping accuracy, dead settings, stable LHM
 Stage 1 continued. Also the first pass at Opus's other ask this session: look
