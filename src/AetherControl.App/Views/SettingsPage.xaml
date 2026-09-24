@@ -13,7 +13,6 @@
                 <controls:SectionHeader Label="Appearance" />
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="16">
-                        <ComboBox Header="Theme" ItemsSource="{x:Bind ViewModel.ThemeOptions}" SelectedItem="{x:Bind ViewModel.Theme, Mode=TwoWay}" HorizontalAlignment="Stretch" />
                         <ComboBox Header="Accent colour" ItemsSource="{x:Bind ViewModel.AccentOptions}" SelectedItem="{x:Bind ViewModel.Accent, Mode=TwoWay}" HorizontalAlignment="Stretch" />
                     </StackPanel>
                 </Border>
@@ -70,7 +69,11 @@
             <StackPanel Spacing="12">
                 <controls:SectionHeader Label="Logging" />
                 <Border Style="{StaticResource CardBorderStyle}">
-                    <ToggleSwitch Header="Logging enabled" IsOn="{x:Bind ViewModel.LoggingEnabled, Mode=TwoWay}" />
+                    <StackPanel Spacing="16">
+                        <ToggleSwitch Header="Logging enabled" IsOn="{x:Bind ViewModel.LoggingEnabled, Mode=TwoWay}" />
+                        <ComboBox Header="Log level" ItemsSource="{x:Bind ViewModel.LogLevelOptions}" SelectedItem="{x:Bind ViewModel.LogLevel, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                        <TextBlock Text="Written to %APPDATA%\Aether Control\logs\ — one file per day, kept for 14 days." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    </StackPanel>
                 </Border>
             </StackPanel>
 

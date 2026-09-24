@@ -27,16 +27,33 @@ internal static class HardwareSnapshotMapper
         info.TemperatureCelsius = FindValue(cpu, SensorType.Temperature, "Package", "CPU Package", "Tctl/Tdie", "Core Max");
         info.PackagePowerWatts = FindValue(cpu, SensorType.Power, "Package", "CPU Package");
         info.UtilisationPercent = FindValue(cpu, SensorType.Load, "CPU Total");
-        // Named-average sensors first; if neither exists (common on AMD boards, which don't always
-        // expose a "Cores (Average)" aggregate the way Intel's LHM sensor set does), average the
-        // per-core sensors directly rather than falling through to FindValue's "any clock sensor of
-        // this type" fallback — that fallback can resolve to a different sensor (bus speed vs. a
-        // specific core) each poll if LHM's internal sensor ordering isn't perfectly stable, which
-        // showed up as the displayed clock speed visibly flicking between two values every second.
-        info.ClockSpeedMhz = FindNamedOrZero(cpu, SensorType.Clock, "Cores (Average)", "Core Average");
+        // A newer LibreHardwareMonitorLib release (bumped 2026-09) added a SEPARATE set of "current
+        // actual" clock sensors alongside the pre-existing ones on AMD parts — e.g. this Ryzen 7
+        // 9800X3D reports both "Cores (Average)" (5395 MHz, effectively the fixed boost-clock
+        // ceiling this chip requests almost regardless of load — confirmed via a live capture, it
+        // barely moves) and "Cores (Average Effective)" (1535 MHz at the same instant, which DOES
+        // track real load). Preferring the plain aggregate meant the dashboard showed a number that
+        // looked live but was near-constant — a subtler version of the same "confidently wrong"
+        // problem as CoreVoltage below. Effective is preferred wherever it exists.
+        info.ClockSpeedMhz = FindNamedOrZero(cpu, SensorType.Clock, "Cores (Average Effective)", "Core Average Effective");
         if (info.ClockSpeedMhz <= 0)
         {
-            info.ClockSpeedMhz = AverageMatching(cpu, SensorType.Clock, "Core #");
+            // Per-core effective sensors specifically — NOT a plain "Core #" substring match, which
+            // on this same CPU would also match the non-effective "Core #1".."Core #8" sensors and
+            // blend two different quantities (boost ceiling and real clock) into one meaningless average.
+            info.ClockSpeedMhz = AverageMatching(cpu, SensorType.Clock, "Core #", requireAll: ["(Effective)"]);
+        }
+
+        if (info.ClockSpeedMhz <= 0)
+        {
+            // No effective data on this board/CPU/LHM version at all (e.g. Intel, or an older LHM) —
+            // the boost-ceiling aggregate is still better than nothing.
+            info.ClockSpeedMhz = FindNamedOrZero(cpu, SensorType.Clock, "Cores (Average)", "Core Average");
+        }
+
+        if (info.ClockSpeedMhz <= 0)
+        {
+            info.ClockSpeedMhz = AverageMatching(cpu, SensorType.Clock, "Core #", requireNone: ["(Effective)"]);
         }
 
         // Confirmed via a one-shot sensor dump on a real AMD Ryzen 7 9800X3D (LibreHardwareMonitorLib
@@ -45,12 +62,23 @@ internal static class HardwareSnapshotMapper
         // near a real ~1.0-1.4V core voltage). The old "Core #1" candidate matched "Core #1 VID" by
         // substring and displayed it as if it were real voltage — confidently wrong is worse than
         // honestly unavailable, so this only matches actual voltage-rail sensor names and otherwise
-        // returns 0, the same "not available" convention used elsewhere (e.g. GPU fan RPM).
+        // returns 0, the same "not available" convention used elsewhere (e.g. GPU fan RPM). A real
+        // Vcore measurement DOES exist for this chip, just not from the CPU's own sensor set — the
+        // motherboard's Super I/O chip reports it (confirmed live: 1.376V) — see
+        // HardwareMonitorService.Poll's motherboard-Vcore fallback.
         info.CoreVoltage = FindNamedOrZero(cpu, SensorType.Voltage, "CPU Core", "Core Voltage", "VCore", "SVI2", "SVI3");
 
         // Indexed by exact extracted core number rather than substring-matched — "#1" as a Contains()
         // check also matches "#10"-"#19", which would silently pair the wrong core's clock/temp together.
-        var clockByCore = IndexSensorsByCore(cpu, SensorType.Clock);
+        // Effective-only for per-core clock, same reasoning as the aggregate above — a plain "Core #"
+        // index would non-deterministically pick whichever of the two same-numbered sensors LHM
+        // happens to enumerate first each poll.
+        var clockByCore = IndexSensorsByCore(cpu, SensorType.Clock, requireAll: ["(Effective)"]);
+        if (clockByCore.Count == 0)
+        {
+            clockByCore = IndexSensorsByCore(cpu, SensorType.Clock, requireNone: ["(Effective)"]);
+        }
+
         var temperatureByCore = IndexSensorsByCore(cpu, SensorType.Temperature);
 
         var cores = new List<CpuCoreInfo>();
@@ -125,6 +153,22 @@ internal static class HardwareSnapshotMapper
             .OrderBy(s => s.Name, StringComparer.Ordinal)
             .Select(ToNamedValue("°C"))
             .ToList();
+
+        if (info.VrmTemperatures.Count == 0)
+        {
+            // This board's Nuvoton chip (like many) exposes its temperature headers as plain
+            // "Temperature #1".."Temperature #6" — nothing in the name says which is VRM, chipset,
+            // or something else. The empty-state UI used to claim "no VRM temperature sensors
+            // reported by this board" — false; it reports 6, just not under a name this filter
+            // matched. Real, if unlabelled, board temperature data beats a box that looks broken
+            // when the board data exists — same call already made for fan headers (also generically
+            // named, also shown as-is with a user-rename option rather than hidden).
+            info.VrmTemperatures = superIo.Sensors
+                .Where(s => s.SensorType == SensorType.Temperature)
+                .OrderBy(s => s.Name, StringComparer.Ordinal)
+                .Select(ToNamedValue("°C"))
+                .ToList();
+        }
 
         return info;
     }
@@ -211,10 +255,12 @@ internal static class HardwareSnapshotMapper
         return 0f;
     }
 
-    private static Dictionary<int, float> IndexSensorsByCore(IHardware hardware, SensorType type)
+    private static Dictionary<int, float> IndexSensorsByCore(
+        IHardware hardware, SensorType type, string[]? requireAll = null, string[]? requireNone = null)
     {
         var byCore = new Dictionary<int, float>();
-        foreach (var sensor in hardware.Sensors.Where(s => s.SensorType == type && s.Name.Contains("Core #", StringComparison.OrdinalIgnoreCase)))
+        foreach (var sensor in hardware.Sensors.Where(s =>
+                     s.SensorType == type && s.Name.Contains("Core #", StringComparison.OrdinalIgnoreCase) && MatchesFilters(s.Name, requireAll, requireNone)))
         {
             byCore.TryAdd(ExtractCoreIndex(sensor.Name), sensor.Value ?? 0f);
         }
@@ -222,15 +268,24 @@ internal static class HardwareSnapshotMapper
         return byCore;
     }
 
-    private static float AverageMatching(IHardware hardware, SensorType type, string nameContains)
+    private static float AverageMatching(
+        IHardware hardware, SensorType type, string nameContains, string[]? requireAll = null, string[]? requireNone = null)
     {
         var matches = hardware.Sensors
-            .Where(s => s.SensorType == type && s.Name.Contains(nameContains, StringComparison.OrdinalIgnoreCase) && s.Value.HasValue)
+            .Where(s => s.SensorType == type && s.Name.Contains(nameContains, StringComparison.OrdinalIgnoreCase) &&
+                        s.Value.HasValue && MatchesFilters(s.Name, requireAll, requireNone))
             .Select(s => s.Value!.Value)
             .ToList();
 
         return matches.Count == 0 ? 0f : matches.Average();
     }
+
+    /// <summary>Extra name filters for disambiguating sensor variants that share a common substring
+    /// (e.g. "Core #1" vs. "Core #1 (Effective)") — every string in <paramref name="requireAll"/>
+    /// must appear in the name, none in <paramref name="requireNone"/> may.</summary>
+    private static bool MatchesFilters(string name, string[]? requireAll, string[]? requireNone) =>
+        (requireAll is null || requireAll.All(s => name.Contains(s, StringComparison.OrdinalIgnoreCase))) &&
+        (requireNone is null || requireNone.All(s => !name.Contains(s, StringComparison.OrdinalIgnoreCase)));
 
     private static int ExtractCoreIndex(string sensorName)
     {

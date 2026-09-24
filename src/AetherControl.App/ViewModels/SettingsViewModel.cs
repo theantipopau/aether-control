@@ -1,8 +1,10 @@
+using AetherControl.App.Services;
 using AetherControl.App.Theming;
 using AetherControl.Core.Enums;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
 using AetherControl.Services.Hardware;
+using AetherControl.Services.Optimisation;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -25,8 +27,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private readonly ISettingsService _settingsService;
     private readonly AlertSettingsStore _alertSettingsStore;
+    private readonly AutostartService _autostartService;
 
-    [ObservableProperty] private ThemeMode theme;
+    // No light or system theme is actually implemented anywhere — Themes/Colors.xaml is a single
+    // hardcoded dark palette with no RequestedTheme/prefers-color-scheme handling at all. AppSettings
+    // still has a Theme field (left alone — no reason to force a data migration over this), but the
+    // picker that let a user select an option with zero effect was removed from Settings' UI.
     [ObservableProperty] private AccentColor accent;
     [ObservableProperty] private double dashboardRefreshMs;
     [ObservableProperty] private bool startWithWindows;
@@ -34,28 +40,33 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool minimiseToTrayOnClose;
     [ObservableProperty] private double historyRetentionDays;
     [ObservableProperty] private bool loggingEnabled;
+    [ObservableProperty] private string logLevel = "Information";
     [ObservableProperty] private string statusMessage = string.Empty;
     [ObservableProperty] private IReadOnlyList<TrayMetricOption> trayMetricOptions = [];
     [ObservableProperty] private bool temperatureAlertsEnabled;
     [ObservableProperty] private double cpuTemperatureAlertThreshold;
     [ObservableProperty] private double gpuTemperatureAlertThreshold;
 
-    public IReadOnlyList<ThemeMode> ThemeOptions { get; } = Enum.GetValues<ThemeMode>();
     public IReadOnlyList<AccentColor> AccentOptions { get; } = Enum.GetValues<AccentColor>();
+    public IReadOnlyList<string> LogLevelOptions { get; } = ["Debug", "Information", "Warning", "Error"];
 
-    public SettingsViewModel(ISettingsService settingsService, AlertSettingsStore alertSettingsStore)
+    public SettingsViewModel(ISettingsService settingsService, AlertSettingsStore alertSettingsStore, AutostartService autostartService)
     {
         _settingsService = settingsService;
         _alertSettingsStore = alertSettingsStore;
+        _autostartService = autostartService;
         var current = _settingsService.Current;
-        Theme = current.Theme;
         Accent = current.Accent;
         DashboardRefreshMs = current.DashboardRefreshMs;
-        StartWithWindows = current.StartWithWindows;
+        // Reflects the real Task Scheduler state, not just whatever was last saved to the database —
+        // the two can legitimately drift (e.g. the user removed the task manually, or SetEnabled's
+        // best-effort schtasks call silently failed last time).
+        StartWithWindows = _autostartService.IsEnabled();
         StartMinimisedToTray = current.StartMinimisedToTray;
         MinimiseToTrayOnClose = current.MinimiseToTrayOnClose;
         HistoryRetentionDays = current.HistoryRetentionDays;
         LoggingEnabled = current.LoggingEnabled;
+        LogLevel = current.LogLevel;
 
         var alerts = _alertSettingsStore.Current;
         TemperatureAlertsEnabled = alerts.Enabled;
@@ -79,7 +90,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     private async Task SaveAsync()
     {
         var updated = _settingsService.Current;
-        updated.Theme = Theme;
         updated.Accent = Accent;
         updated.DashboardRefreshMs = (int)DashboardRefreshMs;
         updated.StartWithWindows = StartWithWindows;
@@ -87,8 +97,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         updated.MinimiseToTrayOnClose = MinimiseToTrayOnClose;
         updated.HistoryRetentionDays = (int)HistoryRetentionDays;
         updated.LoggingEnabled = LoggingEnabled;
+        updated.LogLevel = LogLevel;
+
+        // Was previously just a bool saved to the database — nothing ever created or removed the
+        // actual Task Scheduler entry, so the toggle had no real effect either way.
+        _autostartService.SetEnabled(StartWithWindows);
 
         await _settingsService.SaveAsync(updated);
+        LoggingSettings.Apply(updated.LoggingEnabled, updated.LogLevel);
 
         var trayPreferences = TrayMetricOptions
             .Select((option, index) => new TrayMetricPreference { Metric = option.Metric, Enabled = option.IsEnabled, Order = index })

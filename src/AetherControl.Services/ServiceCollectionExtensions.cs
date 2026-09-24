@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<INetworkMonitorService, NetworkMonitorService>();
         services.AddSingleton<FanLabelStore>();
         services.AddSingleton<AlertSettingsStore>();
+        services.AddSingleton<AutostartService>();
         // HardwareMonitorService implements both interfaces but must stay a single instance —
         // it owns the one LibreHardwareMonitor Computer session the whole process is allowed to
         // have open (see the class's own doc comment). Resolving IFanControlService separately

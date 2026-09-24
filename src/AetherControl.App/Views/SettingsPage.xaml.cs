@@ -1,6 +1,7 @@
 using AetherControl.App.ViewModels;
 using AetherControl.Core.Interfaces;
 using AetherControl.Services.Hardware;
+using AetherControl.Services.Optimisation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Controls;
 
@@ -15,6 +16,7 @@ public sealed partial class SettingsPage : Page
         InitializeComponent();
         ViewModel = new SettingsViewModel(
             App.Services.GetRequiredService<ISettingsService>(),
-            App.Services.GetRequiredService<AlertSettingsStore>());
+            App.Services.GetRequiredService<AlertSettingsStore>(),
+            App.Services.GetRequiredService<AutostartService>());
     }
 }

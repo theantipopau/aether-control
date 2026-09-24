@@ -86,10 +86,12 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     public ObservableCollection<NamedSensorValueViewModel> MotherboardVrmTemperatures => _vrmTemperaturesSync.Items;
     public ObservableCollection<ProcessUsageViewModel> TopProcessesByCpu => _topProcessesSync.Items;
 
-    // Not every board/CPU/LHM-version combination exposes a real core-voltage sensor (confirmed via
-    // a real sensor dump: this AMD Ryzen 7 9800X3D only reports "VID" — the VRM's target, not a
-    // measurement — on LibreHardwareMonitorLib 0.9.4). Showing "0.00V" instead of hiding the card
-    // would still read as a working-but-wrong sensor rather than an honestly unavailable one.
+    // Not every CPU's own sensor set exposes a real core-voltage measurement (confirmed via a real
+    // sensor dump: this AMD Ryzen 7 9800X3D only reports "VID" from the CPU side — the VRM's
+    // target, not a measurement). HardwareMonitorService.Poll falls back to the motherboard Super
+    // I/O chip's own Vcore reading when that happens (same physical rail, different sensor group);
+    // this stays 0 — hiding the card rather than showing "0.00V" — only when neither source has a
+    // real reading at all.
     public bool HasCpuVoltage => CpuVoltage > 0;
 
     partial void OnCpuVoltageChanged(double value) => OnPropertyChanged(nameof(HasCpuVoltage));

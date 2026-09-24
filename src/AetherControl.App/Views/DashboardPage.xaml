@@ -213,10 +213,10 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="VRM Temperatures" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" Margin="0,8,0,0" />
+                    <TextBlock Text="Board Temperatures" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" Margin="0,8,0,0" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"
                             Visibility="{x:Bind ViewModel.MotherboardVrmTemperatures.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
-                        <TextBlock Text="No VRM temperature sensors reported by this board yet." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                        <TextBlock Text="No board temperature sensors reported by this Super I/O chip." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                     </Border>
                     <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardVrmTemperatures, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>

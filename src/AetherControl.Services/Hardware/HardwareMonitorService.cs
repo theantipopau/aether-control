@@ -340,6 +340,19 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         };
 
         var cpuInfo = HardwareSnapshotMapper.MapCpu(cpu);
+        if (cpuInfo.CoreVoltage <= 0)
+        {
+            // The CPU's own AMD SMU sensor set has no real voltage measurement for this chip (only
+            // a requested VID — see MapCpu's own comment), but the motherboard's Super I/O chip DOES
+            // measure it directly off the VRM output (confirmed live: 1.376V, a plausible real Vcore,
+            // vs. VID's ~0.19V) — same physical rail, just exposed through a different sensor group.
+            var motherboardVcore = motherboardInfo.Voltages.FirstOrDefault(v => v.Name.Equals("Vcore", StringComparison.OrdinalIgnoreCase));
+            if (motherboardVcore is not null)
+            {
+                cpuInfo.CoreVoltage = motherboardVcore.Value;
+            }
+        }
+
         SmoothClockSpeeds(cpuInfo);
         cpuInfo.UtilisationPercent = (float)_cpuLoadSmoother.Update(_cpuLoadMedian.Update(cpuInfo.UtilisationPercent));
 
