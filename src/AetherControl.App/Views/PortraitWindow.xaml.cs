@@ -88,16 +88,38 @@ public sealed partial class PortraitWindow : Window
     /// <summary>Picks a connected display taller than it is wide — i.e. actually rotated to
     /// portrait in Windows Display Settings, not just guessed from this window's own fixed size.
     /// Prefers a non-primary one: a portrait panel is almost always a secondary accessory monitor,
-    /// and auto-filling the user's actual primary/landscape display would be actively wrong.</summary>
+    /// and auto-filling the user's actual primary/landscape display would be actively wrong.
+    /// <para>
+    /// Indexes into <see cref="DisplayArea.FindAll"/>'s result by <c>Count</c>/<c>[i]</c> rather than
+    /// LINQ — live-captured crash evidence (<c>unhandled-exceptions.log</c>, 2026-09-24) showed
+    /// <c>.Where().ToList()</c> throwing <c>InvalidCastException: No such interface supported</c>
+    /// from inside <c>IReadOnlyListImpl.GetEnumerator()</c>: this WinAppSDK version's WinRT
+    /// projection for that return type doesn't implement <c>IEnumerable&lt;DisplayArea&gt;</c>
+    /// enumeration correctly, even though the same object's indexer/Count (backed by a real
+    /// <c>IVectorView</c>) works fine. Portrait Mode silently failed to open every time as a result.
+    /// </para></summary>
     private static DisplayArea? FindPortraitDisplay()
     {
-        var portraitDisplays = DisplayArea.FindAll()
-            .Where(d => d.OuterBounds.Height > d.OuterBounds.Width)
-            .ToList();
+        var displays = DisplayArea.FindAll();
+        DisplayArea? firstPortrait = null;
 
-        return portraitDisplays.Count == 0
-            ? null
-            : portraitDisplays.FirstOrDefault(d => !d.IsPrimary) ?? portraitDisplays[0];
+        for (var i = 0; i < displays.Count; i++)
+        {
+            var display = displays[i];
+            if (display.OuterBounds.Height <= display.OuterBounds.Width)
+            {
+                continue;
+            }
+
+            if (!display.IsPrimary)
+            {
+                return display;
+            }
+
+            firstPortrait ??= display;
+        }
+
+        return firstPortrait;
     }
 
     private void ConfigureTitleBarButtons()
