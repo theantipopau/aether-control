@@ -15,8 +15,10 @@ namespace AetherControl.App.Views;
 
 /// <summary>
 /// Portrait Mode — a real port of Matt's own Portrait Stats layout (see <see cref="PortraitViewModel"/>
-/// and the Portrait* controls), sized to match a real rotated-portrait monitor (768x1366, the same
-/// fixed size Portrait Stats itself used).
+/// and the Portrait* controls). Opens at 768x1366 (Portrait Stats' own fixed size) but immediately
+/// auto-fills whichever connected display is actually rotated to portrait, if one exists — see
+/// <see cref="FindPortraitDisplay"/> — so the window matches that monitor's real resolution instead
+/// of assuming every portrait panel is exactly 768x1366.
 /// <para>
 /// Dragging uses <see cref="Window.SetTitleBar"/> on <c>DragRegion</c> — the same mechanism
 /// <c>MainWindow</c> already uses successfully — rather than a hand-rolled
@@ -31,6 +33,7 @@ public sealed partial class PortraitWindow : Window
     public PortraitViewModel ViewModel { get; }
 
     private bool _forceClose;
+    private bool _isFilled;
     private PointInt32 _preFillPosition;
     private SizeInt32 _preFillSize;
 
@@ -56,10 +59,45 @@ public sealed partial class PortraitWindow : Window
         }
 
         // 768x1366 matches Portrait Stats' own fixed size — the resolution Matt's actual portrait
-        // monitor reports once rotated in Windows Display Settings.
+        // monitor reports once rotated in Windows Display Settings. Kept as the floating-window
+        // fallback/restore size below, not as the only size this window can ever be: a fixed size
+        // only matches one specific monitor, and on anything else (a taller/shorter portrait panel,
+        // a different rotation) the bottom of the layout — Processes, last in the ScrollViewer —
+        // ends up positioned off the real screen instead of just needing a scroll.
         AppWindow.Resize(new SizeInt32(768, 1366));
+        _preFillPosition = AppWindow.Position;
+        _preFillSize = AppWindow.Size;
+
+        // Auto-detect a connected portrait-oriented display and fill it immediately on open, instead
+        // of requiring the old manual "drag the window onto the monitor, then click FILL" two-step —
+        // that only worked if the window happened to be dragged onto a monitor whose real resolution
+        // matched the 768x1366 default; any mismatch is exactly what put Processes off-screen.
+        var portraitDisplay = FindPortraitDisplay();
+        if (portraitDisplay is not null)
+        {
+            AppWindow.MoveAndResize(portraitDisplay.OuterBounds);
+            _isFilled = true;
+            // Reflects reality in the UI; OnFillScreenChecked's _isFilled guard stops this from
+            // re-capturing _preFillPosition/_preFillSize from the now-already-filled bounds.
+            FillScreenToggle.IsChecked = true;
+        }
 
         Closed += OnClosed;
+    }
+
+    /// <summary>Picks a connected display taller than it is wide — i.e. actually rotated to
+    /// portrait in Windows Display Settings, not just guessed from this window's own fixed size.
+    /// Prefers a non-primary one: a portrait panel is almost always a secondary accessory monitor,
+    /// and auto-filling the user's actual primary/landscape display would be actively wrong.</summary>
+    private static DisplayArea? FindPortraitDisplay()
+    {
+        var portraitDisplays = DisplayArea.FindAll()
+            .Where(d => d.OuterBounds.Height > d.OuterBounds.Width)
+            .ToList();
+
+        return portraitDisplays.Count == 0
+            ? null
+            : portraitDisplays.FirstOrDefault(d => !d.IsPrimary) ?? portraitDisplays[0];
     }
 
     private void ConfigureTitleBarButtons()
@@ -110,23 +148,31 @@ public sealed partial class PortraitWindow : Window
             : (Brush)Application.Current.Resources["PortraitPageBgBrush"];
     }
 
-    /// <summary>Resizes and repositions to fill whatever monitor the window is currently on —
-    /// drag it onto the portrait monitor first (a fixed 768x1366 window won't automatically match
-    /// every monitor's real resolution), then toggle this to fill it exactly. Programmatic resize
-    /// via AppWindow works regardless of the presenter's IsResizable=false (that flag only affects
-    /// user edge-dragging). Remembers the pre-fill position/size so toggling off restores it —
-    /// otherwise "maximise" would be a one-way trip with no way back short of closing the window.</summary>
+    /// <summary>Resizes and repositions to fill whatever monitor the window is currently on — for
+    /// the rare case the auto-detect in the constructor didn't find a portrait display (e.g. it's
+    /// connected but still rotated landscape in Windows Display Settings), drag the window onto it
+    /// and toggle this. Programmatic resize via AppWindow works regardless of the presenter's
+    /// IsResizable=false (that flag only affects user edge-dragging). Guarded by <see cref="_isFilled"/>
+    /// so this doesn't overwrite the real pre-fill position/size when the window opened already
+    /// auto-filled — toggling FILL off must restore the original floating window, not the filled one.</summary>
     private void OnFillScreenChecked(object sender, RoutedEventArgs e)
     {
-        _preFillPosition = AppWindow.Position;
-        _preFillSize = AppWindow.Size;
+        if (!_isFilled)
+        {
+            _preFillPosition = AppWindow.Position;
+            _preFillSize = AppWindow.Size;
+        }
 
         var displayArea = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
         AppWindow.MoveAndResize(displayArea.OuterBounds);
+        _isFilled = true;
     }
 
-    private void OnFillScreenUnchecked(object sender, RoutedEventArgs e) =>
+    private void OnFillScreenUnchecked(object sender, RoutedEventArgs e)
+    {
         AppWindow.MoveAndResize(new RectInt32(_preFillPosition.X, _preFillPosition.Y, _preFillSize.Width, _preFillSize.Height));
+        _isFilled = false;
+    }
 
     private void OnFanNameLostFocus(object sender, RoutedEventArgs e)
     {
