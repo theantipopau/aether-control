@@ -2,9 +2,84 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm)
 
-## Phase 35 — Ordered shutdown: tray-icon crash race
+## Phase 36 — Sensor-mapping accuracy, dead settings, stable LHM
+Stage 1 continued. Also the first pass at Opus's other ask this session: look
+for similar GitHub projects that might help.
+
+**Sensor mapping** (live-verified against a real sensor dump):
+- CPU clock now prefers "Cores (Average Effective)" over "Cores (Average)" —
+  the latter is this chip's fixed boost-clock ceiling (~5395MHz, barely
+  moves) rather than the real clock (~1878MHz measured live). The per-core
+  fallback path (`AverageMatching`/`IndexSensorsByCore`, now with
+  `requireAll`/`requireNone` name filters) no longer blends "Core #1" and
+  "Core #1 (Effective)" into one meaningless average either.
+- `CoreVoltage` falls back to the motherboard Super I/O chip's own Vcore
+  (1.392V, confirmed real) when the CPU's own sensors have none (only a VID
+  request, ~0.19V) — same rail, different sensor group.
+- "VRM Temperatures" (now "Board Temperatures") falls back to all Super I/O
+  temperature sensors when none are VRM/MOS-named — this board reports 6
+  real ones under generic names; the empty-state text previously claimed
+  "no VRM temperature sensors reported", which was false.
+
+**Six dead settings** — saved to the database, read by nothing:
+- `StartWithWindows` → new `AutostartService` creates/removes a Task
+  Scheduler entry (`/RL HIGHEST` — silent elevation at logon; a plain
+  Run-key value can't do this for an elevated app without a UAC prompt
+  every login). Verified live: create, query, delete all correct.
+- `StartMinimisedToTray` → `App.OnLaunched` hides the window right after
+  activation when set.
+- `HistoryRetentionDays` → new `HistoryRecorderService` also fixed a much
+  bigger, previously undiscovered gap: `IHistoryService.RecordAsync` had
+  **zero callers anywhere in the app** — History has never recorded a
+  single real sample despite being a shipped, advertised feature. Now
+  records every 60s and purges older-than-N-days daily (+ once at startup).
+- `LoggingEnabled`/`LogLevel` → new `AppFileLoggerProvider` is the first
+  logging provider ever registered in this app. Every existing
+  `_logger.LogWarning`/`LogError` call throughout the codebase went nowhere
+  a user could see. Daily rolling file under `%APPDATA%\Aether Control\logs\`,
+  14-day retention, gated live by these two settings. Verified live: real
+  HTTP diagnostic entries confirmed written.
+- `Theme` → removed. No light/system theme is implemented anywhere
+  (`Colors.xaml` is one hardcoded dark palette) — the picker changed
+  nothing; better to remove it than pretend it worked.
+
+**Similar-project research** (per Opus's ask):
+- `LibreHardwareMonitor` shipped a real stable **v0.9.5** (2026-01-07, PR
+  #1704 fixes NCT6701D officially) and **v0.9.6** (2026-02-14) — this
+  project was pinned to `0.9.5-pre429`, a prerelease over 150 iterations
+  behind the actual 0.9.5, only because that was the first prerelease found
+  to fix the original fan-detection gap before the real release existed.
+  Moved to stable `0.9.5` (bumping `System.Management`→10.0.1 and
+  `HidSharp`→2.6.4 in lockstep, both required by 0.9.5's own dependency
+  graph). Did not jump to 0.9.6 — that package ships only RID-split runtime
+  assets, which would need extra `RuntimeIdentifier` plumbing; a separate,
+  riskier change for another time.
+- `Rem0o/FanControl` (20,944 stars, MIT-adjacent "Other" license, actively
+  maintained) — its issue tracker has multiple long-running "LibreHardwareMonitor
+  could not initialize or has no sensors" threads across many different
+  boards. Confirms the Super I/O reliability problem Phase 34 fixed is a
+  widely-shared pain point across this whole class of app, not a one-off
+  quirk on this machine — the self-healing approach is broadly justified,
+  not overengineering. Its own source isn't public (only the release/issue
+  repo), so no architecture to borrow directly.
+- `LibreHardwareMonitor`'s own official GUI (`LibreHardwareMonitor.Windows.Forms`
+  in the main MPL-2.0 repo) is a single elevated WinForms app with no
+  service split at all — confirms Stage 2's planned service/UI split has no
+  simple reference to copy from even in the library's own upstream project;
+  it'll need original design work.
+- Two very new (May/Sept 2026), single-star, similar-scope hobby projects
+  (`Vlottiz/pc-monitor`, `babuskaruska/openhardwaremonitor-2026`, the
+  latter with no license at all) turned up but are too immature and
+  unproven to mine for architecture — noted for awareness, not adopted.
+
+53/53 tests pass throughout; full solution rebuild clean at every step;
+live-verified via real launches after each change (mapping values, file
+logger output, Task Scheduler create/query/delete, stable-LHM upgrade with
+no `Computer.Open()` regression and self-healing still working).
+
+
 Stage 1's second item: the audit found 4 crash dumps in 30 days, most with a
 `RO_E_CLOSED` / `combase.dll` signature roughly 30s after launch. No native
 debugger is installed on this machine (WinDbg/cdb) to read the dumps
