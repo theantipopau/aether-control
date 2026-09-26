@@ -55,6 +55,11 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private string motherboardModel = "—";
 
+    // Empty while live. Same rule as Portrait Mode's FANS header: poisoned Super I/O reads are
+    // replaced by last-known-good values, which must not be presented as current readings.
+    [ObservableProperty] private string motherboardStaleText = string.Empty;
+    private static readonly TimeSpan MotherboardStaleThreshold = TimeSpan.FromSeconds(3);
+
     // Each device/sensor/process gets a long-lived view model, created once per stable identity and
     // updated in place forever after (LiveCollectionSync.Sync issues Add only for a new key and
     // Remove only once a key's been absent for several consecutive polls — never Replace for an
@@ -159,6 +164,9 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 
         _drivesSync.Sync(snapshot.Drives);
         MotherboardModel = snapshot.Motherboard.Model;
+        MotherboardStaleText = snapshot.MotherboardAge > MotherboardStaleThreshold
+            ? $"Stale — last valid sensor read {snapshot.MotherboardAge.TotalSeconds:F0}s ago (sensor chip contention; see Diagnostics)"
+            : string.Empty;
         _voltagesSync.Sync(snapshot.Motherboard.Voltages);
         _fanSpeedsSync.Sync(snapshot.Motherboard.FanSpeeds);
         _vrmTemperaturesSync.Sync(snapshot.Motherboard.VrmTemperatures);

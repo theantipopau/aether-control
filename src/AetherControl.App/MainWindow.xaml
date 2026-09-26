@@ -44,91 +44,117 @@
             system still draws its own min/max/close glyphs top-right; we just supply the
             branding on the left so the window reads as the app's own chrome, not default Win32.
         -->
+        <!--
+            Custom title bar: ExtendsContentIntoTitleBar (set in code-behind) hands the strip to this
+            Grid, which SetTitleBar marks as the drag region. The system still draws min/max/close
+            top-right (138px reserved below). Left: icon + wordmark. Right: a compact system-health
+            readout — glyph + words + numbers, so it never relies on colour alone.
+        -->
         <Grid x:Name="AppTitleBar" Grid.Row="0" Background="Transparent">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="138" />
             </Grid.ColumnDefinitions>
-            <Image Grid.Column="0" Source="Assets/Icon.png" Width="16" Height="16" Margin="16,0,0,0" VerticalAlignment="Center" />
-            <TextBlock
-                Grid.Column="1"
-                Text="Aether Control"
-                Margin="10,0,0,0"
-                VerticalAlignment="Center"
-                FontSize="12"
-                FontWeight="SemiBold"
-                Foreground="{StaticResource AetherTextSecondaryBrush}" />
+            <Image Grid.Column="0" Source="Assets/Icon.png" Width="16" Height="16" Margin="16,0,0,0" VerticalAlignment="Center"
+                   AutomationProperties.AccessibilityView="Raw" />
+            <TextBlock Grid.Column="1" Text="AETHER CONTROL" Margin="12,0,0,0" VerticalAlignment="Center"
+                       Style="{StaticResource AppTitleTextStyle}" />
 
-            <!-- A thin accent-to-transparent fade under the titlebar — the one deliberate flourish
-                 in an otherwise flat-charcoal chrome, echoing the colour strip Armoury Crate and
-                 similar tools use to keep an all-dark window from reading as a plain Win32 shell. -->
-            <Rectangle Grid.ColumnSpan="3" Height="2" VerticalAlignment="Bottom">
+            <StackPanel x:Name="HealthIndicator" Grid.Column="3" Orientation="Horizontal" Spacing="{StaticResource Space8}"
+                        VerticalAlignment="Center" Margin="0,0,16,0" Visibility="Collapsed"
+                        AutomationProperties.Name="System health" AutomationProperties.LiveSetting="Polite">
+                <FontIcon x:Name="HealthGlyph" Glyph="&#xE73E;" FontSize="12" Foreground="{StaticResource StatusNormalBrush}" />
+                <TextBlock x:Name="HealthStatusText" Text="Normal" Style="{StaticResource StatusTextStyle}"
+                           Foreground="{StaticResource StatusNormalBrush}" VerticalAlignment="Center" />
+                <TextBlock x:Name="HealthDetailText" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center"
+                           Typography.NumeralAlignment="Tabular" />
+            </StackPanel>
+
+            <!-- The one deliberate flourish: a thin accent fade under the title bar. -->
+            <Rectangle Grid.ColumnSpan="5" Height="1" VerticalAlignment="Bottom" Opacity="0.7">
                 <Rectangle.Fill>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                         <GradientStop Color="{StaticResource AetherAccentColor}" Offset="0" />
-                        <GradientStop Color="Transparent" Offset="1" />
+                        <GradientStop Color="Transparent" Offset="0.6" />
                     </LinearGradientBrush>
                 </Rectangle.Fill>
             </Rectangle>
         </Grid>
 
+        <!--
+            Information architecture (ROADMAP 39.3): areas, not utilities. Every item keeps the Tag
+            its page already used, so routing, tray commands and any saved state stay unchanged.
+            Automation (game profiles) still lives inside Performance until its own page lands (39.5).
+        -->
         <NavigationView
             x:Name="RootNavigationView"
             Grid.Row="1"
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="True"
             SelectionChanged="OnNavigationSelectionChanged"
-            PaneDisplayMode="Left">
+            ItemInvoked="OnNavigationItemInvoked"
+            PaneDisplayMode="Left"
+            OpenPaneLength="232">
 
             <NavigationView.MenuItems>
-                <!-- Monitoring/viewing screens first, action/control tools after a separator —
-                     previously one flat list of 7 items with no visual grouping at all. -->
-                <NavigationViewItem Content="Dashboard" Tag="Dashboard">
+                <NavigationViewItem Content="Overview" Tag="Dashboard" ToolTipService.ToolTip="Overview — live system health">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE9D9;" />
+                        <FontIcon Glyph="&#xE80F;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Portrait Mode" Tag="Portrait">
+                <NavigationViewItem Content="Performance" Tag="Optimisation" ToolTipService.ToolTip="Performance — optimisation, cooling, startup, game profiles">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE7F4;" />
+                        <FontIcon Glyph="&#xEC4A;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="History" Tag="History">
+                <NavigationViewItem Content="Lighting" Tag="Rgb" ToolTipService.ToolTip="Lighting — RGB devices and scenes">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE9D2;" />
+                        <FontIcon Glyph="&#xE790;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Devices" Tag="DevicesGroup" SelectsOnInvoked="False" ToolTipService.ToolTip="Devices — hardware inventory, firmware and drivers">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE7F8;" />
+                    </NavigationViewItem.Icon>
+                    <NavigationViewItem.MenuItems>
+                        <NavigationViewItem Content="Peripherals &amp; Utilities" Tag="Devices" ToolTipService.ToolTip="Peripherals &amp; vendor utilities">
+                            <NavigationViewItem.Icon>
+                                <FontIcon Glyph="&#xE7FC;" />
+                            </NavigationViewItem.Icon>
+                        </NavigationViewItem>
+                        <NavigationViewItem Content="Firmware &amp; Drivers" Tag="Firmware" ToolTipService.ToolTip="Firmware &amp; drivers">
+                            <NavigationViewItem.Icon>
+                                <FontIcon Glyph="&#xE9F5;" />
+                            </NavigationViewItem.Icon>
+                        </NavigationViewItem>
+                    </NavigationViewItem.MenuItems>
+                </NavigationViewItem>
+                <NavigationViewItem Content="History" Tag="History" ToolTipService.ToolTip="History — recorded telemetry">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE81C;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 
                 <NavigationViewItemSeparator />
 
-                <NavigationViewItem Content="Optimisation Centre" Tag="Optimisation">
+                <!-- A separate display experience, not a page: opens its own window. -->
+                <NavigationViewItem Content="Portrait Mode" Tag="Portrait" SelectsOnInvoked="False" ToolTipService.ToolTip="Open Portrait Mode on the portrait display">
                     <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE945;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="RGB Control" Tag="Rgb">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE790;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="Firmware &amp; Drivers" Tag="Firmware">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE9F5;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="Device Utilities" Tag="Devices">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE7FC;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="Diagnostics" Tag="Diagnostics">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE9CE;" />
+                        <FontIcon Glyph="&#xE7F4;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="Diagnostics" Tag="Diagnostics" ToolTipService.ToolTip="Diagnostics — capability report and support bundle">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9D9;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
             <Frame x:Name="ContentFrame">
                 <Frame.ContentTransitions>
                     <TransitionCollection>

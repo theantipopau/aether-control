@@ -12,6 +12,7 @@
         <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:PercentDisplayConverter x:Key="PercentDisplayConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
 
         <!-- Every MetricCard on this page gets consistent spacing automatically — no per-instance Margin repeated 25 times. -->
         <Style TargetType="controls:MetricCard">
@@ -194,6 +195,13 @@
                 <StackPanel Spacing="10">
                     <controls:SectionHeader Label="Motherboard" />
                     <TextBlock Text="{x:Bind ViewModel.MotherboardModel, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+                    <!-- Glyph + text, not colour alone. Collapses entirely while readings are live. -->
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}"
+                                Visibility="{x:Bind ViewModel.MotherboardStaleText, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}">
+                        <FontIcon Glyph="&#xE7BA;" FontSize="12" Foreground="{StaticResource StatusWarningBrush}" />
+                        <TextBlock Text="{x:Bind ViewModel.MotherboardStaleText, Mode=OneWay}" Style="{StaticResource StatusTextStyle}"
+                                   Foreground="{StaticResource StatusWarningBrush}" />
+                    </StackPanel>
 
                     <TextBlock Text="Voltages" Style="{StaticResource SubsectionLabelTextStyle}" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"

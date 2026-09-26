@@ -62,8 +62,14 @@ public sealed partial class MainWindow : Window
         // instead of the lighter default Mica tuned for light-theme apps.
         SystemBackdrop = new MicaBackdrop { Kind = MicaKind.BaseAlt };
 
+        // Reduced motion: drop the page slide entirely rather than shortening it.
+        if (!Theming.Motion.AnimationsEnabled)
+        {
+            ContentFrame.ContentTransitions = null;
+        }
+
+        ContentFrame.Navigated += OnContentFrameNavigated;
         ContentFrame.Navigate(typeof(DashboardPage));
-        RootNavigationView.SelectedItem = RootNavigationView.MenuItems[0];
 
         Closed += OnWindowClosed;
 
@@ -93,6 +99,7 @@ public sealed partial class MainWindow : Window
             if (!_isClosing)
             {
                 TrayIcon.ToolTipText = string.IsNullOrWhiteSpace(readout) ? "Aether Control" : readout;
+                UpdateHealthIndicator(e.Snapshot);
             }
         });
     }
@@ -102,11 +109,14 @@ public sealed partial class MainWindow : Window
         var titleBar = AppWindow.TitleBar;
         titleBar.ButtonBackgroundColor = Colors.Transparent;
         titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = Color.FromArgb(255, 0x9B, 0xA1, 0xA6);
+        // Title-bar caption buttons take Color values, not brushes — read from the same tokens.
+        var resources = Microsoft.UI.Xaml.Application.Current.Resources;
+        var primary = (Color)resources["TextPrimaryColor"];
+        titleBar.ButtonForegroundColor = (Color)resources["TextSecondaryColor"];
         titleBar.ButtonHoverBackgroundColor = Color.FromArgb(30, 255, 255, 255);
-        titleBar.ButtonHoverForegroundColor = Colors.White;
+        titleBar.ButtonHoverForegroundColor = primary;
         titleBar.ButtonPressedBackgroundColor = Color.FromArgb(50, 255, 255, 255);
-        titleBar.ButtonPressedForegroundColor = Colors.White;
+        titleBar.ButtonPressedForegroundColor = primary;
     }
 
     private void OnNavigationSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -117,30 +127,130 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var tag = (args.SelectedItemContainer as NavigationViewItem)?.Tag as string;
-        var pageType = tag switch
+        if (_syncingSelection)
         {
-            "Dashboard" => typeof(DashboardPage),
-            "Portrait" => null, // opens a separate window instead of navigating in-place
-            "Optimisation" => typeof(OptimisationPage),
-            "Rgb" => typeof(RgbPage),
-            "Firmware" => typeof(FirmwarePage),
-            "Devices" => typeof(DeviceUtilitiesPage),
-            "History" => typeof(HistoryPage),
-            "Diagnostics" => typeof(DiagnosticsPage),
-            _ => typeof(DashboardPage)
-        };
-
-        if (tag == "Portrait")
-        {
-            OpenPortraitWindow();
-            return;
+            return; // selection is being mirrored from a navigation that already happened
         }
 
-        if (pageType is not null)
+        var tag = (args.SelectedItemContainer as NavigationViewItem)?.Tag as string;
+        if (tag is not null && PageTypesByTag.TryGetValue(tag, out var pageType) && ContentFrame.CurrentSourcePageType != pageType)
         {
             ContentFrame.Navigate(pageType);
         }
+    }
+
+    // Route table: NavigationViewItem Tag → page. Tags are unchanged from before the 39.3 regrouping,
+    // so tray commands and anything keyed on them keep working.
+    private static readonly Dictionary<string, Type> PageTypesByTag = new()
+    {
+        ["Dashboard"] = typeof(DashboardPage),
+        ["Optimisation"] = typeof(OptimisationPage),
+        ["Rgb"] = typeof(RgbPage),
+        ["Firmware"] = typeof(FirmwarePage),
+        ["Devices"] = typeof(DeviceUtilitiesPage),
+        ["History"] = typeof(HistoryPage),
+        ["Diagnostics"] = typeof(DiagnosticsPage)
+    };
+
+    private bool _syncingSelection;
+
+    /// <summary>Portrait Mode is a separate window, not a page — it's non-selectable
+    /// (SelectsOnInvoked=False), so invoking it opens the window and leaves the highlight on the
+    /// page actually being shown, instead of marking "Portrait Mode" as the current page.</summary>
+    private void OnNavigationItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        if ((args.InvokedItemContainer as NavigationViewItem)?.Tag as string == "Portrait")
+        {
+            OpenPortraitWindow();
+        }
+    }
+
+    /// <summary>Keeps the nav highlight honest when navigation didn't come from the nav itself —
+    /// the tray menu's "Open Dashboard"/"RGB Control"/"Settings" previously navigated the frame but
+    /// left the old item highlighted.</summary>
+    private void OnContentFrameNavigated(object sender, Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+    {
+        _syncingSelection = true;
+        try
+        {
+            if (e.SourcePageType == typeof(SettingsPage))
+            {
+                RootNavigationView.SelectedItem = RootNavigationView.SettingsItem;
+                return;
+            }
+
+            var tag = PageTypesByTag.FirstOrDefault(kv => kv.Value == e.SourcePageType).Key;
+            var item = FindNavItem(RootNavigationView.MenuItems, tag) ?? FindNavItem(RootNavigationView.FooterMenuItems, tag);
+            if (item is not null)
+            {
+                RootNavigationView.SelectedItem = item;
+            }
+        }
+        finally
+        {
+            _syncingSelection = false;
+        }
+    }
+
+    private static NavigationViewItem? FindNavItem(IList<object> items, string? tag)
+    {
+        if (tag is null)
+        {
+            return null;
+        }
+
+        foreach (var entry in items)
+        {
+            if (entry is not NavigationViewItem item)
+            {
+                continue;
+            }
+
+            if (item.Tag as string == tag)
+            {
+                return item;
+            }
+
+            if (FindNavItem(item.MenuItems, tag) is { } child)
+            {
+                return child;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Title-bar health readout: worst of CPU/GPU temperature, as glyph + word + numbers.
+    /// Uses the same thresholds Portrait Mode already shows, so the two never disagree.</summary>
+    private void UpdateHealthIndicator(HardwareSnapshot snapshot)
+    {
+        var cpu = snapshot.Cpu.TemperatureCelsius;
+        var gpu = snapshot.Gpu.TemperatureCelsius;
+        if (cpu <= 0 && gpu <= 0)
+        {
+            HealthIndicator.Visibility = Visibility.Collapsed; // no readings — say nothing rather than "Normal"
+            return;
+        }
+
+        var worst = (ViewModels.PortraitSeverity)Math.Max(
+            (int)ViewModels.PortraitSeverityThresholds.ForTemp(cpu),
+            (int)ViewModels.PortraitSeverityThresholds.ForTemp(gpu));
+
+        var (status, glyph, brushKey) = worst switch
+        {
+            ViewModels.PortraitSeverity.Critical => ("Hot", "", "StatusCriticalBrush"),
+            ViewModels.PortraitSeverity.Warning => ("Warm", "", "StatusWarningBrush"),
+            _ => ("Normal", "", "StatusNormalBrush")
+        };
+
+        var brush = (Brush)Microsoft.UI.Xaml.Application.Current.Resources[brushKey];
+        HealthStatusText.Text = status;
+        HealthStatusText.Foreground = brush;
+        HealthGlyph.Glyph = glyph;
+        HealthGlyph.Foreground = brush;
+        HealthDetailText.Text = $"CPU {cpu:F0}°C · GPU {gpu:F0}°C";
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(HealthIndicator, $"System health {status}: CPU {cpu:F0} degrees, GPU {gpu:F0} degrees");
+        HealthIndicator.Visibility = Visibility.Visible;
     }
 
     private void OpenPortraitWindow()

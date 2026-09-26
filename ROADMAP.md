@@ -27,9 +27,18 @@ touching hardware safety (fan floors, BIOS restore, RGB conflict detection, opti
 **Sequence** (each sub-phase builds + tests before the next):
 - [x] 39.1 Audit + baseline (above).
 - [x] 39.2 Design-system foundation — see below.
-- [ ] 39.3 Shell: IA regrouping into Overview / Performance / Lighting / Devices / Automation /
-      History (+ Settings, Diagnostics), keeping existing page Tags as routes; title-bar health +
-      profile indicator; compact-nav tooltips; page transition on the shared Motion timings.
+- [x] 39.3 Shell (implemented; build + tests + clean launch verified; **visuals unconfirmed**):
+      nav regrouped to Overview / Performance / Lighting / Devices (▸ Peripherals & Utilities,
+      Firmware & Drivers) / History, then Portrait Mode (non-selecting, opens its window), with
+      Diagnostics + Settings in the footer. Every item keeps its old Tag, via one `PageTypesByTag`
+      route table. Tooltips on every item for compact mode. `Frame.Navigated` now syncs the nav
+      highlight (tray "Open Dashboard/RGB/Settings" used to leave the old item selected). Title bar:
+      uppercase wordmark + live health readout (glyph + Normal/Warm/Hot + CPU/GPU °C, same
+      thresholds as Portrait, hidden when no readings, `LiveSetting=Polite` for screen readers).
+      Page slide removed when Windows animations are off. Caption-button colours from tokens.
+      Dashboard's Motherboard section now shows a warning line when Super I/O data is stale (>3 s).
+      **Deferred:** Automation item (game profiles still inside Performance — no empty page added);
+      current-profile indicator (waits for 39.6 profiles).
 - [ ] 39.4 Overview hero (system condition, CPU/GPU temp+load, alerts, quick actions) with
       progressive disclosure for the existing per-sensor cards.
 - [ ] 39.5 Area consolidation (Performance tabs, Devices = Firmware + Device Utilities, Lighting).
