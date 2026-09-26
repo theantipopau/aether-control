@@ -74,6 +74,7 @@ public sealed partial class MainWindow : Window
         Closed += OnWindowClosed;
 
         _ = InitializeTrayPreferencesAsync();
+        _ = CheckForUpdatesAtStartupAsync();
         App.Services.GetRequiredService<IHardwareMonitorService>().SnapshotUpdated += OnSnapshotUpdatedForTray;
     }
 
@@ -83,6 +84,32 @@ public sealed partial class MainWindow : Window
         if (stored.Count > 0)
         {
             _trayPreferences = stored;
+        }
+    }
+
+    /// <summary>Only when the user opted in (Settings → About, off by default). A newer release puts a
+    /// small badge on Settings — no dialog, no toast, no download; Settings shows the details.</summary>
+    private async Task CheckForUpdatesAtStartupAsync()
+    {
+        try
+        {
+            var settings = App.Services.GetRequiredService<ISettingsService>();
+            if (!settings.Current.CheckForUpdatesOnStartup)
+            {
+                return;
+            }
+
+            var result = await App.Services.GetRequiredService<AetherControl.Core.Updates.IUpdateCheckService>().CheckAsync();
+            if (result.Status == AetherControl.Core.Updates.UpdateStatus.UpdateAvailable
+                && RootNavigationView.SettingsItem is NavigationViewItem settingsItem)
+            {
+                settingsItem.InfoBadge = new InfoBadge();
+                ToolTipService.SetToolTip(settingsItem, $"Settings — {result.Message}");
+            }
+        }
+        catch
+        {
+            // Best-effort; the manual check in Settings reports failures properly.
         }
     }
 

@@ -139,4 +139,6 @@ public sealed class AppSettings
     public int HistoryRetentionDays { get; set; } = 90;
     public bool LoggingEnabled { get; set; } = true;
     public string LogLevel { get; set; } = "Information";
+    /// <summary>Opt-in; off by default so the app makes no network call the user didn't ask for.</summary>
+    public bool CheckForUpdatesOnStartup { get; set; }
 }

@@ -30,6 +30,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHistoryService, HistoryService>();
 
         services.AddHttpClient<INetworkMonitorService, NetworkMonitorService>();
+        services.AddHttpClient<AetherControl.Core.Updates.IUpdateCheckService, Updates.GitHubUpdateCheckService>(
+            client => client.Timeout = TimeSpan.FromSeconds(10));
         services.AddSingleton<FanLabelStore>();
         services.AddSingleton<AlertSettingsStore>();
         services.AddSingleton<AutostartService>();

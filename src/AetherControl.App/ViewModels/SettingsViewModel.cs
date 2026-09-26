@@ -3,6 +3,8 @@ using AetherControl.App.Theming;
 using AetherControl.Core.Enums;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
+using AetherControl.Core.Updates;
+using AetherControl.Services.Updates;
 using AetherControl.Services.Hardware;
 using AetherControl.Services.Optimisation;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -50,9 +52,24 @@ public sealed partial class SettingsViewModel : ObservableObject
     public IReadOnlyList<AccentColor> AccentOptions { get; } = Enum.GetValues<AccentColor>();
     public IReadOnlyList<string> LogLevelOptions { get; } = ["Debug", "Information", "Warning", "Error"];
 
-    public SettingsViewModel(ISettingsService settingsService, AlertSettingsStore alertSettingsStore, AutostartService autostartService)
+    // ── About & updates ──
+    private readonly IUpdateCheckService _updateCheckService;
+    [ObservableProperty] private bool checkForUpdatesOnStartup;
+    [ObservableProperty] private string updateStatusText = "Not checked yet.";
+    [ObservableProperty] private string? releaseUrl;
+    [ObservableProperty] private Uri? releaseUri;
+    [ObservableProperty] private bool isCheckingForUpdates;
+
+    /// <summary>"0.9.0" plus the short commit the build came from, when the SDK stamped one.</summary>
+    public string AppVersionText { get; } = FormatVersion(GitHubUpdateCheckService.CurrentVersion);
+    public string RuntimeText { get; } = $".NET {Environment.Version} · {System.Runtime.InteropServices.RuntimeInformation.OSDescription}";
+
+    public SettingsViewModel(ISettingsService settingsService, AlertSettingsStore alertSettingsStore, AutostartService autostartService,
+        IUpdateCheckService updateCheckService)
     {
+        _updateCheckService = updateCheckService;
         _settingsService = settingsService;
+        CheckForUpdatesOnStartup = settingsService.Current.CheckForUpdatesOnStartup;
         _alertSettingsStore = alertSettingsStore;
         _autostartService = autostartService;
         var current = _settingsService.Current;
@@ -98,6 +115,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         updated.HistoryRetentionDays = (int)HistoryRetentionDays;
         updated.LoggingEnabled = LoggingEnabled;
         updated.LogLevel = LogLevel;
+        updated.CheckForUpdatesOnStartup = CheckForUpdatesOnStartup;
 
         // Was previously just a bool saved to the database — nothing ever created or removed the
         // actual Task Scheduler entry, so the toggle had no real effect either way.
@@ -124,6 +142,37 @@ public sealed partial class SettingsViewModel : ObservableObject
         // ThemeResource chains that don't reliably re-resolve without a restart.
         AccentPalette.Apply(updated.Accent);
         StatusMessage = "Settings saved. Restart Aether Control for the new accent colour to fully apply everywhere.";
+    }
+
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        IsCheckingForUpdates = true;
+        UpdateStatusText = "Checking GitHub releases…";
+        try
+        {
+            var result = await _updateCheckService.CheckAsync();
+            UpdateStatusText = result.Message ?? result.Status.ToString();
+            ReleaseUrl = result.Status == UpdateStatus.UpdateAvailable ? result.ReleaseUrl : null;
+            ReleaseUri = Uri.TryCreate(ReleaseUrl, UriKind.Absolute, out var uri) ? uri : null;
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
+    }
+
+    private static string FormatVersion(string informational)
+    {
+        // "0.9.0+4f2c1ab9e..." → "0.9.0 (4f2c1ab)"
+        var plus = informational.IndexOf('+');
+        if (plus < 0)
+        {
+            return informational;
+        }
+
+        var hash = informational[(plus + 1)..];
+        return $"{informational[..plus]} ({hash[..Math.Min(7, hash.Length)]})";
     }
 
     [RelayCommand]
