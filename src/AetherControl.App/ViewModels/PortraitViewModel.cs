@@ -71,6 +71,11 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private string fpsText = "--";
 
+    // Empty while live. Poisoned Super I/O reads are silently replaced by last-known-good values,
+    // so without this the fan list can show numbers tens of seconds old as though they were current.
+    [ObservableProperty] private string fansStaleText = string.Empty;
+    private static readonly TimeSpan StaleThreshold = TimeSpan.FromSeconds(3);
+
     // Persistent, mutated in place (see ObservableCollectionMergeExtensions) — reassigning the
     // reference every poll (as these were before) forces the bound ItemsControl to recreate every
     // row from scratch each time, which for Fans meant a mid-rename TextBox got its in-progress
@@ -172,6 +177,9 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
             .Select(f => new PortraitFanRow(f.Name, _fanLabelStore.GetLabel(f.Name, f.Name), $"{f.Value:F0} RPM"))
             .ToList();
         Fans.MergeFrom(fanRows, f => f.FanId);
+        FansStaleText = snapshot.MotherboardAge > StaleThreshold
+            ? $"STALE · {snapshot.MotherboardAge.TotalSeconds:F0}s old"
+            : string.Empty;
     }
 
     private void Tick()

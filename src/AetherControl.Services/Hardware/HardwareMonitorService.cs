@@ -55,6 +55,10 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     private static readonly string[] ConflictingProcessNames =
     [
         "AsusFanControlService",
+        // The service is *named* ArmouryCrateService but its process is ArmouryCrate.Service —
+        // Process.GetProcessesByName matches process names only, so the service name alone never
+        // matched (verified live 2026-09-26 via Win32_Service.ProcessId).
+        "ArmouryCrate.Service",
         "ArmouryCrateService",
         "ArmouryCrateControlInterface",
         "AsusOptimizationStartupTask"
@@ -77,6 +81,15 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     private readonly object _pollLock = new();
     private bool _reopenPending;
     private DateTime _lastReopenAttemptUtc = DateTime.MinValue;
+    private DateTimeOffset _motherboardReadUtc = DateTimeOffset.UtcNow;
+    private long _superIoPolls;
+    private long _superIoPoisonedPolls;
+    // Per-minute window, logged to superio-reopen.log. The reopen lines alone can't tell "poisoned
+    // once per cooldown" apart from "poisoned on every poll, throttled by the cooldown" — both log at
+    // the same ~10s cadence. The ratio of poisoned polls to all polls can.
+    private long _windowPolls;
+    private long _windowPoisonedPolls;
+    private DateTime _windowStartUtc = DateTime.UtcNow;
     private readonly Lazy<double> _memorySpeedMhz = new(MemorySpeedProbe.QuerySpeedMhz);
     private readonly EmaSmoother _cpuClockSmoother = new();
     private readonly Dictionary<int, EmaSmoother> _coreClockSmoothers = new();
@@ -302,7 +315,13 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         var rawStorage = HardwareSnapshotMapper.MapStorage(storageDevices);
         var motherboardInfo = HardwareSnapshotMapper.MapMotherboard(motherboard);
         var superIoSensors = motherboard?.SubHardware.FirstOrDefault(h => h.HardwareType == HardwareType.SuperIO)?.Sensors;
-        if (superIoSensors is not null && LooksPoisoned(VoltageValues(superIoSensors)) is { Poisoned: true } poisonCheck)
+        var poisonCheck = superIoSensors is null ? default : LooksPoisoned(VoltageValues(superIoSensors));
+        if (superIoSensors is not null)
+        {
+            RecordSuperIoPoll(poisonCheck.Poisoned);
+        }
+
+        if (poisonCheck.Poisoned)
         {
             // Same signature EnsureSuperIoReadsAreValid checks at startup, but found mid-session —
             // proven (2026-09-23) to happen with nothing else touching the chip and to never
@@ -325,6 +344,10 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
                 _reopenPending = true;
                 _lastReopenAttemptUtc = DateTime.UtcNow;
             }
+        }
+        else
+        {
+            _motherboardReadUtc = DateTimeOffset.UtcNow;
         }
 
         // Not sourced from LibreHardwareMonitorLib's own Memory hardware node — see MemoryStatusProbe
@@ -376,7 +399,10 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
             Memory = memoryInfo,
             Motherboard = motherboardInfo,
             Drives = StorageHealthProbe.Enrich(rawStorage),
-            Network = _networkMonitor.Latest ?? new NetworkInfo()
+            Network = _networkMonitor.Latest ?? new NetworkInfo(),
+            MotherboardReadUtc = _motherboardReadUtc,
+            SuperIoPolls = _superIoPolls,
+            SuperIoPoisonedPolls = _superIoPoisonedPolls
         };
 
         LatestSnapshot = snapshot;
@@ -405,8 +431,37 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         }
     }
 
-    public bool IsConflictingVendorSoftwareRunning() =>
-        ConflictingProcessNames.Any(name => Process.GetProcessesByName(name).Length > 0);
+    private void RecordSuperIoPoll(bool poisoned)
+    {
+        _superIoPolls++;
+        _windowPolls++;
+        if (poisoned)
+        {
+            _superIoPoisonedPolls++;
+            _windowPoisonedPolls++;
+        }
+
+        if (DateTime.UtcNow - _windowStartUtc < TimeSpan.FromMinutes(1))
+        {
+            return;
+        }
+
+        if (_windowPoisonedPolls > 0)
+        {
+            var vendor = RunningConflictingSoftware();
+            LogStartupDiagnostic("superio-reopen.log",
+                $"Last minute: {_windowPoisonedPolls}/{_windowPolls} polls poisoned. Vendor software running: {(vendor.Count > 0 ? string.Join(", ", vendor) : "none detected")}.");
+        }
+
+        _windowPolls = 0;
+        _windowPoisonedPolls = 0;
+        _windowStartUtc = DateTime.UtcNow;
+    }
+
+    public bool IsConflictingVendorSoftwareRunning() => RunningConflictingSoftware().Count > 0;
+
+    public IReadOnlyList<string> RunningConflictingSoftware() =>
+        ConflictingProcessNames.Where(name => Process.GetProcessesByName(name).Length > 0).ToList();
 
     // Always true now that this session is the only thing in the process touching Super I/O — see
     // this class's own doc comment. Kept as a real property (not a literal `true` at every call

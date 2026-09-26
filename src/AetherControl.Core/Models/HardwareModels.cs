@@ -144,4 +144,16 @@ public sealed class HardwareSnapshot
     public IReadOnlyList<StorageDriveInfo> Drives { get; set; } = [];
     public MotherboardInfo Motherboard { get; set; } = new();
     public NetworkInfo Network { get; set; } = new();
+
+    /// <summary>When <see cref="Motherboard"/> (voltages/fans/VRM temps) was actually read from the
+    /// Super I/O chip. Lags <see cref="TimestampUtc"/> whenever a poisoned read was replaced by the
+    /// last known-good reading — UI should present that as stale, not live.</summary>
+    public DateTimeOffset MotherboardReadUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Session-cumulative Super I/O poll counters, so the poison rate is visible without
+    /// digging through <c>superio-reopen.log</c>.</summary>
+    public long SuperIoPolls { get; set; }
+    public long SuperIoPoisonedPolls { get; set; }
+
+    public TimeSpan MotherboardAge => TimestampUtc - MotherboardReadUtc;
 }

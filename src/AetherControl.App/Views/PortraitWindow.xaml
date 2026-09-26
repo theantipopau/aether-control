@@ -184,6 +184,8 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Border Width="4" Height="14" CornerRadius="2" Background="{StaticResource PortraitDriveAccentBrush}" />
                         <TextBlock Text="FANS" Style="{StaticResource PortraitSectionHeaderText}" />
+                        <TextBlock Text="{x:Bind ViewModel.FansStaleText, Mode=OneWay}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="#FFF0A020" VerticalAlignment="Center" />
                         <TextBlock Text="unlabeled by the board — click a name to rename it" FontSize="11"
                                    Foreground="{StaticResource PortraitTextMutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </StackPanel>

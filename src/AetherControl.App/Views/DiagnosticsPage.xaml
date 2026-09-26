@@ -72,7 +72,19 @@
                             <RowDefinition />
                             <RowDefinition />
                             <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
                         </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Super I/O poisoned reads (this session)" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="7" Grid.Column="1" Text="{x:Bind ViewModel.SuperIoPoisonText, Mode=OneWay}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Motherboard data age" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="8" Grid.Column="1" Text="{x:Bind ViewModel.MotherboardAgeText, Mode=OneWay}" Style="{StaticResource DiagnosticRowValueStyle}" />
+
+                        <TextBlock Grid.Row="9" Grid.Column="0" Text="Vendor software sharing the sensor chip" Style="{StaticResource DiagnosticRowLabelStyle}" />
+                        <TextBlock Grid.Row="9" Grid.Column="1" Text="{x:Bind ViewModel.ConflictingSoftwareText, Mode=OneWay}" Style="{StaticResource DiagnosticRowValueStyle}" TextWrapping="Wrap" />
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="CPU" Style="{StaticResource DiagnosticRowLabelStyle}" />
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.CpuName}" Style="{StaticResource DiagnosticRowValueStyle}" />

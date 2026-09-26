@@ -36,10 +36,16 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
     [ObservableProperty] private int driveCount;
     [ObservableProperty] private string logDirectoryDisplayPath = string.Empty;
     [ObservableProperty] private string statusMessage = string.Empty;
+    [ObservableProperty] private string superIoPoisonText = "—";
+    [ObservableProperty] private string motherboardAgeText = "—";
+    [ObservableProperty] private string conflictingSoftwareText = "None detected";
 
-    public DiagnosticsViewModel(IHardwareMonitorService hardwareMonitor)
+    private readonly IFanControlService _fanControl;
+
+    public DiagnosticsViewModel(IHardwareMonitorService hardwareMonitor, IFanControlService fanControl)
     {
         _hardwareMonitor = hardwareMonitor;
+        _fanControl = fanControl;
         _logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Aether Control", "logs");
         LogDirectoryDisplayPath = _logDirectory;
 
@@ -67,6 +73,24 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         FanSensorCount = snapshot.Motherboard.FanSpeeds.Count;
         TemperatureSensorCount = snapshot.Motherboard.VrmTemperatures.Count;
         DriveCount = snapshot.Drives.Count;
+
+        // Surfaced here because the fallback to last-known-good values hides poisoned Super I/O
+        // reads everywhere else in the UI — a live log (2026-09-25) showed ~340 reopen cycles/hour
+        // that nothing on screen gave any hint of.
+        SuperIoPoisonText = snapshot.SuperIoPolls == 0
+            ? "No Super I/O reads yet"
+            : $"{snapshot.SuperIoPoisonedPolls:N0} of {snapshot.SuperIoPolls:N0} ({100.0 * snapshot.SuperIoPoisonedPolls / snapshot.SuperIoPolls:F1}%)";
+        MotherboardAgeText = $"{snapshot.MotherboardAge.TotalSeconds:F0} s";
+
+        try
+        {
+            var running = _fanControl.RunningConflictingSoftware();
+            ConflictingSoftwareText = running.Count == 0 ? "None detected" : string.Join(", ", running);
+        }
+        catch
+        {
+            ConflictingSoftwareText = "Unknown";
+        }
     }
 
     private static bool CheckIsElevated()
@@ -156,6 +180,9 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
             Fan sensors reported: {FanSensorCount}
             Temperature sensors reported: {TemperatureSensorCount}
             Drives detected: {DriveCount}
+            Super I/O poisoned reads: {SuperIoPoisonText}
+            Motherboard data age: {MotherboardAgeText}
+            Vendor software sharing the sensor chip: {ConflictingSoftwareText}
             Latest snapshot timestamp (UTC): {(snapshot is null ? "no snapshot yet" : snapshot.TimestampUtc.ToString("O"))}
             """;
     }

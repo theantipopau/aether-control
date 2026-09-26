@@ -12,6 +12,8 @@ public sealed partial class DiagnosticsPage : Page
     public DiagnosticsPage()
     {
         InitializeComponent();
-        ViewModel = new DiagnosticsViewModel(App.Services.GetRequiredService<IHardwareMonitorService>());
+        ViewModel = new DiagnosticsViewModel(
+            App.Services.GetRequiredService<IHardwareMonitorService>(),
+            App.Services.GetRequiredService<IFanControlService>());
     }
 }
