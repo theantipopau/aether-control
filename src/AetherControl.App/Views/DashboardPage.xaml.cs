@@ -22,4 +22,15 @@ public sealed partial class DashboardPage : Page
         // singleton IHardwareMonitorService, since nothing else ever calls Dispose().
         Unloaded += (_, _) => ViewModel.Dispose();
     }
+
+    public static string FormatOneDecimal(double value) => double.IsFinite(value) ? value.ToString("F1") : "—";
+
+    // Quick actions navigate the shell's own Frame — MainWindow's Frame.Navigated handler then moves
+    // the nav highlight, so these stay in sync with the menu without knowing about it.
+    private void OnOpenPerformanceClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => Frame.Navigate(typeof(OptimisationPage));
+
+    private void OnOpenLightingClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => Frame.Navigate(typeof(RgbPage));
+
+    private void OnOpenPortraitClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) =>
+        ((App)Microsoft.UI.Xaml.Application.Current).MainWindow?.OpenPortraitWindow();
 }

@@ -280,7 +280,7 @@ public sealed partial class MainWindow : Window
         HealthIndicator.Visibility = Visibility.Visible;
     }
 
-    private void OpenPortraitWindow()
+    internal void OpenPortraitWindow()
     {
         _portraitWindow ??= new PortraitWindow();
         _portraitWindow.Activate();

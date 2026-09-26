@@ -58,6 +58,11 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     // Empty while live. Same rule as Portrait Mode's FANS header: poisoned Super I/O reads are
     // replaced by last-known-good values, which must not be presented as current readings.
     [ObservableProperty] private string motherboardStaleText = string.Empty;
+
+    // Overview hero verdict — see SystemHealth for exactly what it does and doesn't claim.
+    [ObservableProperty] private AetherControl.Core.Health.HealthLevel healthLevel = AetherControl.Core.Health.HealthLevel.Unknown;
+    [ObservableProperty] private string healthTitle = "Waiting for sensors";
+    [ObservableProperty] private string healthDetail = string.Empty;
     private static readonly TimeSpan MotherboardStaleThreshold = TimeSpan.FromSeconds(3);
 
     // Each device/sensor/process gets a long-lived view model, created once per stable identity and
@@ -167,6 +172,12 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         MotherboardStaleText = snapshot.MotherboardAge > MotherboardStaleThreshold
             ? $"Stale — last valid sensor read {snapshot.MotherboardAge.TotalSeconds:F0}s ago (sensor chip contention; see Diagnostics)"
             : string.Empty;
+        var health = AetherControl.Core.Health.SystemHealth.Evaluate(
+            CpuTemperature, GpuTemperature, RamUtilisationPercent, MotherboardStaleText.Length > 0);
+        HealthLevel = health.Level;
+        HealthTitle = health.Title;
+        HealthDetail = health.Detail;
+
         _voltagesSync.Sync(snapshot.Motherboard.Voltages);
         _fanSpeedsSync.Sync(snapshot.Motherboard.FanSpeeds);
         _vrmTemperaturesSync.Sync(snapshot.Motherboard.VrmTemperatures);

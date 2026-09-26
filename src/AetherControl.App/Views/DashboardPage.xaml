@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
+    xmlns:local="using:AetherControl.App.Views"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
@@ -13,6 +14,8 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:PercentDisplayConverter x:Key="PercentDisplayConverter" />
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        <converters:HealthLevelToBrushConverter x:Key="HealthLevelToBrushConverter" />
+        <converters:HealthLevelToGlyphConverter x:Key="HealthLevelToGlyphConverter" />
 
         <!-- Every MetricCard on this page gets consistent spacing automatically — no per-instance Margin repeated 25 times. -->
         <Style TargetType="controls:MetricCard">
@@ -32,33 +35,111 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Hero row: the numbers a gamer glances at first. Everything else lives in the flatter
-                 metric cards below — a wall of circular gauges reads busier, not more premium. -->
-            <ScrollViewer Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                <StackPanel Orientation="Horizontal" Spacing="20">
-                    <controls:RadialGauge
-                        Label="CPU TEMP" Unit="°C" Max="100"
-                        Value="{x:Bind ViewModel.CpuTemperature, Mode=OneWay}"
-                        Tone="{x:Bind ViewModel.CpuTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
-                    <controls:RadialGauge
-                        Label="CPU LOAD" Unit="%" Max="100"
-                        Value="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay}"
-                        Tone="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
-                    <controls:RadialGauge
-                        Label="GPU TEMP" Unit="°C" Max="100"
-                        Value="{x:Bind ViewModel.GpuTemperature, Mode=OneWay}"
-                        Tone="{x:Bind ViewModel.GpuTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
-                    <controls:RadialGauge
-                        Label="GPU LOAD" Unit="%" Max="100"
-                        Value="{x:Bind ViewModel.GpuUtilisation, Mode=OneWay}"
-                        Tone="{x:Bind ViewModel.GpuUtilisation, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
-                    <controls:RadialGauge
-                        Label="RAM" Unit="%" Max="100"
-                        Value="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay}"
-                        Tone="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
-                </StackPanel>
-            </ScrollViewer>
+            <!--
+                Overview hero (ROADMAP 39.4): the one panel that answers "is my PC OK right now?".
+                Left: verdict (glyph + words, never colour alone) + quick actions. Right: the three
+                readings people glance for, larger than the old strip of five small gauges.
+                Values bind to the same ViewModel properties as before — no extra polling.
+            -->
+            <Border x:Name="HeroPanel" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource HeroBorderStyle}">
+                <Grid x:Name="HeroGrid" ColumnSpacing="{StaticResource Space32}" RowSpacing="{StaticResource Space24}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="HeroStatusColumn" Width="*" />
+                        <ColumnDefinition x:Name="HeroGaugeColumn" Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
+                    <StackPanel Grid.Column="0" Spacing="{StaticResource Space16}" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space12}"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    AutomationProperties.Name="{x:Bind ViewModel.HealthTitle, Mode=OneWay}">
+                            <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource SurfaceElevatedBrush}"
+                                    BorderThickness="1" BorderBrush="{x:Bind ViewModel.HealthLevel, Mode=OneWay, Converter={StaticResource HealthLevelToBrushConverter}}">
+                                <FontIcon FontSize="18"
+                                          Glyph="{x:Bind ViewModel.HealthLevel, Mode=OneWay, Converter={StaticResource HealthLevelToGlyphConverter}}"
+                                          Foreground="{x:Bind ViewModel.HealthLevel, Mode=OneWay, Converter={StaticResource HealthLevelToBrushConverter}}" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="SYSTEM STATUS" Style="{StaticResource LabelTextStyle}" />
+                                <TextBlock Text="{x:Bind ViewModel.HealthTitle, Mode=OneWay}" FontSize="26" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Text="{x:Bind ViewModel.HealthDetail, Mode=OneWay}" Style="{StaticResource PageSubtitleTextStyle}" MaxWidth="560" HorizontalAlignment="Left" />
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Style="{StaticResource CaptionTextStyle}" TextTrimming="CharacterEllipsis">
+                                <Run Text="{x:Bind ViewModel.CpuName, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{x:Bind ViewModel.GpuName, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Text="{x:Bind ViewModel.MotherboardModel, Mode=OneWay}" Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+
+                        <!-- Quick actions: navigation only — each one goes somewhere real and claims nothing. -->
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+                            <Button Click="OnOpenPortraitClick" ToolTipService.ToolTip="Open Portrait Mode on the portrait display">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+                                    <FontIcon Glyph="&#xE7F4;" FontSize="14" />
+                                    <TextBlock Text="Portrait Mode" />
+                                </StackPanel>
+                            </Button>
+                            <Button Click="OnOpenPerformanceClick" ToolTipService.ToolTip="Optimisation, cooling, startup and game profiles">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+                                    <FontIcon Glyph="&#xEC4A;" FontSize="14" />
+                                    <TextBlock Text="Performance" />
+                                </StackPanel>
+                            </Button>
+                            <Button Click="OnOpenLightingClick" ToolTipService.ToolTip="RGB devices and scenes">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+                                    <FontIcon Glyph="&#xE790;" FontSize="14" />
+                                    <TextBlock Text="Lighting" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Scaled via Viewbox rather than a new size property on RadialGauge: same control,
+                         same tween, just drawn larger. -->
+                    <StackPanel x:Name="HeroGauges" Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Space24}" VerticalAlignment="Center">
+                        <StackPanel Spacing="{StaticResource Space8}">
+                            <Viewbox Width="148">
+                                <controls:RadialGauge Label="CPU" Unit="°C" Max="100"
+                                    Value="{x:Bind ViewModel.CpuTemperature, Mode=OneWay}"
+                                    Tone="{x:Bind ViewModel.CpuTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}"
+                                    AutomationProperties.Name="CPU temperature" />
+                            </Viewbox>
+                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Typography.NumeralAlignment="Tabular">
+                                <Run Text="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="% load" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Spacing="{StaticResource Space8}">
+                            <Viewbox Width="148">
+                                <controls:RadialGauge Label="GPU" Unit="°C" Max="100"
+                                    Value="{x:Bind ViewModel.GpuTemperature, Mode=OneWay}"
+                                    Tone="{x:Bind ViewModel.GpuTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}"
+                                    AutomationProperties.Name="GPU temperature" />
+                            </Viewbox>
+                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Typography.NumeralAlignment="Tabular">
+                                <Run Text="{x:Bind ViewModel.GpuUtilisation, Mode=OneWay, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="% load" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Spacing="{StaticResource Space8}">
+                            <Viewbox Width="148">
+                                <controls:RadialGauge Label="MEMORY" Unit="%" Max="100"
+                                    Value="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay}"
+                                    Tone="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}"
+                                    AutomationProperties.Name="Memory used" />
+                            </Viewbox>
+                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Typography.NumeralAlignment="Tabular">
+                                <Run Text="{x:Bind local:DashboardPage.FormatOneDecimal(ViewModel.RamUsedGb), Mode=OneWay}" /><Run Text=" GB used" />
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
             <!--
                 Left column: CPU/GPU/Memory. Right column: Storage/Motherboard/Network. On a wide
                 window they sit side by side (RootGrid's VisualStateManager below); below ~1100px
@@ -203,6 +284,12 @@
                                    Foreground="{StaticResource StatusWarningBrush}" />
                     </StackPanel>
 
+                    <!-- Raw Super I/O channels (unlabelled "Voltage #11", empty fan headers, board
+                         probes): accurate but dense. Collapsed by default so the Overview leads with
+                         what matters; nothing is hidden or filtered once expanded. -->
+                    <Expander Header="Sensor detail — voltages, board temperatures, fan headers" HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Stretch" IsExpanded="False">
+                        <StackPanel Spacing="10">
                     <TextBlock Text="Voltages" Style="{StaticResource SubsectionLabelTextStyle}" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"
                             Visibility="{x:Bind ViewModel.MotherboardVoltages.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
@@ -258,6 +345,8 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                        </StackPanel>
+                    </Expander>
                 </StackPanel>
 
                 <StackPanel Spacing="10">
@@ -287,6 +376,9 @@
                             <Setter Target="RightColumnDef.Width" Value="0" />
                             <Setter Target="RightColumnPanel.(Grid.Row)" Value="2" />
                             <Setter Target="RightColumnPanel.(Grid.Column)" Value="0" />
+                            <Setter Target="HeroGauges.(Grid.Row)" Value="1" />
+                            <Setter Target="HeroGauges.(Grid.Column)" Value="0" />
+                            <Setter Target="HeroGaugeColumn.Width" Value="0" />
                         </VisualState.Setters>
                     </VisualState>
                 </VisualStateGroup>

@@ -39,8 +39,20 @@ touching hardware safety (fan floors, BIOS restore, RGB conflict detection, opti
       Dashboard's Motherboard section now shows a warning line when Super I/O data is stale (>3 s).
       **Deferred:** Automation item (game profiles still inside Performance — no empty page added);
       current-profile indicator (waits for 39.6 profiles).
-- [ ] 39.4 Overview hero (system condition, CPU/GPU temp+load, alerts, quick actions) with
-      progressive disclosure for the existing per-sensor cards.
+- [~] 39.4 Overview hero — first pass implemented (build + 78/78 tests; **not yet run**: Smart
+      App Control blocked the fresh build, and visuals need Matt). Matt's screenshot of 39.3
+      confirmed nav, title-bar health, stale warning and the RAM ⚠ glyph all render.
+      Hero panel replaces the five 92px gauges: verdict from new pure `Core.Health.SystemHealth`
+      (glyph + words, Unknown when no readings, conservative wording, 6 tests), CPU/GPU names,
+      board, quick actions (Portrait Mode / Performance / Lighting — navigation only), and CPU °C,
+      GPU °C, memory % gauges at 148px with load/GB beneath. Narrow windows stack gauges under the
+      verdict. Raw Super I/O wall (unlabelled voltages, empty fan headers) moved into a collapsed
+      "Sensor detail" Expander — nothing filtered once expanded.
+      Settings: About panel (real version 0.9.0 + commit, runtime), check-only GitHub update check,
+      opt-in startup check with a Settings nav badge; migration runner now really runs each script
+      once (`PRAGMA user_version`) — it previously re-ran all of them every launch.
+      **Still open in 39.4:** card-level progressive disclosure for CPU/GPU/Memory detail rows,
+      recent alerts in the hero, implausible board-probe readings (e.g. "Temperature #3: 3 °C").
 - [ ] 39.5 Area consolidation (Performance tabs, Devices = Firmware + Device Utilities, Lighting).
 - [ ] 39.6 Unified, versioned profiles with preview / per-component result / revert + migration.
 - [ ] 39.7 First-run onboarding (capability detection, vendor-conflict summary, skip-able).
