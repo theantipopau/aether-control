@@ -3,52 +3,123 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-        Aether Control's whole visual identity is: dark charcoal ground, white primary text,
-        muted grey secondary text, and exactly one accent colour (swappable in Settings — see
-        AccentColor enum). No gradients, no per-vendor RGB theming of the UI itself.
+        Aether Control colour tokens ("dark technical luxury"): a slightly cool charcoal ground,
+        off-white primary text, and exactly one swappable accent (see AccentPalette). Colour carries
+        meaning — severity, state, device lighting — never decoration. Pages and controls should
+        reference the role tokens below (Surface*/Text*/Border*/Status*), not raw hex.
+
+        The original key names (AetherSurfaceBrush, AetherBorderBrush, ...) are kept as aliases at
+        the bottom so existing pages keep working while they migrate to the role names.
     -->
-    <Color x:Key="AetherBackgroundColor">#0F1113</Color>
-    <!-- Same charcoal, ~72% opacity: lets the MainWindow's Mica backdrop show through as a
-         subtle texture/parallax behind page content instead of hiding it completely. -->
-    <Color x:Key="AetherBackgroundTranslucentColor">#B80F1113</Color>
-    <Color x:Key="AetherSurfaceColor">#1A1D1F</Color>
-    <Color x:Key="AetherSurfaceRaisedColor">#232629</Color>
-    <Color x:Key="AetherBorderColor">#2C3033</Color>
-    <Color x:Key="AetherTextPrimaryColor">#FFFFFF</Color>
-    <Color x:Key="AetherTextSecondaryColor">#9BA1A6</Color>
+
+    <!-- ── Surfaces: ground → navigation → primary → card → elevated → interactive ── -->
+    <Color x:Key="SurfaceAppColor">#0F1214</Color>
+    <!-- Same ground, ~72% opacity: lets MainWindow's Mica backdrop read as texture behind pages. -->
+    <Color x:Key="SurfaceAppTranslucentColor">#B80F1214</Color>
+    <Color x:Key="SurfaceNavigationColor">#0C0F11</Color>
+    <Color x:Key="SurfacePrimaryColor">#14181B</Color>
+    <Color x:Key="SurfaceCardColor">#1A1E21</Color>
+    <Color x:Key="SurfaceElevatedColor">#21262A</Color>
+    <Color x:Key="SurfaceInteractiveColor">#272D31</Color>
+    <Color x:Key="SurfaceFlyoutColor">#1E2326</Color>
+    <Color x:Key="SurfaceDialogColor">#1E2326</Color>
+    <Color x:Key="SurfaceHoverOverlayColor">#0FFFFFFF</Color>
+    <Color x:Key="SurfacePressedOverlayColor">#08FFFFFF</Color>
+
+    <!-- ── Text ── -->
+    <Color x:Key="TextPrimaryColor">#F2F4F5</Color>
+    <Color x:Key="TextSecondaryColor">#9BA3AA</Color>
+    <Color x:Key="TextTertiaryColor">#6E777E</Color>
+
+    <!-- ── Borders ── -->
+    <Color x:Key="BorderSubtleColor">#23282C</Color>
+    <Color x:Key="BorderStandardColor">#2E3439</Color>
+    <Color x:Key="BorderStrongColor">#3C444A</Color>
+
+    <!-- ── Accent (runtime-swappable, see AccentPalette.Apply) ── -->
     <Color x:Key="AetherAccentColor">#00E5FF</Color>
 
-    <!-- Severity tones (temperature/usage thresholds) — deliberately fixed, not swappable with the
-         accent colour: a "hot" reading should always read as a warning regardless of theme choice. -->
+    <!-- ── Semantic status. Fixed, NOT tied to the accent: a hot reading must read as a warning
+         whatever accent the user picked. Never rely on these alone — pair with a glyph or text. ── -->
+    <Color x:Key="StatusNormalColor">#3DD68C</Color>
+    <Color x:Key="StatusSuccessColor">#3DD68C</Color>
+    <Color x:Key="StatusInfoColor">#5AA9FF</Color>
+    <Color x:Key="StatusCoolColor">#4FC3F7</Color>
+    <Color x:Key="StatusWarmColor">#F5C86B</Color>
+    <Color x:Key="StatusWarningColor">#F5C86B</Color>
+    <Color x:Key="StatusHotColor">#FF6D6D</Color>
+    <Color x:Key="StatusCriticalColor">#FF4D5E</Color>
+    <Color x:Key="StatusErrorColor">#FF4D5E</Color>
+    <Color x:Key="StatusUnsupportedColor">#6E777E</Color>
+    <Color x:Key="StatusDisabledColor">#4A5157</Color>
+    <Color x:Key="StatusDisconnectedColor">#6E777E</Color>
+
+    <!-- ── Brushes ── -->
+    <SolidColorBrush x:Key="SurfaceAppBrush" Color="{StaticResource SurfaceAppColor}" />
+    <SolidColorBrush x:Key="SurfaceAppTranslucentBrush" Color="{StaticResource SurfaceAppTranslucentColor}" />
+    <SolidColorBrush x:Key="SurfaceNavigationBrush" Color="{StaticResource SurfaceNavigationColor}" />
+    <SolidColorBrush x:Key="SurfacePrimaryBrush" Color="{StaticResource SurfacePrimaryColor}" />
+    <SolidColorBrush x:Key="SurfaceCardBrush" Color="{StaticResource SurfaceCardColor}" />
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="{StaticResource SurfaceElevatedColor}" />
+    <SolidColorBrush x:Key="SurfaceInteractiveBrush" Color="{StaticResource SurfaceInteractiveColor}" />
+    <SolidColorBrush x:Key="SurfaceFlyoutBrush" Color="{StaticResource SurfaceFlyoutColor}" />
+    <SolidColorBrush x:Key="SurfaceDialogBrush" Color="{StaticResource SurfaceDialogColor}" />
+    <SolidColorBrush x:Key="SurfaceHoverOverlayBrush" Color="{StaticResource SurfaceHoverOverlayColor}" />
+    <SolidColorBrush x:Key="SurfacePressedOverlayBrush" Color="{StaticResource SurfacePressedOverlayColor}" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiaryColor}" />
+
+    <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource BorderSubtleColor}" />
+    <SolidColorBrush x:Key="BorderStandardBrush" Color="{StaticResource BorderStandardColor}" />
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource BorderStrongColor}" />
+    <SolidColorBrush x:Key="BorderWarningBrush" Color="{StaticResource StatusWarningColor}" />
+    <SolidColorBrush x:Key="BorderCriticalBrush" Color="{StaticResource StatusCriticalColor}" />
+
+    <!-- Single shared instance: AccentPalette mutates its Color in place, repainting everything
+         that references it. Don't clone it into per-element brushes except for animation. -->
+    <SolidColorBrush x:Key="AetherAccentBrush" Color="{StaticResource AetherAccentColor}" />
+
+    <SolidColorBrush x:Key="StatusNormalBrush" Color="{StaticResource StatusNormalColor}" />
+    <SolidColorBrush x:Key="StatusSuccessBrush" Color="{StaticResource StatusSuccessColor}" />
+    <SolidColorBrush x:Key="StatusInfoBrush" Color="{StaticResource StatusInfoColor}" />
+    <SolidColorBrush x:Key="StatusCoolBrush" Color="{StaticResource StatusCoolColor}" />
+    <SolidColorBrush x:Key="StatusWarmBrush" Color="{StaticResource StatusWarmColor}" />
+    <SolidColorBrush x:Key="StatusWarningBrush" Color="{StaticResource StatusWarningColor}" />
+    <SolidColorBrush x:Key="StatusHotBrush" Color="{StaticResource StatusHotColor}" />
+    <SolidColorBrush x:Key="StatusCriticalBrush" Color="{StaticResource StatusCriticalColor}" />
+    <SolidColorBrush x:Key="StatusErrorBrush" Color="{StaticResource StatusErrorColor}" />
+    <SolidColorBrush x:Key="StatusUnsupportedBrush" Color="{StaticResource StatusUnsupportedColor}" />
+    <SolidColorBrush x:Key="StatusDisabledBrush" Color="{StaticResource StatusDisabledColor}" />
+    <SolidColorBrush x:Key="StatusDisconnectedBrush" Color="{StaticResource StatusDisconnectedColor}" />
+
+    <!-- ── Legacy aliases (pre-token names). Prefer the role names above in new XAML. ── -->
+    <Color x:Key="AetherBackgroundColor">#0F1214</Color>
+    <Color x:Key="AetherBackgroundTranslucentColor">#B80F1214</Color>
+    <Color x:Key="AetherSurfaceColor">#1A1E21</Color>
+    <Color x:Key="AetherSurfaceRaisedColor">#21262A</Color>
+    <Color x:Key="AetherBorderColor">#2E3439</Color>
+    <Color x:Key="AetherTextPrimaryColor">#F2F4F5</Color>
+    <Color x:Key="AetherTextSecondaryColor">#9BA3AA</Color>
     <Color x:Key="AetherWarmColor">#F5C86B</Color>
     <Color x:Key="AetherHotColor">#FF6D6D</Color>
-
-    <!-- Opaque — used by Portrait Mode, which is a dedicated always-on display and must never
-         let the desktop show through (defeats OLED mode, looks broken on a second monitor). -->
-    <SolidColorBrush x:Key="AetherBackgroundBrush" Color="{StaticResource AetherBackgroundColor}" />
-    <!-- Translucent — used by the main app shell's pages, layered over the Mica backdrop. -->
-    <SolidColorBrush x:Key="AetherBackgroundTranslucentBrush" Color="{StaticResource AetherBackgroundTranslucentColor}" />
-    <SolidColorBrush x:Key="AetherSurfaceBrush" Color="{StaticResource AetherSurfaceColor}" />
-    <SolidColorBrush x:Key="AetherSurfaceRaisedBrush" Color="{StaticResource AetherSurfaceRaisedColor}" />
-    <SolidColorBrush x:Key="AetherBorderBrush" Color="{StaticResource AetherBorderColor}" />
-    <SolidColorBrush x:Key="AetherTextPrimaryBrush" Color="{StaticResource AetherTextPrimaryColor}" />
-    <SolidColorBrush x:Key="AetherTextSecondaryBrush" Color="{StaticResource AetherTextSecondaryColor}" />
-    <SolidColorBrush x:Key="AetherAccentBrush" Color="{StaticResource AetherAccentColor}" />
-    <SolidColorBrush x:Key="AetherWarmBrush" Color="{StaticResource AetherWarmColor}" />
-    <SolidColorBrush x:Key="AetherHotBrush" Color="{StaticResource AetherHotColor}" />
+    <!-- Opaque — Portrait Mode is an always-on display and must never let the desktop show through. -->
+    <SolidColorBrush x:Key="AetherBackgroundBrush" Color="{StaticResource SurfaceAppColor}" />
+    <SolidColorBrush x:Key="AetherBackgroundTranslucentBrush" Color="{StaticResource SurfaceAppTranslucentColor}" />
+    <SolidColorBrush x:Key="AetherSurfaceBrush" Color="{StaticResource SurfaceCardColor}" />
+    <SolidColorBrush x:Key="AetherSurfaceRaisedBrush" Color="{StaticResource SurfaceElevatedColor}" />
+    <SolidColorBrush x:Key="AetherBorderBrush" Color="{StaticResource BorderStandardColor}" />
+    <SolidColorBrush x:Key="AetherTextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="AetherTextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="AetherWarmBrush" Color="{StaticResource StatusWarmColor}" />
+    <SolidColorBrush x:Key="AetherHotBrush" Color="{StaticResource StatusHotColor}" />
 
     <!--
-        WinUI3's Fluent theme derives NavigationView's selection pill, ToggleSwitch's "on" fill,
-        CheckBox/RadioButton's checked state, Slider, HyperlinkButton, and AccentButtonStyle all
-        from SystemAccentColor (+ its Light1-3/Dark1-3 tints) — not from any of the AetherAccent*
-        resources above. Left alone, every one of those controls shows Windows' OS-level accent
-        colour instead of Aether Control's own, so the side nav's selected-item highlight (and
-        every switch/checkbox in Settings) visually disagrees with the rest of the app. Overriding
-        the whole SystemAccentColor family here — with the exact same tint/shade ratios Windows
-        itself derives from a base colour — makes every stock control pick up AetherAccentColor
-        automatically, with zero per-control restyling.
-        TODO: when Settings' Accent picker actually applies at runtime (not yet wired), it needs
-        to update this whole block, not just AetherAccentColor.
+        WinUI's Fluent controls (NavigationView selection pill, ToggleSwitch, CheckBox, Slider,
+        AccentButtonStyle) derive from SystemAccentColor, not AetherAccent*. Overriding the family
+        here keeps stock controls on Aether's accent. AccentPalette.Apply rewrites this whole block at
+        startup from the user's chosen accent, before any window is shown.
     -->
     <Color x:Key="SystemAccentColor">#00E5FF</Color>
     <Color x:Key="SystemAccentColorLight1">#40E9FF</Color>

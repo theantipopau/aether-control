@@ -4,6 +4,72 @@ Source of truth for progress on this build. Updated as work lands.
 
 **Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap)
 
+## Phase 39 — Premium UI/UX programme (planned; sub-phases 39.1–39.2 landed)
+Brief: make Aether a cohesive "dark technical luxury" product without a rewrite and without
+touching hardware safety (fan floors, BIOS restore, RGB conflict detection, optimisation guards).
+
+**Audit (2026-09-26), measured against the actual code:**
+- Baseline: App builds via VS MSBuild with 0 code warnings (1 NETSDK1206 RID notice); 62/62 tests.
+- Design resources existed but were thin: `Colors.xaml` (8 colours), `Styles.xaml` (4 styles),
+  separate `PortraitColors.xaml`. No spacing/radius/type scale. The "Accent picker not wired" TODO
+  in `Colors.xaml` was stale — `Theming/AccentPalette.cs` already applies it.
+- Hard-coded values across 13 non-portrait XAML files: 8 distinct font sizes (the 11px uppercase
+  label hand-written 11×), 7 distinct corner radii (2/8/10/12/15/18/46), 13 distinct `Spacing`s.
+- Accessibility: **zero** `AutomationProperties`, no reduced-motion handling, no high-contrast
+  handling. MetricCard severity (Warm/Hot) was colour-only.
+- Motion: two independent timings (150 ms hover, 220 ms NumberTween), neither honoured Windows'
+  animation setting. NumberTween only runs on value change (good — no idle frame cost).
+- Shell: flat 8-item NavigationView (Dashboard, Portrait, History | Optimisation, RGB, Firmware,
+  Devices, Diagnostics) + Settings. Dashboard is a long two-column scroll of 160px MetricCards.
+- Code-side colours: `MainWindow.xaml.cs`, `PortraitWindow.xaml.cs` title-bar button colours,
+  `RadialGauge`, `PortraitRing`, `PortraitSparkline`, `SegmentedToggle` still use literals.
+
+**Sequence** (each sub-phase builds + tests before the next):
+- [x] 39.1 Audit + baseline (above).
+- [x] 39.2 Design-system foundation — see below.
+- [ ] 39.3 Shell: IA regrouping into Overview / Performance / Lighting / Devices / Automation /
+      History (+ Settings, Diagnostics), keeping existing page Tags as routes; title-bar health +
+      profile indicator; compact-nav tooltips; page transition on the shared Motion timings.
+- [ ] 39.4 Overview hero (system condition, CPU/GPU temp+load, alerts, quick actions) with
+      progressive disclosure for the existing per-sensor cards.
+- [ ] 39.5 Area consolidation (Performance tabs, Devices = Firmware + Device Utilities, Lighting).
+- [ ] 39.6 Unified, versioned profiles with preview / per-component result / revert + migration.
+- [ ] 39.7 First-run onboarding (capability detection, vendor-conflict summary, skip-able).
+- [ ] 39.8 Accessibility, performance, packaging and README screenshots.
+
+**39.2 — Design-system foundation (implemented, build + tests verified):**
+- `Themes/Colors.xaml`: role tokens — Surface{App,Navigation,Primary,Card,Elevated,Interactive,
+  Flyout,Dialog,Hover/PressedOverlay}, Text{Primary,Secondary,Tertiary}, Border{Subtle,Standard,
+  Strong,Warning,Critical}, Status{Normal,Success,Info,Cool,Warm,Warning,Hot,Critical,Error,
+  Unsupported,Disabled,Disconnected}. Ground shifted slightly cool (#0F1113 → #0F1214), primary
+  text off-white (#F2F4F5). All previous `Aether*` keys kept as brushes of the same roles, so no
+  page broke; the single shared `AetherAccentBrush` instance is untouched (AccentPalette mutates it).
+- `Themes/Styles.xaml`: spacing scale (Space4…Space48, PagePadding, CardPadding), radius scale
+  (Small 6 / Control 8 / Card 12 / Hero 16, plus WinUI `ControlCornerRadius`/`OverlayCornerRadius`
+  overrides so stock controls match), elevation depths, and type styles (AppTitle, PageTitle 20→24,
+  PageSubtitle, SectionHeader, CardHeading, TelemetryLarge/Secondary, Body, Secondary, Caption,
+  Label, SubsectionLabel, Status). New `HeroBorderStyle` / `InsetBorderStyle`.
+- `Theming/Motion.cs`: shared durations (Hover 140, ValueChange 220, PageTransition 200,
+  ModeChange 340 ms) + cached Windows `UISettings.AnimationsEnabled` (live-updated). NumberTween
+  and HoverBorderEffect now snap instantly when animations are off — values still update.
+- MetricCard: tabular numerals (`Typography.NumeralAlignment`), a warning glyph for Warm/Hot so
+  severity isn't colour-only, and one `AutomationProperties.Name` sentence per card, refreshed
+  once per reading (never per animation frame).
+- Dashboard: repeated label markup → `LabelTextStyle`/`SubsectionLabelTextStyle`; tabular
+  sparkline percentages. Portrait stale indicator uses `PortraitSeverityWarningBrush`, not a literal.
+- Verified: build clean, 62/62 tests, app launched elevated, stays responsive, no new
+  `unhandled-exceptions.log` entries (resource-lookup failures would land there).
+- **Needs visual confirmation by Matt** (UIPI + unpackaged exe block Claude's screenshots):
+  new palette/radii across pages, severity glyph placement, reduced-motion behaviour.
+
+## Phase 38 — Visible Super I/O staleness + poison-rate evidence
+- Snapshot carries `MotherboardReadUtc` + session poll/poison counters; Diagnostics shows poison
+  rate, data age and vendor software; Portrait FANS shows STALE; per-minute ratio log line.
+- Live (2026-09-26): 15/55 polls poisoned with AsusFanControlService + ArmouryCrate.Service
+  running. Earlier claim that poisoning was "near-continuous, cooldown-limited" was **wrong** —
+  it recurs ~14–16 s after each recovery. Fixed Armoury Crate detection (process is
+  `ArmouryCrate.Service`). Pending: A/B with AsusFanControlService stopped.
+
 ## Phase 37 — Mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap
 Stage 1's last two items: pin the sensor-mapping fixes from Phase 36 against
 real captured data (not just live spot-checks), and give the diagnostics/

@@ -16,7 +16,6 @@ namespace AetherControl.App.Controls;
 /// </summary>
 internal static class HoverBorderEffect
 {
-    private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(150);
 
     public static void Attach(UIElement hoverSource, Border targetBorder)
     {
@@ -29,10 +28,16 @@ internal static class HoverBorderEffect
 
     private static void AnimateTo(SolidColorBrush brush, Color target)
     {
+        if (!Theming.Motion.AnimationsEnabled)
+        {
+            brush.Color = target;
+            return;
+        }
+
         var animation = new ColorAnimation
         {
             To = target,
-            Duration = Duration,
+            Duration = Theming.Motion.Hover,
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
         Storyboard.SetTarget(animation, brush);

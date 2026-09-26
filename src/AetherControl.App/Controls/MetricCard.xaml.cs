@@ -153,11 +153,19 @@ public sealed partial class MetricCard : UserControl
         set => SetValue(DiagnosticTagProperty, value);
     }
 
-    private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
-        ((MetricCard)d).LabelText.Text = (string)e.NewValue;
+    private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var card = (MetricCard)d;
+        card.LabelText.Text = (string)e.NewValue;
+        card.UpdateAutomationName();
+    }
 
-    private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
-        ((MetricCard)d).ValueText.Text = (string)e.NewValue;
+    private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var card = (MetricCard)d;
+        card.ValueText.Text = (string)e.NewValue;
+        card.UpdateAutomationName();
+    }
 
     private static void OnUnitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -175,6 +183,7 @@ public sealed partial class MetricCard : UserControl
         var card = (MetricCard)d;
         var newValue = (double)e.NewValue;
         var isDiagnosticCard = !string.IsNullOrEmpty(card.DiagnosticTag);
+        card.UpdateAutomationName(); // once per reading (the tween target), never per animation frame
 
         if (isDiagnosticCard && StorageDiagnostics.TraceEnabled)
         {
@@ -234,18 +243,39 @@ public sealed partial class MetricCard : UserControl
     {
         var brush = tone switch
         {
-            MetricTone.Warm => (Brush)Application.Current.Resources["AetherWarmBrush"],
-            MetricTone.Hot => (Brush)Application.Current.Resources["AetherHotBrush"],
+            MetricTone.Warm => (Brush)Application.Current.Resources["StatusWarmBrush"],
+            MetricTone.Hot => (Brush)Application.Current.Resources["StatusHotBrush"],
             MetricTone.Cool => (Brush)Application.Current.Resources["AetherAccentBrush"],
-            _ => (Brush)Application.Current.Resources["AetherBorderBrush"]
+            _ => (Brush)Application.Current.Resources["BorderStandardBrush"]
         };
 
         AccentStripe.Background = brush;
         MeterFillBar.Background = brush;
 
         ValueText.Foreground = tone == MetricTone.Neutral
-            ? (Brush)Application.Current.Resources["AetherTextPrimaryBrush"]
+            ? (Brush)Application.Current.Resources["TextPrimaryBrush"]
             : brush;
+
+        // Warm/Hot also get a glyph, so the state survives colour-blindness and high contrast.
+        var isWarning = tone is MetricTone.Warm or MetricTone.Hot;
+        SeverityIcon.Visibility = isWarning ? Visibility.Visible : Visibility.Collapsed;
+        SeverityIcon.Foreground = brush;
+        UpdateAutomationName();
+    }
+
+    /// <summary>Screen readers get one sentence per card ("CPU TEMPERATURE: 72 °C, hot") rather
+    /// than three disconnected text fragments. Refreshed on label/unit/tone changes only — not on
+    /// every animation frame.</summary>
+    private void UpdateAutomationName()
+    {
+        var value = double.IsFinite(NumericValue) ? FormatSafely(NumericValue, _format) : Value;
+        var state = Tone switch
+        {
+            MetricTone.Warm => ", warm",
+            MetricTone.Hot => ", hot",
+            _ => string.Empty
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(this, $"{Label}: {value} {Unit}{state}".Trim());
     }
 
     private void UpdateMeterFill(double percent)

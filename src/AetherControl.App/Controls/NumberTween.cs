@@ -15,7 +15,7 @@ namespace AetherControl.App.Controls;
 /// </summary>
 internal sealed class NumberTween(Action<double> onUpdate)
 {
-    private const double DurationMs = 220;
+    private static readonly double DurationMs = Theming.Motion.ValueChange.TotalMilliseconds;
 
     private readonly TweenState _state = new();
     private long _startTimestamp;
@@ -35,6 +35,12 @@ internal sealed class NumberTween(Action<double> onUpdate)
             case TweenTransition.Snapped:
                 Stop();
                 onUpdate(_state.Current);
+                return;
+
+            case TweenTransition.Animating when !Theming.Motion.AnimationsEnabled:
+                // Reduced motion: jump to the new reading in one step — same value, no glide.
+                Stop();
+                onUpdate(_state.Advance(1.0));
                 return;
 
             case TweenTransition.Animating:

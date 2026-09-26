@@ -77,8 +77,8 @@
                         <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="12,10">
                             <StackPanel Spacing="6">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="CPU LOAD" FontSize="11" FontWeight="SemiBold" CharacterSpacing="20" Foreground="{StaticResource AetherTextSecondaryBrush}" />
-                                    <TextBlock FontSize="11" Foreground="{StaticResource AetherAccentBrush}">
+                                    <TextBlock Text="CPU LOAD" Style="{StaticResource LabelTextStyle}" />
+                                    <TextBlock FontSize="11" Typography.NumeralAlignment="Tabular" Foreground="{StaticResource AetherAccentBrush}">
                                         <Run Text="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="%" />
                                     </TextBlock>
                                 </StackPanel>
@@ -88,8 +88,8 @@
                         <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="12,10">
                             <StackPanel Spacing="6">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="GPU LOAD" FontSize="11" FontWeight="SemiBold" CharacterSpacing="20" Foreground="{StaticResource AetherTextSecondaryBrush}" />
-                                    <TextBlock FontSize="11" Foreground="{StaticResource AetherAccentBrush}">
+                                    <TextBlock Text="GPU LOAD" Style="{StaticResource LabelTextStyle}" />
+                                    <TextBlock FontSize="11" Typography.NumeralAlignment="Tabular" Foreground="{StaticResource AetherAccentBrush}">
                                         <Run Text="{x:Bind ViewModel.GpuUtilisation, Mode=OneWay, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="%" />
                                     </TextBlock>
                                 </StackPanel>
@@ -195,7 +195,7 @@
                     <controls:SectionHeader Label="Motherboard" />
                     <TextBlock Text="{x:Bind ViewModel.MotherboardModel, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
 
-                    <TextBlock Text="Voltages" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                    <TextBlock Text="Voltages" Style="{StaticResource SubsectionLabelTextStyle}" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"
                             Visibility="{x:Bind ViewModel.MotherboardVoltages.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
                         <TextBlock Text="No voltage sensors reported by this board yet." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
@@ -213,7 +213,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="Board Temperatures" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" Margin="0,8,0,0" />
+                    <TextBlock Text="Board Temperatures" Style="{StaticResource SubsectionLabelTextStyle}" Margin="0,8,0,0" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"
                             Visibility="{x:Bind ViewModel.MotherboardVrmTemperatures.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
                         <TextBlock Text="No board temperature sensors reported by this Super I/O chip." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
@@ -232,7 +232,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="Fan Speeds" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" Margin="0,8,0,0" />
+                    <TextBlock Text="Fan Speeds" Style="{StaticResource SubsectionLabelTextStyle}" Margin="0,8,0,0" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12" MaxWidth="480" HorizontalAlignment="Left"
                             Visibility="{x:Bind ViewModel.MotherboardFanSpeeds.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
                         <TextBlock Text="No fan RPM available right now — if ASUS Armoury Crate (or another vendor fan-control service) is running, it may be holding exclusive access to the Super I/O sensors."

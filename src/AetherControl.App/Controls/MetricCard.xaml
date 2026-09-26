@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="AetherControl.App.Controls.MetricCard"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -18,8 +18,8 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Tone accent stripe — colour set in code from the Tone property. -->
-            <Border x:Name="AccentStripe" Grid.Column="0" Background="{StaticResource AetherBorderBrush}" CornerRadius="12,0,0,12" />
+            <!-- Tone accent stripe â€” colour set in code from the Tone property. -->
+            <Border x:Name="AccentStripe" Grid.Column="0" Background="{StaticResource AetherBorderBrush}" CornerRadius="12,0,0,12" AutomationProperties.AccessibilityView="Raw" />
 
             <StackPanel Grid.Column="1" Spacing="8" Padding="13,12,13,12">
                 <Grid>
@@ -27,14 +27,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock
-                        x:Name="LabelText"
-                        Grid.Column="0"
-                        Foreground="{StaticResource AetherTextSecondaryBrush}"
-                        FontSize="11"
-                        FontWeight="SemiBold"
-                        CharacterSpacing="20"
-                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="LabelText" Grid.Column="0" Style="{StaticResource LabelTextStyle}" />
                     <FontIcon
                         x:Name="IconElement"
                         Grid.Column="1"
@@ -45,12 +38,21 @@
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Bottom">
+                    <!-- Tabular numerals: a reading going 9 → 10 or 1.8 → 11.2 must not shove the unit sideways. -->
                     <TextBlock
                         x:Name="ValueText"
-                        Foreground="{StaticResource AetherTextPrimaryBrush}"
+                        Style="{StaticResource TelemetryLargeTextStyle}"
                         FontSize="26"
-                        FontWeight="SemiBold"
+                        Typography.NumeralAlignment="Tabular"
                         TextTrimming="CharacterEllipsis" />
+                    <!-- Severity glyph: Warm/Hot must not be communicated by colour alone. -->
+                    <FontIcon
+                        x:Name="SeverityIcon"
+                        Glyph="&#xE7BA;"
+                        FontSize="12"
+                        Margin="2,0,0,6"
+                        VerticalAlignment="Bottom"
+                        Visibility="Collapsed" />
                     <TextBlock
                         x:Name="UnitText"
                         Foreground="{StaticResource AetherTextSecondaryBrush}"
