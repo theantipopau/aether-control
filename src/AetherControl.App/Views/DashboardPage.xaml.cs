@@ -23,6 +23,14 @@ public sealed partial class DashboardPage : Page
         Unloaded += (_, _) => ViewModel.Dispose();
     }
 
+    /// <summary>RDNA cards stop their fans below ~50–60 °C (zero-RPM mode), so 0 % on a cool GPU is
+    /// normal, not a fault. Only explain it when that's plausibly what's happening.</summary>
+    public static string FormatGpuFanDetail(double fanPercent, double gpuTempC) =>
+        fanPercent <= 0 && gpuTempC is > 0 and < 60 ? "Stopped — fans idle when cool" : string.Empty;
+
+    private void OnExternalIpTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e) =>
+        ViewModel.IsExternalIpRevealed = !ViewModel.IsExternalIpRevealed;
+
     public static string FormatOneDecimal(double value) => double.IsFinite(value) ? value.ToString("F1") : "—";
 
     // Quick actions navigate the shell's own Frame — MainWindow's Frame.Navigated handler then moves

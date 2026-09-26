@@ -41,7 +41,8 @@ public static class SystemHealth
         {
             HealthLevel.Critical => "Running hot",
             HealthLevel.Warning => "Under load",
-            _ => "All readings normal"
+            // A clean verdict over stale board data would read as fully healthy; say which half is known.
+            _ => motherboardStale ? "Normal · board sensors stale" : "All readings normal"
         };
 
         var detail = issues.Count == 0

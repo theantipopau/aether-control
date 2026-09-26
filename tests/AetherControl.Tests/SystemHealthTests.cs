@@ -42,6 +42,8 @@ public class SystemHealthTests
         var result = SystemHealth.Evaluate(61, 45, 60, motherboardStale: true);
         Assert.Equal(HealthLevel.Normal, result.Level);
         Assert.Contains("stale", result.Detail, StringComparison.OrdinalIgnoreCase);
+        // The headline must not read as fully healthy while half the data is old.
+        Assert.Contains("stale", result.Title, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

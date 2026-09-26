@@ -53,6 +53,17 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double networkLatencyMs;
     [ObservableProperty] private string networkExternalIp = "—";
 
+    /// <summary>The public IP is masked until clicked: it identified the user's connection in a
+    /// shared screenshot of the Overview. Resets per page visit, never persisted.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NetworkExternalIpDisplay))]
+    private bool isExternalIpRevealed;
+
+    public string NetworkExternalIpDisplay =>
+        IsExternalIpRevealed || NetworkExternalIp == "—" ? NetworkExternalIp : "•••.•••.•••.•••";
+
+    partial void OnNetworkExternalIpChanged(string value) => OnPropertyChanged(nameof(NetworkExternalIpDisplay));
+
     [ObservableProperty] private string motherboardModel = "—";
 
     // Empty while live. Same rule as Portrait Mode's FANS header: poisoned Super I/O reads are

@@ -44,10 +44,12 @@
             <Border x:Name="HeroPanel" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource HeroBorderStyle}">
                 <Grid x:Name="HeroGrid" ColumnSpacing="{StaticResource Space32}" RowSpacing="{StaticResource Space24}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition x:Name="HeroStatusColumn" Width="*" />
+                        <ColumnDefinition x:Name="HeroStatusColumn" Width="*" MinWidth="360" />
+                        <ColumnDefinition x:Name="HeroTrendsColumn" Width="*" />
                         <ColumnDefinition x:Name="HeroGaugeColumn" Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -101,9 +103,45 @@
                         </StackPanel>
                     </StackPanel>
 
+                    <!-- Trend sparklines live in the hero: on wide windows this filled the gap between
+                         verdict and gauges, and it freed a whole row in the left column. -->
+                    <StackPanel x:Name="HeroTrends" Grid.Column="1" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Text="LAST MINUTE" Style="{StaticResource LabelTextStyle}" />
+                    <TextBlock Text="CPU/GPU load — shows whether a number that jumped was a real spike or just noise."
+                               Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource InsetBorderStyle}" Padding="12,10">
+                            <StackPanel Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="CPU LOAD" Style="{StaticResource LabelTextStyle}" />
+                                    <TextBlock FontSize="11" Typography.NumeralAlignment="Tabular" Foreground="{StaticResource AetherAccentBrush}">
+                                        <Run Text="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="%" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <controls:PortraitSparkline Height="64" Values="{x:Bind ViewModel.CpuUsageHistory, Mode=OneWay}" Stroke="{StaticResource AetherAccentBrush}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource InsetBorderStyle}" Padding="12,10">
+                            <StackPanel Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="GPU LOAD" Style="{StaticResource LabelTextStyle}" />
+                                    <TextBlock FontSize="11" Typography.NumeralAlignment="Tabular" Foreground="{StaticResource AetherAccentBrush}">
+                                        <Run Text="{x:Bind ViewModel.GpuUtilisation, Mode=OneWay, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="%" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <controls:PortraitSparkline Height="64" Values="{x:Bind ViewModel.GpuUsageHistory, Mode=OneWay}" Stroke="{StaticResource AetherAccentBrush}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+
                     <!-- Scaled via Viewbox rather than a new size property on RadialGauge: same control,
                          same tween, just drawn larger. -->
-                    <StackPanel x:Name="HeroGauges" Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Space24}" VerticalAlignment="Center">
+                    <StackPanel x:Name="HeroGauges" Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource Space24}" VerticalAlignment="Center">
                         <StackPanel Spacing="{StaticResource Space8}">
                             <Viewbox Width="148">
                                 <controls:RadialGauge Label="CPU" Unit="°C" Max="100"
@@ -147,39 +185,7 @@
                 column too narrow for its cards to wrap sensibly.
             -->
             <StackPanel x:Name="LeftColumnPanel" Grid.Row="1" Grid.Column="0" Spacing="28">
-                <StackPanel Spacing="10">
-                    <controls:SectionHeader Label="Trends" />
-                    <TextBlock Text="Last minute of CPU/GPU load — confirms at a glance whether a number that jumped was a real spike or just noise."
-                               Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
-                    <Grid ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="12,10">
-                            <StackPanel Spacing="6">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="CPU LOAD" Style="{StaticResource LabelTextStyle}" />
-                                    <TextBlock FontSize="11" Typography.NumeralAlignment="Tabular" Foreground="{StaticResource AetherAccentBrush}">
-                                        <Run Text="{x:Bind ViewModel.CpuUtilisation, Mode=OneWay, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="%" />
-                                    </TextBlock>
-                                </StackPanel>
-                                <controls:PortraitSparkline Height="48" Values="{x:Bind ViewModel.CpuUsageHistory, Mode=OneWay}" Stroke="{StaticResource AetherAccentBrush}" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="12,10">
-                            <StackPanel Spacing="6">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="GPU LOAD" Style="{StaticResource LabelTextStyle}" />
-                                    <TextBlock FontSize="11" Typography.NumeralAlignment="Tabular" Foreground="{StaticResource AetherAccentBrush}">
-                                        <Run Text="{x:Bind ViewModel.GpuUtilisation, Mode=OneWay, Converter={StaticResource PercentDisplayConverter}}" /><Run Text="%" />
-                                    </TextBlock>
-                                </StackPanel>
-                                <controls:PortraitSparkline Height="48" Values="{x:Bind ViewModel.GpuUsageHistory, Mode=OneWay}" Stroke="{StaticResource AetherAccentBrush}" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-                </StackPanel>
+                
 
                 <StackPanel Spacing="10">
                     <controls:SectionHeader Label="CPU" />
@@ -208,6 +214,7 @@
                         <controls:MetricCard Label="POWER DRAW" NumericValue="{x:Bind ViewModel.GpuPowerDraw, Mode=OneWay}" Format="F0" Unit="W" />
                         <controls:MetricCard Label="VRAM USED" NumericValue="{x:Bind ViewModel.GpuVramUsedMb, Mode=OneWay}" Format="F0" Unit="MB" />
                         <controls:MetricCard Label="FAN SPEED" NumericValue="{x:Bind ViewModel.GpuFanSpeedPercent, Mode=OneWay}" Format="F0" Unit="%"
+                                              Detail="{x:Bind local:DashboardPage.FormatGpuFanDetail(ViewModel.GpuFanSpeedPercent, ViewModel.GpuTemperature), Mode=OneWay}"
                                               Progress="{x:Bind ViewModel.GpuFanSpeedPercent, Mode=OneWay}" />
                     </VariableSizedWrapGrid>
                 </StackPanel>
@@ -224,29 +231,7 @@
                     </VariableSizedWrapGrid>
                 </StackPanel>
 
-                <!-- Ported from Portrait Stats' ProcessRankerService — "what's actually using the
-                     CPU right now", the same question Task Manager's Processes tab answers. -->
-                <StackPanel Spacing="10">
-                    <controls:SectionHeader Label="Top Processes" />
-                    <Border Style="{StaticResource CardBorderStyle}" Padding="12"
-                            Visibility="{x:Bind ViewModel.TopProcessesByCpu.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
-                        <TextBlock Text="Nothing using meaningful CPU right now." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
-                    </Border>
-                    <ItemsControl ItemsSource="{x:Bind ViewModel.TopProcessesByCpu, Mode=OneWay}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding CpuPercent}" Format="F1" Unit="%"
-                                                      Progress="{Binding CpuPercent}"
-                                                      Tone="{Binding CpuPercent, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+                
             </StackPanel>
 
             <StackPanel x:Name="RightColumnPanel" Grid.Row="1" Grid.Column="1" Spacing="28">
@@ -355,8 +340,34 @@
                         <controls:MetricCard Label="UPLOAD" NumericValue="{x:Bind ViewModel.NetworkUploadMbps, Mode=OneWay}" Format="F1" Unit="Mbps" />
                         <controls:MetricCard Label="DOWNLOAD" NumericValue="{x:Bind ViewModel.NetworkDownloadMbps, Mode=OneWay}" Format="F1" Unit="Mbps" />
                         <controls:MetricCard Label="LATENCY" NumericValue="{x:Bind ViewModel.NetworkLatencyMs, Mode=OneWay}" Format="F0" Unit="ms" />
-                        <controls:MetricCard Label="EXTERNAL IP" Value="{x:Bind ViewModel.NetworkExternalIp, Mode=OneWay}" />
+                        <controls:MetricCard Label="EXTERNAL IP" Value="{x:Bind ViewModel.NetworkExternalIpDisplay, Mode=OneWay}"
+                                              Detail="Click to show / hide" Tapped="OnExternalIpTapped"
+                                              ToolTipService.ToolTip="Hidden by default so it doesn't end up in screenshots" />
                     </VariableSizedWrapGrid>
+                </StackPanel>
+
+                <!-- Ported from Portrait Stats' ProcessRankerService — "what's actually using the
+                     CPU right now", the same question Task Manager's Processes tab answers. -->
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="Top Processes" />
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="12"
+                            Visibility="{x:Bind ViewModel.TopProcessesByCpu.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                        <TextBlock Text="Nothing using meaningful CPU right now." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    </Border>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.TopProcessesByCpu, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding CpuPercent}" Format="F1" Unit="%"
+                                                      Progress="{Binding CpuPercent}"
+                                                      Tone="{Binding CpuPercent, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </StackPanel>
 
@@ -379,6 +390,10 @@
                             <Setter Target="HeroGauges.(Grid.Row)" Value="1" />
                             <Setter Target="HeroGauges.(Grid.Column)" Value="0" />
                             <Setter Target="HeroGaugeColumn.Width" Value="0" />
+                            <Setter Target="HeroTrendsColumn.Width" Value="0" />
+                            <Setter Target="HeroStatusColumn.MinWidth" Value="0" />
+                            <Setter Target="HeroTrends.(Grid.Row)" Value="2" />
+                            <Setter Target="HeroTrends.(Grid.Column)" Value="0" />
                         </VisualState.Setters>
                     </VisualState>
                 </VisualStateGroup>
