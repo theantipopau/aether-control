@@ -29,6 +29,17 @@ public sealed partial class OptimisationPage : Page
         Unloaded += (_, _) => ViewModel.Dispose();
     }
 
+    // Hero stat helpers. The view model reassigns these lists (never mutates them in place), so a
+    // OneWay function binding re-evaluates on every PropertyChanged for the list.
+    public static string FormatCount(IReadOnlyList<FanControlChannel> items) => items.Count.ToString();
+
+    public static string FormatManualFans(IReadOnlyList<FanControlChannel> items) =>
+        items.Count(c => c.IsSoftwareControlled).ToString();
+
+    public static string FormatProfileCount(IReadOnlyList<GameProfile> items) => items.Count.ToString();
+
+    public static string FormatGamingMode(bool enabled) => enabled ? "On" : "Off";
+
     private async void OnRenameFanChannelClicked(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: FanControlChannel channel })

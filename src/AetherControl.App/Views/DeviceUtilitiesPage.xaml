@@ -13,9 +13,8 @@
 
     <ScrollViewer Padding="24">
         <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
-            <TextBlock Text="Device Utilities — Mouse Centre" Style="{StaticResource PageTitleTextStyle}" />
-            <TextBlock Text="Quick links to each vendor's own DPI/configuration software, website and firmware/support pages. Aether Control does not reimplement vendor DPI tools."
-                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+            <controls:PageHero Glyph="&#xE772;" Eyebrow="Devices" Title="Peripherals &amp; Utilities"
+                               Subtitle="What's plugged in, read from each device's USB descriptor, plus links to each vendor's own DPI software, website and firmware pages. Aether Control does not reimplement vendor DPI tools." />
 
             <controls:SectionHeader Label="Detected Devices" />
             <TextBlock Text="Read directly from each device's USB descriptor — no vendor software required to see what's plugged in."

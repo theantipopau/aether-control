@@ -10,74 +10,125 @@
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
+
+        <!-- Round colour chip. Tag carries the hex the click handler sends; the chip's own fill is the
+             preview, so what you click is what you get. -->
+        <Style x:Key="SwatchButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="15" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
     </Page.Resources>
 
-    <ScrollViewer Padding="24">
-        <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
-            <TextBlock Text="RGB Control" Style="{StaticResource PageTitleTextStyle}" />
+    <ScrollViewer Padding="{StaticResource PagePadding}">
+        <StackPanel Spacing="20" MaxWidth="900" HorizontalAlignment="Left">
 
-            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <Button Content="Rescan" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.ScanCommand}" />
-                <Button Content="Launch Aura Sync" Command="{x:Bind ViewModel.LaunchAuraSyncCommand}"
-                        Visibility="{x:Bind ViewModel.AuraSyncInstalled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}" Width="18" Height="18"
-                              Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-            </StackPanel>
-
-            <TextBlock Text="Corsair keyboards/mice are controlled directly over USB — no iCUE, no extra software. Everything else routes through OpenRGB's SDK server (127.0.0.1:6742) if it's running."
-                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
-
-            <controls:SectionHeader Label="Detected Hardware" />
-            <TextBlock Text="Read directly from USB descriptors — shown here even before Aether Control can control it natively (Phase 12)."
-                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
-                       Visibility="{x:Bind ViewModel.HasDetectedPeripherals, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-            <ItemsControl ItemsSource="{x:Bind ViewModel.DetectedPeripherals}"
-                          Visibility="{x:Bind ViewModel.HasDetectedPeripherals, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <controls:HoverCard Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
-                                <FontIcon Glyph="&#xE7FC;" FontSize="18" Foreground="{StaticResource AetherAccentBrush}" VerticalAlignment="Center" />
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="{Binding ProductName}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
-                                    <TextBlock Foreground="{StaticResource AetherTextSecondaryBrush}" FontSize="12">
-                                        <Run Text="{Binding VendorName}" /><Run Text="  ·  " /><Run Text="{Binding IdLabel}" />
-                                    </TextBlock>
-                                </StackPanel>
+            <controls:PageHero Glyph="&#xE790;" Eyebrow="Lighting" Title="RGB Control"
+                               Subtitle="Corsair keyboards and mice are driven directly over USB — no iCUE. Everything else routes through OpenRGB's SDK server (127.0.0.1:6742) when it's running.">
+                <controls:PageHero.Actions>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}" Width="18" Height="18"
+                                      Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <Button Content="Launch Aura Sync" Command="{x:Bind ViewModel.LaunchAuraSyncCommand}"
+                                Visibility="{x:Bind ViewModel.AuraSyncInstalled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <Button Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.ScanCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                                <TextBlock Text="Rescan" />
                             </StackPanel>
-                        </controls:HoverCard>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                        </Button>
+                    </StackPanel>
+                </controls:PageHero.Actions>
+            </controls:PageHero>
 
-            <controls:SectionHeader Label="Devices" />
+            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap" />
 
-            <Border Style="{StaticResource CardBorderStyle}"
-                    Visibility="{x:Bind ViewModel.Devices, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
-                <TextBlock Text="No controllable devices found. Corsair keyboards/mice are detected automatically; everything else needs OpenRGB running with its SDK server enabled, then Rescan."
-                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+            <Border Style="{StaticResource SectionCardBorderStyle}">
+                <StackPanel Spacing="14">
+                    <controls:SectionHeader Label="Controllable Devices" />
+
+                    <Border Style="{StaticResource InsetBorderStyle}"
+                            Visibility="{x:Bind ViewModel.Devices, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon Glyph="&#xE946;" FontSize="18" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Top" />
+                            <TextBlock Text="No controllable devices found. Corsair keyboards/mice are detected automatically; everything else needs OpenRGB running with its SDK server enabled, then Rescan."
+                                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" MaxWidth="640" />
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Devices, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:HoverCard Margin="0,0,0,8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                                        <Grid Width="40" Height="40" VerticalAlignment="Center">
+                                            <Border CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource AetherAccentBrush}" Opacity="0.14" />
+                                            <FontIcon Glyph="&#xE790;" FontSize="18" Foreground="{StaticResource AetherAccentBrush}" />
+                                        </Grid>
+                                        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                            <TextBlock Style="{StaticResource SecondaryTextStyle}">
+                                                <Run Text="{Binding DeviceType}" /><Run Text="  ·  " /><Run Text="{Binding Backend}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="00E5FF" Background="#00E5FF" Click="OnSwatchClick" ToolTipService.ToolTip="Cyan" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FFFFFF" Background="#FFFFFF" Click="OnSwatchClick" ToolTipService.ToolTip="White" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FF2D2D" Background="#FF2D2D" Click="OnSwatchClick" ToolTipService.ToolTip="Red" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FF9F1C" Background="#FF9F1C" Click="OnSwatchClick" ToolTipService.ToolTip="Amber" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="2DFF7A" Background="#2DFF7A" Click="OnSwatchClick" ToolTipService.ToolTip="Green" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="8A5CFF" Background="#8A5CFF" Click="OnSwatchClick" ToolTipService.ToolTip="Violet" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="000000" Background="#101010" Click="OnSwatchClick" ToolTipService.ToolTip="Off">
+                                                <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" />
+                                            </Button>
+                                            <Button ToolTipService.ToolTip="Custom colour" Padding="8,5">
+                                                <FontIcon Glyph="&#xE2B1;" FontSize="14" />
+                                                <Button.Flyout>
+                                                    <Flyout Opening="OnCustomFlyoutOpening">
+                                                        <StackPanel Spacing="12">
+                                                            <ColorPicker IsAlphaEnabled="False" IsMoreButtonVisible="False" ColorSpectrumShape="Ring" />
+                                                            <Button Content="Apply" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Right" Click="OnApplyCustomColorClick" />
+                                                        </StackPanel>
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </controls:HoverCard>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </Border>
 
-            <ItemsControl ItemsSource="{x:Bind ViewModel.Devices, Mode=OneWay}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <controls:HoverCard Margin="0,0,0,8">
-                            <Grid ColumnDefinitions="*,Auto,Auto">
-                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
-                                    <TextBlock Style="{StaticResource SecondaryTextStyle}">
-                                        <Run Text="{Binding DeviceType}" /><Run Text="  ·  " /><Run Text="{Binding Backend}" />
-                                    </TextBlock>
-                                </StackPanel>
-                                <Button Grid.Column="1" Content="Cyan" Margin="0,0,8,0"
-                                        Command="{Binding ElementName=RootPage, Path=ViewModel.SetCyanCommand}" CommandParameter="{Binding}" />
-                                <Button Grid.Column="2" Content="White"
-                                        Command="{Binding ElementName=RootPage, Path=ViewModel.SetWhiteCommand}" CommandParameter="{Binding}" />
-                            </Grid>
-                        </controls:HoverCard>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <Border Style="{StaticResource SectionCardBorderStyle}"
+                    Visibility="{x:Bind ViewModel.HasDetectedPeripherals, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel Spacing="14">
+                    <controls:SectionHeader Label="Detected Hardware" />
+                    <TextBlock Text="Read directly from USB descriptors — shown here even before Aether Control can control it natively."
+                               Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.DetectedPeripherals}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:HoverCard Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <FontIcon Glyph="&#xE7FC;" FontSize="18" Foreground="{StaticResource AetherAccentBrush}" VerticalAlignment="Center" />
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="{Binding ProductName}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                                            <TextBlock Foreground="{StaticResource AetherTextSecondaryBrush}" FontSize="12">
+                                                <Run Text="{Binding VendorName}" /><Run Text="  ·  " /><Run Text="{Binding IdLabel}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </controls:HoverCard>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </Page>

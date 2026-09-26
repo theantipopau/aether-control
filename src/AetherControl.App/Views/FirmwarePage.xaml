@@ -12,10 +12,8 @@
 
     <ScrollViewer Padding="24">
         <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
-            <TextBlock Text="Firmware &amp; Driver Centre" Style="{StaticResource PageTitleTextStyle}" />
-
-            <TextBlock Text="Current versions only — Aether Control never installs updates automatically. Use the vendor link to check for and download the latest version yourself."
-                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+            <controls:PageHero Glyph="&#xE9F5;" Eyebrow="Devices" Title="Firmware &amp; Drivers"
+                               Subtitle="Installed versions only. Aether Control never installs updates — follow the vendor link to check for and download the latest yourself." />
 
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <controls:SectionHeader Label="Installed Components" />

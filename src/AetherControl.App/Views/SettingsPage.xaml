@@ -11,8 +11,9 @@
     </Page.Resources>
 
     <ScrollViewer Padding="24">
-        <StackPanel Spacing="28" MaxWidth="520" HorizontalAlignment="Left">
-            <TextBlock Text="Settings" Style="{StaticResource PageTitleTextStyle}" />
+        <StackPanel Spacing="28" MaxWidth="720" HorizontalAlignment="Left">
+            <controls:PageHero Glyph="&#xE713;" Eyebrow="Preferences" Title="Settings"
+                               Subtitle="Startup, appearance, alerts and updates. Stored locally — no account, no telemetry." />
 
             <!-- About & updates: version is read from the running assembly, never typed by hand.
                  The update check only looks — it never downloads or installs anything. -->

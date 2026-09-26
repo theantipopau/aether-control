@@ -1,0 +1,26 @@
+<UserControl
+    x:Class="AetherControl.App.Controls.PageHero"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border Style="{StaticResource HeroBorderStyle}">
+        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="18" RowSpacing="16">
+            <!-- Icon tile: accent glyph on a tinted square so each area is recognisable at a glance. -->
+            <Grid Width="52" Height="52" VerticalAlignment="Top">
+                <Border CornerRadius="{StaticResource RadiusCard}" Background="{StaticResource AetherAccentBrush}" Opacity="0.16" />
+                <Border CornerRadius="{StaticResource RadiusCard}" BorderBrush="{StaticResource AetherAccentBrush}" BorderThickness="1" Opacity="0.45" />
+                <FontIcon x:Name="IconGlyph" FontSize="24" Foreground="{StaticResource AetherAccentBrush}" />
+            </Grid>
+
+            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                <TextBlock x:Name="EyebrowText" Style="{StaticResource LabelTextStyle}" CharacterSpacing="80" />
+                <TextBlock x:Name="TitleText" Style="{StaticResource PageTitleTextStyle}" TextWrapping="Wrap" />
+                <TextBlock x:Name="SubtitleText" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" MaxWidth="640" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <ContentPresenter x:Name="ActionsPresenter" Grid.Column="2" VerticalAlignment="Center" />
+
+            <ContentPresenter x:Name="StatsPresenter" Grid.Row="1" Grid.ColumnSpan="3" Visibility="Collapsed" />
+        </Grid>
+    </Border>
+</UserControl>

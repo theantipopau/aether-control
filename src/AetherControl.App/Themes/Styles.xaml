@@ -150,4 +150,22 @@
         <Setter Property="Padding" Value="0" />
     </Style>
 
+    <!-- ── Page hero stat strip: headline numbers under a PageHero. Tabular numerals so live values
+         don't jitter horizontally as digits change. -->
+    <Style x:Key="StatTileBorderStyle" TargetType="Border" BasedOn="{StaticResource InsetBorderStyle}">
+        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="MinWidth" Value="120" />
+    </Style>
+
+    <Style x:Key="StatValueTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    </Style>
+
+    <!-- A grouped section on a page: card surface holding a SectionHeader and its rows. -->
+    <Style x:Key="SectionCardBorderStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+        <Setter Property="Padding" Value="20" />
+    </Style>
 </ResourceDictionary>

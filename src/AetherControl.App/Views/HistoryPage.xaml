@@ -2,6 +2,7 @@
     x:Class="AetherControl.App.Views.HistoryPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
@@ -11,7 +12,8 @@
 
     <ScrollViewer Padding="24">
         <StackPanel Spacing="16">
-            <TextBlock Text="Performance History" Style="{StaticResource PageTitleTextStyle}" />
+            <controls:PageHero Glyph="&#xE9D2;" Eyebrow="History" Title="Performance History"
+                               Subtitle="Recorded sensor readings over time. Pick a metric and a range, then Load." />
 
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <ComboBox x:Name="MetricComboBox" Header="Metric" ItemsSource="{x:Bind ViewModel.AvailableMetrics}" SelectedItem="{x:Bind ViewModel.SelectedMetric, Mode=TwoWay}" Width="200" />

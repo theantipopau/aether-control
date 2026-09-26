@@ -19,12 +19,9 @@
     </Page.Resources>
 
     <ScrollViewer Padding="24">
-        <StackPanel Spacing="28" MaxWidth="620" HorizontalAlignment="Left">
-            <StackPanel Spacing="4">
-                <TextBlock Text="Diagnostics" Style="{StaticResource PageTitleTextStyle}" />
-                <TextBlock Text="What Aether Control detected on this machine, and a one-click export for bug reports."
-                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
-            </StackPanel>
+        <StackPanel Spacing="28" MaxWidth="760" HorizontalAlignment="Left">
+            <controls:PageHero Glyph="&#xE9D9;" Eyebrow="Support" Title="Diagnostics"
+                               Subtitle="What Aether Control detected on this machine, how healthy the sensor feed is, and a one-click export for bug reports." />
 
             <StackPanel Spacing="12">
                 <controls:SectionHeader Label="Environment" />

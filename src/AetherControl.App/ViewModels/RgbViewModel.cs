@@ -47,6 +47,24 @@ public sealed partial class RgbViewModel : ObservableObject
     [RelayCommand]
     private Task SetWhiteAsync(RgbDeviceInfo device) => _rgbService.SetColorAsync(device.Id, 255, 255, 255);
 
+    [ObservableProperty] private string statusMessage = string.Empty;
+
+    /// <summary>Any colour from the swatch row or picker. Reports the backend's failure instead of
+    /// claiming success on an exception — OpenRGB can drop a device between scan and write.</summary>
+    public async Task SetColorAsync(RgbDeviceInfo device, byte r, byte g, byte b)
+    {
+        try
+        {
+            await _rgbService.SetColorAsync(device.Id, r, g, b);
+            // "Sent", not "set": the backends write without a read-back, so success is the write completing.
+            StatusMessage = $"Sent #{r:X2}{g:X2}{b:X2} to {device.Name}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Couldn't set {device.Name}: {ex.Message}";
+        }
+    }
+
     [RelayCommand]
     private void LaunchAuraSync() => _rgbService.LaunchAuraSync();
 }
