@@ -16,6 +16,7 @@
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
         <converters:HealthLevelToBrushConverter x:Key="HealthLevelToBrushConverter" />
         <converters:HealthLevelToGlyphConverter x:Key="HealthLevelToGlyphConverter" />
+        <converters:BoardProbeDetailConverter x:Key="BoardProbeDetailConverter" />
 
         <!-- Every MetricCard on this page gets consistent spacing automatically — no per-instance Margin repeated 25 times. -->
         <Style TargetType="controls:MetricCard">
@@ -307,6 +308,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding Value}" Format="F0" Unit="{Binding Unit}"
+                                                      Detail="{Binding Value, Converter={StaticResource BoardProbeDetailConverter}}"
                                                       Tone="{Binding Value, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

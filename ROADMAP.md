@@ -60,6 +60,10 @@ touching hardware safety (fan floors, BIOS restore, RGB conflict detection, opti
       + custom ColorPicker per device; status says "Sent", not "set" (no backend read-back).
       Verified: build, 78/78 tests, app launches with no new exceptions. **Needs Matt:** visual
       check of each page (pages only instantiate on navigation) and a swatch on a real device.
+- [x] 39.4c Overview follow-ups from Matt's 2560px screenshot (1709f95): trends moved into the hero,
+      Top Processes to the right column, "Normal · board sensors stale" headline, external IP
+      masked until clicked, GPU zero-RPM explained, implausible board probes (<10 / >125 °C)
+      labelled "probe likely unconnected" (value still shown). Released as **v0.9.1**.
 - [ ] 39.5 Area consolidation (Performance tabs, Devices = Firmware + Device Utilities, Lighting).
 - [ ] 39.6 Unified, versioned profiles with preview / per-component result / revert + migration.
 - [ ] 39.7 First-run onboarding (capability detection, vendor-conflict summary, skip-able).
