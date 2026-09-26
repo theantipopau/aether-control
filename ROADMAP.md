@@ -53,6 +53,13 @@ touching hardware safety (fan floors, BIOS restore, RGB conflict detection, opti
       once (`PRAGMA user_version`) — it previously re-ran all of them every launch.
       **Still open in 39.4:** card-level progressive disclosure for CPU/GPU/Memory detail rows,
       recent alerts in the hero, implausible board-probe readings (e.g. "Temperature #3: 3 °C").
+- [~] 39.4b Page heroes (72c523f) — shared `Controls/PageHero` (area icon, eyebrow, title,
+      purpose, actions, stat strip) on Performance, Lighting, Devices, Firmware, History,
+      Diagnostics, Settings. Performance grouped into section cards with a hero stat strip; fan
+      conflict banner → Warning InfoBar (safety floor / BIOS reset untouched). Lighting: 7 swatches
+      + custom ColorPicker per device; status says "Sent", not "set" (no backend read-back).
+      Verified: build, 78/78 tests, app launches with no new exceptions. **Needs Matt:** visual
+      check of each page (pages only instantiate on navigation) and a swatch on a real device.
 - [ ] 39.5 Area consolidation (Performance tabs, Devices = Firmware + Device Utilities, Lighting).
 - [ ] 39.6 Unified, versioned profiles with preview / per-component result / revert + migration.
 - [ ] 39.7 First-run onboarding (capability detection, vendor-conflict summary, skip-able).
