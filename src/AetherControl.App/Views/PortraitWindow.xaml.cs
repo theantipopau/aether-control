@@ -23,9 +23,12 @@ namespace AetherControl.App.Views;
 /// Dragging uses <see cref="Window.SetTitleBar"/> on <c>DragRegion</c> — the same mechanism
 /// <c>MainWindow</c> already uses successfully — rather than a hand-rolled
 /// GetCursorPos/AppWindow.Move implementation tried first, which didn't actually move the window
-/// in practice. Minimize/maximize are disabled via the presenter (this is a fixed-purpose utility
-/// panel, not a normal app window); Close is intercepted to hide rather than destroy the window,
-/// since <c>MainWindow</c> caches this instance and re-<c>Activate()</c>s it on next open.
+/// in practice. The window is user-resizable from its edges (it used to be fixed-size, which
+/// stranded a 768x1366 layout on any monitor that isn't that exact panel); minimise/maximise stay
+/// disabled since this is a fixed-purpose utility panel. While FILL is on, the window follows its
+/// display — see <see cref="OnAppWindowChanged"/>. Close is intercepted to hide rather than
+/// destroy the window, since <c>MainWindow</c> caches this instance and re-<c>Activate()</c>s it
+/// on next open.
 /// </para>
 /// </summary>
 public sealed partial class PortraitWindow : Window
@@ -53,7 +56,10 @@ public sealed partial class PortraitWindow : Window
 
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.IsResizable = false;
+            // Resizable from the edges: a fixed size only ever matched one specific portrait panel.
+            // FILL (below) still snaps to exact display bounds programmatically — that flag only
+            // affects user edge-dragging.
+            presenter.IsResizable = true;
             presenter.IsMinimizable = false;
             presenter.IsMaximizable = false;
         }
@@ -82,7 +88,35 @@ public sealed partial class PortraitWindow : Window
             FillScreenToggle.IsChecked = true;
         }
 
+        // While FILL is on, the window stays locked to whichever display it's on — the "dragged it
+        // to the other monitor and now it's a floating portrait-sized rectangle on a landscape
+        // screen" failure mode.
+        AppWindow.Changed += OnAppWindowChanged;
         Closed += OnClosed;
+    }
+
+    /// <summary>Re-snaps a FILLed window to the display it currently sits on. Fires on every
+    /// position/size change, so dragging to a different monitor (or a resolution/orientation change
+    /// on that monitor) pulls the window to the new bounds instead of stranding it. Snapping is
+    /// idempotent: our own MoveAndResize re-enters here, finds the bounds already matching, and
+    /// does nothing — no loop. When FILL is off, this never runs, so ordinary free-form dragging
+    /// and edge-resizing are untouched.</summary>
+    private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        if (!_isFilled || (!args.DidPositionChange && !args.DidSizeChange))
+        {
+            return;
+        }
+
+        var display = DisplayArea.GetFromWindowId(sender.Id, DisplayAreaFallback.Nearest);
+        var bounds = display.OuterBounds;
+        var current = sender.Position;
+        var size = sender.Size;
+        if (current.X != bounds.X || current.Y != bounds.Y ||
+            size.Width != bounds.Width || size.Height != bounds.Height)
+        {
+            sender.MoveAndResize(bounds);
+        }
     }
 
     /// <summary>Picks a connected display taller than it is wide — i.e. actually rotated to

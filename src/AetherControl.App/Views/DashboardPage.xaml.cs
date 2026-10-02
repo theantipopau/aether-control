@@ -2,6 +2,7 @@ using AetherControl.App.ViewModels;
 using AetherControl.Core.Interfaces;
 using AetherControl.Services.Processes;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace AetherControl.App.Views;
@@ -27,6 +28,10 @@ public sealed partial class DashboardPage : Page
     /// normal, not a fault. Only explain it when that's plausibly what's happening.</summary>
     public static string FormatGpuFanDetail(double fanPercent, double gpuTempC) =>
         fanPercent <= 0 && gpuTempC is > 0 and < 60 ? "Stopped — fans idle when cool" : string.Empty;
+
+    /// <summary>Re-flows every metric-card row to the current column width — the dashboard's cards
+    /// scale with the window instead of sitting at a fixed 164px with a ragged right edge.</summary>
+    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e) => Controls.FluidWrapGrid.Apply(RootGrid);
 
     private void OnExternalIpTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e) =>
         ViewModel.IsExternalIpRevealed = !ViewModel.IsExternalIpRevealed;

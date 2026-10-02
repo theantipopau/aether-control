@@ -14,7 +14,16 @@
             <Grid>
                 <Canvas x:Name="ArcCanvas" Width="100" Height="100" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Path x:Name="TrackPath" Stroke="{StaticResource AetherBorderBrush}" StrokeThickness="7" StrokeLineJoin="Round" />
+                    <!-- Soft halo under the fill arc — the WinUI port of Radium's drop-shadow glow
+                         (a wider, low-opacity stroke of the same gradient reads the same at this
+                         size, without needing a composition shadow per gauge). -->
+                    <Path x:Name="GlowPath" StrokeThickness="14" Opacity="0.14" StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          AutomationProperties.AccessibilityView="Raw" />
                     <Path x:Name="FillPath" StrokeThickness="7" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    <!-- Leading-end needle dot at the arc's current value. -->
+                    <Ellipse x:Name="NeedleDot" Width="5" Height="5" Visibility="Collapsed"
+                             AutomationProperties.AccessibilityView="Raw" />
                 </Canvas>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
                     <TextBlock x:Name="ValueText" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AetherTextPrimaryBrush}" HorizontalAlignment="Center" />

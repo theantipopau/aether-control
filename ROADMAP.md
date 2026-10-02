@@ -2,7 +2,82 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks)
+
+## Phase 41 — Portrait flexibility, fluid dashboard, live optimiser data, real update checks (2026-10-02)
+Matt's brief: improve the actual data the app shows; Portrait Mode isn't as flexible when moving
+it around; look at the dials/gauges/dashboard scaling; improve the optimisers/RAM cleaner; take
+inspiration from GitHub repos including his own Radium PCs Companion and OmenCore; add real
+BIOS/GPU/chipset update checking. Reference code read directly: `E:\radiumpcs` (Gauge.tsx,
+RamCleanerPage.tsx) and `E:\OmenCore` (CircularGauge, HardwareMonitoringDashboard).
+
+**Portrait Mode — moving it around (the actual complaint):**
+- [x] The window is now **user-resizable from its edges** — it was fixed-size, so anything that
+      wasn't exactly 768x1366 ended up with content off-screen. Minimise/maximise stay disabled.
+- [x] **FILL now follows the display**: `AppWindow.Changed` re-snaps a filled window when it's
+      dragged to another monitor (or that monitor's resolution/orientation changes) instead of
+      stranding a portrait-sized window on a landscape screen. The snap is idempotent — our own
+      MoveAndResize re-enters, finds bounds already matching, and does nothing (no loop). With
+      FILL off, dragging/edge-resizing is completely untouched.
+- [x] FILL's tooltip now says all of that (it was easy to miss that FILL exists at all).
+- **Needs Matt:** drag a filled window from DISPLAY2 → DISPLAY1 and back; edge-resize with FILL off.
+
+**Dashboard scaling — fluid card rows:**
+- [x] New `Controls/FluidWrapGrid`: on every page resize, each `VariableSizedWrapGrid` gets
+      columns = floor(width / 176) (176 = the 164px design minimum card + its 12px margin) and an
+      ItemWidth that divides its actual width exactly — rows run edge to edge at every window
+      size instead of stopping short at a fixed 164px with a ragged gutter. Wired to SizeChanged
+      on both Overview and Performance.
+- [x] `MetricCard` root border: fixed `Width=160` → `MinWidth=160` so cards stretch to their cell;
+      the storage cards' hard-coded `CardWidth=208` was removed (same fluid treatment applies).
+
+**Dials/gauges (ported from Radium's current `Gauge.tsx`):**
+- [x] Soft glow halo under the fill arc (a wider, low-opacity stroke of the same gradient — reads
+      the same at 92px without a Composition shadow per gauge).
+- [x] Leading-end needle dot riding the arc's current value (gradient end colour), hidden at
+      ~empty so it never sits misaligned on the track's start cap.
+- (Phase 40 already made the default arc follow the chosen accent; Warm/Hot stay fixed.)
+
+**Optimiser / RAM cleaner — live data instead of after-the-fact only:**
+- [x] The Quick Tasks card now shows a live memory strip (in-use %, bar, "X GB in use · Y GB
+      available of Z GB") from the *same published snapshot* every other surface reads — the
+      page previously showed nothing about the memory it was about to optimise until after a run.
+      `OptimisationViewModel` takes `IHardwareMonitorService`, seeds from `LatestSnapshot`, and
+      unsubscribes in `Dispose()` (the page disposes it on every navigation).
+- Before/After/Freed/Trimmed result cards and the trim + standby-purge mechanics were already
+  ported from Radium in earlier phases — no change to the safe path (no process termination).
+
+**Firmware & Drivers — the data was wrong, and "update check" didn't exist:**
+- [x] **Vendor links derived from real hardware, not guessed**: every GPU row used to link to
+      nvidia.com even on an AMD rig. New pure `FirmwareVendorLinks` maps board manufacturer /
+      GPU name / chipset vendor to the right support page — pinned by 14 unit tests, which
+      immediately caught "Advanced Micro Devices, Inc." not matching "amd" (fixed).
+- [x] Honest rows: BIOS version now carries its ROM release date; GPU row names the actual card
+      (and skips the Microsoft Basic Display Adapter when a real driver is present); the old
+      "Chipset" row actually showed the motherboard's *PCB revision* — replaced by a real
+      chipset-INF query (`Win32_PnPSignedDriver`, device/INF names saying "chipset") with an
+      honestly-labelled **Motherboard** model row as the fallback when no chipset driver is
+      found; the network row names the adapter.
+- [x] **Opt-in Windows Update search** (`Check Windows Update` button — never on page load): asks
+      the local WUA COM agent (`Type='Driver'`, then `Type='Firmware'`, each independently
+      guarded so an unsupported category doesn't poison the other) what's pending, lists title +
+      kind + support link, and hands off to `ms-settings:windowsupdate` for the install step.
+      Listing only — nothing downloads or installs; failure states are honest messages via an
+      InfoBar (service disabled, agent missing, category unsupported all covered).
+
+**Toolchain gotcha worth remembering (found by reading the generated code, not the build):**
+- `{x:Bind !ViewModel.X}` **silently miscompiles** on this toolchain — the parser prints
+  `token recognition error at '!'`, *drops the negation*, and binds the raw bool (the button
+  came out disabled-when-idle, i.e. inverted), while the build still exits 0. Use a page
+  function (`local:Page.NotChecking(...)`) instead; there is now exactly one `!`-free x:Bind
+  surface and a comment in `FirmwarePage.xaml.cs` recording why. Worth checking any future
+  `x:Bind` expression against its generated `.g.cs` when it involves operators.
+
+Verified: App builds clean via VS MSBuild (only the pre-existing `Motion.cs` CA1416 + NETSDK1206
+notice); **92/92 tests** (78 → 92, +14 firmware-link tests).
+- [ ] Not yet run live: every Phase 41 UI behaviour above needs Matt at the machine — drag FILL
+      across monitors, resize the dashboard, press Check Windows Update (the WU search is
+      machine/service dependent and can take tens of seconds).
 
 ## Phase 40 — Documentation, presentation & CI pass (2026-10-02)
 Brief: review everything public-facing against what actually shipped (v0.9.1), refresh the

@@ -1,42 +1,120 @@
 <Page
     x:Class="AetherControl.App.Views.FirmwarePage"
+    x:Name="RootPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
+    xmlns:local="using:AetherControl.App.Views"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
     </Page.Resources>
 
-    <ScrollViewer Padding="24">
+    <ScrollViewer Padding="{StaticResource PagePadding}">
         <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
             <controls:PageHero Glyph="&#xE9F5;" Eyebrow="Devices" Title="Firmware &amp; Drivers"
-                               Subtitle="Installed versions only. Aether Control never installs updates — follow the vendor link to check for and download the latest yourself." />
+                               Subtitle="Installed versions for everything Windows can see, plus an optional search of Windows Update for pending driver and firmware updates. Aether Control never installs updates — you review and install them in Windows." />
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <controls:SectionHeader Label="Installed Components" />
-                <Button Content="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
-            </StackPanel>
+            <!-- ── Installed components ── -->
+            <Border Style="{StaticResource SectionCardBorderStyle}">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <controls:SectionHeader Label="Installed Components" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <ProgressRing IsActive="{x:Bind ViewModel.IsRefreshing, Mode=OneWay}" Width="16" Height="16"
+                                          Visibility="{x:Bind ViewModel.IsRefreshing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <Button Content="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
+                        </StackPanel>
+                    </Grid>
 
-            <ItemsControl ItemsSource="{x:Bind ViewModel.Statuses, Mode=OneWay}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <controls:HoverCard Margin="0,0,0,8">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="{Binding Component}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
-                                <TextBlock Style="{StaticResource SecondaryTextStyle}">
-                                    <Run Text="Current: " /><Run Text="{Binding CurrentVersion}" />
-                                </TextBlock>
-                                <HyperlinkButton Content="Vendor support page" NavigateUri="{Binding VendorPageUrl}"
-                                                 Style="{StaticResource AccentHyperlinkButtonStyle}"
-                                                 Visibility="{Binding VendorPageUrl, Converter={StaticResource StringToVisibilityConverter}}" />
-                            </StackPanel>
-                        </controls:HoverCard>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                    <Border Style="{StaticResource InsetBorderStyle}"
+                            Visibility="{x:Bind ViewModel.Statuses, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                        <TextBlock Text="No component versions available — Windows WMI gave nothing back for this machine."
+                                   Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    </Border>
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Statuses, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:HoverCard Margin="0,0,0,8">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding Component}" Foreground="{StaticResource AetherTextPrimaryBrush}"
+                                                   FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap">
+                                            <Run Text="Current: " /><Run Text="{Binding CurrentVersion}" />
+                                        </TextBlock>
+                                        <HyperlinkButton Content="Vendor support page" NavigateUri="{Binding VendorPageUrl}"
+                                                         Style="{StaticResource AccentHyperlinkButtonStyle}"
+                                                         Visibility="{Binding VendorPageUrl, Converter={StaticResource StringToVisibilityConverter}}" />
+                                    </StackPanel>
+                                </controls:HoverCard>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- ── Pending updates via Windows Update (opt-in, listing only) ── -->
+            <Border Style="{StaticResource SectionCardBorderStyle}">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                        <StackPanel Spacing="4">
+                            <controls:SectionHeader Label="Pending Updates" VerticalAlignment="Center" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
+                                       Text="Asks the local Windows Update agent what driver and firmware updates are waiting. Nothing downloads or installs from here." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <ProgressRing IsActive="{x:Bind ViewModel.IsCheckingUpdates, Mode=OneWay}" Width="16" Height="16"
+                                          Visibility="{x:Bind ViewModel.IsCheckingUpdates, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <Button Content="Check Windows Update" Style="{StaticResource AccentButtonStyle}"
+                                    Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
+                                    IsEnabled="{x:Bind local:FirmwarePage.NotChecking(ViewModel.IsCheckingUpdates), Mode=OneWay}"
+                                    ToolTipService.ToolTip="Search Windows Update for pending driver/firmware updates (list only)" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
+                               Text="Not checked yet — nothing runs on its own. A search only happens when you click the button, and it can take a while on first run."
+                               Visibility="{x:Bind local:FirmwarePage.HideWhenChecked(ViewModel.HasCheckedForUpdates), Mode=OneWay}" />
+
+                    <StackPanel Spacing="10"
+                                Visibility="{x:Bind ViewModel.HasCheckedForUpdates, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <InfoBar IsOpen="True" IsClosable="False"
+                                 Severity="{x:Bind local:FirmwarePage.SeverityFor(ViewModel.UpdateCheck.Succeeded), Mode=OneWay}"
+                                 Message="{x:Bind ViewModel.UpdateCheck.Message, Mode=OneWay}" />
+
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.UpdateCheck.Updates, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <controls:HoverCard Margin="0,0,0,8">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                            <StackPanel Spacing="3">
+                                                <TextBlock Text="{Binding Title}" Foreground="{StaticResource AetherTextPrimaryBrush}"
+                                                           TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding Kind}" Style="{StaticResource CaptionTextStyle}" />
+                                            </StackPanel>
+                                            <HyperlinkButton Grid.Column="1" Content="Details" NavigateUri="{Binding SupportUrl}"
+                                                             VerticalAlignment="Center"
+                                                             Style="{StaticResource AccentHyperlinkButtonStyle}"
+                                                             Visibility="{Binding SupportUrl, Converter={StaticResource StringToVisibilityConverter}}" />
+                                        </Grid>
+                                    </controls:HoverCard>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button Content="Open Windows Update settings" Click="OnOpenWindowsUpdateClick" />
+                            <TextBlock Text="Install from Windows Settings only." Style="{StaticResource CaptionTextStyle}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </Page>

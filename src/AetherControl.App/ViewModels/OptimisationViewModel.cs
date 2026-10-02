@@ -1,3 +1,4 @@
+using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
 using AetherControl.Services.Hardware;
@@ -13,6 +14,7 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
     private readonly IFanControlService _fanControlService;
     private readonly FanLabelStore _fanLabelStore;
     private readonly IGameProfileService _gameProfileService;
+    private readonly IHardwareMonitorService _hardwareMonitor;
     private readonly DispatcherQueue _dispatcherQueue;
 
     [ObservableProperty] private IReadOnlyList<OptimisationTaskDescriptor> tasks = [];
@@ -31,17 +33,24 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
     [ObservableProperty] private IReadOnlyList<GameProfile> gameProfiles = [];
     [ObservableProperty] private string newGameProfileName = string.Empty;
     [ObservableProperty] private string newGameProfileExecutable = string.Empty;
+    [ObservableProperty] private double memoryUsedGb;
+    [ObservableProperty] private double memoryAvailableGb;
+    [ObservableProperty] private double memoryTotalGb;
+    [ObservableProperty] private double memoryUsedPercent;
+    [ObservableProperty] private string memoryUsageText = "Waiting for sensor data…";
 
     public OptimisationViewModel(
         IOptimisationService optimisationService,
         IFanControlService fanControlService,
         FanLabelStore fanLabelStore,
-        IGameProfileService gameProfileService)
+        IGameProfileService gameProfileService,
+        IHardwareMonitorService hardwareMonitor)
     {
         _optimisationService = optimisationService;
         _fanControlService = fanControlService;
         _fanLabelStore = fanLabelStore;
         _gameProfileService = gameProfileService;
+        _hardwareMonitor = hardwareMonitor;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         Tasks = _optimisationService.GetAvailableTasks();
@@ -51,6 +60,31 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
 
         GameProfiles = _gameProfileService.GetProfiles();
         _gameProfileService.ProfilesChanged += OnGameProfilesChanged;
+
+        // Live memory context for the Quick Tasks card — the Optimisation page previously showed
+        // nothing about the memory it was about to optimise until *after* a run. Same published
+        // snapshot every other surface reads (one authoritative pipeline), no extra polling.
+        _hardwareMonitor.SnapshotUpdated += OnSnapshotUpdated;
+        if (_hardwareMonitor.LatestSnapshot is { } seed)
+        {
+            ApplyMemory(seed);
+        }
+    }
+
+    private void OnSnapshotUpdated(object? sender, SensorsUpdatedEventArgs e) =>
+        _dispatcherQueue.TryEnqueue(() => ApplyMemory(e.Snapshot));
+
+    private void ApplyMemory(HardwareSnapshot snapshot)
+    {
+        const double Gb = 1024d * 1024d * 1024d;
+        var memory = snapshot.Memory;
+        MemoryUsedGb = memory.UsedBytes / Gb;
+        MemoryAvailableGb = memory.AvailableBytes / Gb;
+        MemoryTotalGb = memory.TotalBytes / Gb;
+        MemoryUsedPercent = memory.UtilisationPercent;
+        MemoryUsageText = memory.TotalBytes > 0
+            ? $"{MemoryUsedGb:F1} GB in use · {MemoryAvailableGb:F1} GB available of {MemoryTotalGb:F1} GB"
+            : "Memory readings not available yet.";
     }
 
     private void OnGameProfilesChanged(object? sender, EventArgs e) =>
@@ -84,7 +118,13 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
         GameProfiles = _gameProfileService.GetProfiles();
     }
 
-    public void Dispose() => _gameProfileService.ProfilesChanged -= OnGameProfilesChanged;
+    public void Dispose()
+    {
+        _gameProfileService.ProfilesChanged -= OnGameProfilesChanged;
+        // Also unsubscribe from the hardware monitor — the page disposes this VM on every
+        // navigation away, and nothing else would ever remove the handler.
+        _hardwareMonitor.SnapshotUpdated -= OnSnapshotUpdated;
+    }
 
     [RelayCommand]
     private async Task RunTaskAsync(OptimisationTaskDescriptor task)

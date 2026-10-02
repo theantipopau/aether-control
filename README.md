@@ -53,18 +53,23 @@ severity colouring (a metric doesn't just show a number — it tells you at a
 glance whether it's fine, warm, or hot). A "Top Processes" panel answers
 "what's actually using my CPU right now" without opening Task Manager.
 Navigation is grouped into Overview · Performance · Lighting · Devices ·
-History, each area opening on a hero panel that states what it's for.
+History, each area opening on a hero panel that states what it's for. The
+card rows scale with the window — they run edge to edge at any width instead
+of sitting at a fixed size with a ragged right edge.
 
 ### Portrait Mode
 A dedicated layout for a second monitor rotated to portrait — CPU/GPU usage
 rings with history sparklines, per-fan RPM with click-to-rename, RAM/drive
 temp, live FPS (reads RTSS shared memory directly, no plugin needed), and a
 top-processes panel. Drag it onto any monitor and one-click fill the screen
-exactly; toggle again to restore.
+exactly; toggle again to restore. The window is resizable from its edges, and
+while FILL is on it follows the display you drag it onto instead of getting
+stranded as a portrait-sized rectangle on a landscape screen.
 
 ### Windows Optimisation Centre
 - **Memory optimisation** — trims working sets and purges the standby list,
-  with a before/after/freed readout. Never terminates or interferes with any
+  with a live memory readout (used %, in use / available / total) and a
+  before/after/freed/trimmed result. Never terminates or interferes with any
   process.
 - **Storage Cleaner** — scans real on-disk sizes per location before
   touching anything; you pick what to clear, not a blind "clean everything."
@@ -87,9 +92,14 @@ works independently of control and needs zero vendor software either.
 
 ### Device Utilities & Firmware Centre
 Detected peripherals by vendor (Corsair/Logitech/Razer/SteelSeries/ASUS/
-Glorious/HyperX), quick links to each vendor's own configuration software,
-and a current-version-only firmware/driver overview — Aether Control never
-auto-installs updates, only tells you what you have and links you to check.
+Glorious/HyperX) and quick links to each vendor's own configuration software.
+The firmware/driver overview reports what's really installed — BIOS version
++ ROM date, GPU name + driver, chipset INF version (or an honest "Motherboard"
+model row when the board exposes no chipset driver), network adapter +
+driver — each linked to *that vendor's* support page, and an optional
+"Check Windows Update" lists pending driver/firmware updates straight from
+the local Windows Update agent. Aether Control never installs anything: you
+review and install through Windows.
 
 ### Alerts & Tray
 Windows toast notifications when CPU/GPU temperature crosses a threshold you

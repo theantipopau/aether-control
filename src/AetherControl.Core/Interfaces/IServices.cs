@@ -84,6 +84,12 @@ public interface IRgbService
 public interface IFirmwareDriverService
 {
     Task<IReadOnlyList<DriverStatus>> GetStatusAsync(CancellationToken ct = default);
+
+    /// <summary>Asks the local Windows Update agent what driver/firmware updates are pending.
+    /// Never auto-installed, never called on page load — only when the user explicitly asks.
+    /// Best-effort: a failed search returns <see cref="DriverUpdateCheck.Succeeded"/> false with
+    /// an honest reason rather than throwing.</summary>
+    Task<DriverUpdateCheck> CheckForUpdatesAsync(CancellationToken ct = default);
 }
 
 public interface IPeripheralDetectionService

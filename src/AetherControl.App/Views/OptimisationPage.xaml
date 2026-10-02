@@ -6,6 +6,7 @@
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
     xmlns:local="using:AetherControl.App.Views"
+    SizeChanged="OnPageSizeChanged"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
@@ -183,6 +184,24 @@
             <Border Style="{StaticResource SectionCardBorderStyle}">
                 <StackPanel Spacing="14">
                     <controls:SectionHeader Label="Quick Tasks" />
+
+                    <!-- Live memory context: what the optimise task is about to work on, from the
+                         same published snapshot the dashboard reads (no extra polling). -->
+                    <Border Style="{StaticResource InsetBorderStyle}" Padding="14,12">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <TextBlock Text="LIVE MEMORY" Style="{StaticResource LabelTextStyle}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind local:OptimisationPage.FormatPercent(ViewModel.MemoryUsedPercent), Mode=OneWay}"
+                                           Style="{StaticResource SecondaryTextStyle}" FontWeight="SemiBold"
+                                           Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" />
+                            </Grid>
+                            <ProgressBar Minimum="0" Maximum="100" Height="6"
+                                         Value="{x:Bind ViewModel.MemoryUsedPercent, Mode=OneWay}" />
+                            <TextBlock Text="{x:Bind ViewModel.MemoryUsageText, Mode=OneWay}"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                    </Border>
+
                     <CheckBox Content="Create a system restore point before running a task" IsChecked="{x:Bind ViewModel.CreateRestorePoint, Mode=TwoWay}" />
 
                     <ItemsControl ItemsSource="{x:Bind ViewModel.Tasks, Mode=OneWay}">

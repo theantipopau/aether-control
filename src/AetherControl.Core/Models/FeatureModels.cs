@@ -35,6 +35,24 @@ public sealed class DriverStatus
         && !string.Equals(RecommendedVersion, CurrentVersion, StringComparison.OrdinalIgnoreCase);
 }
 
+/// <summary>Result of an opt-in search for pending driver/firmware updates via the local
+/// Windows Update agent. Listing only — Aether Control never downloads or installs anything
+/// itself; the user reviews and installs through Windows.</summary>
+public sealed class DriverUpdateCheck
+{
+    public bool Succeeded { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public IReadOnlyList<PendingDriverUpdate> Updates { get; set; } = [];
+}
+
+public sealed class PendingDriverUpdate
+{
+    public string Title { get; set; } = string.Empty;
+    /// <summary>"Driver" or "Firmware" — whatever Windows Update classified the row as.</summary>
+    public string Kind { get; set; } = "Driver";
+    public string? SupportUrl { get; set; }
+}
+
 public sealed class OptimisationTaskDescriptor
 {
     public string Id { get; set; } = string.Empty;

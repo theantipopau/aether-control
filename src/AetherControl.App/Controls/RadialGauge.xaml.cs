@@ -119,7 +119,24 @@ public sealed partial class RadialGauge : UserControl
         var pct = Math.Clamp(Max <= 0 ? 0 : animatedValue / Max, 0, 1);
         var fillEnd = StartAngle + SweepAngle * pct;
 
-        FillPath.Data = pct > 0.015 ? BuildArc(StartAngle, fillEnd) : null;
+        var data = pct > 0.015 ? BuildArc(StartAngle, fillEnd) : null;
+        FillPath.Data = data;
+        GlowPath.Data = data;
+
+        // Needle dot rides the leading end of the fill arc (hidden at ~empty so it doesn't sit
+        // misaligned on the track's start cap).
+        if (pct > 0.01 && data is not null)
+        {
+            var tip = PointOnCircle(fillEnd, Radius);
+            Canvas.SetLeft(NeedleDot, tip.X - 2.5);
+            Canvas.SetTop(NeedleDot, tip.Y - 2.5);
+            NeedleDot.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            NeedleDot.Visibility = Visibility.Collapsed;
+        }
+
         UpdateTicks(pct);
     }
 
@@ -150,6 +167,11 @@ public sealed partial class RadialGauge : UserControl
         brush.GradientStops.Add(new GradientStop { Color = start, Offset = 0 });
         brush.GradientStops.Add(new GradientStop { Color = end, Offset = 1 });
         FillPath.Stroke = brush;
+        GlowPath.Stroke = brush;
+
+        // The needle rides the end of the gradient, so it takes the end colour — one brush per
+        // tone change (rare), never per frame.
+        NeedleDot.Fill = new SolidColorBrush(end);
     }
 
     private void BuildTicks()

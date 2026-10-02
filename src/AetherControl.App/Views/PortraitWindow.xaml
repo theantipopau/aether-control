@@ -65,7 +65,7 @@
                     <ToggleButton x:Name="FillScreenToggle" Grid.Column="3" Content="FILL" FontSize="10" FontWeight="SemiBold" Width="44"
                                   Style="{StaticResource PortraitHeaderIconButtonStyle}"
                                   Checked="OnFillScreenChecked" Unchecked="OnFillScreenUnchecked"
-                                  ToolTipService.ToolTip="Fill whichever monitor this window is currently on — drag it onto your portrait monitor first, then toggle this. Toggle again to restore." />
+                                  ToolTipService.ToolTip="Fill whichever monitor this window is currently on — drag it onto your portrait monitor first, then toggle this. While on, the window follows you if you drag it to another monitor; uncheck to resize freely. Toggle again to restore." />
                 </Grid>
 
                 <!-- CPU -->

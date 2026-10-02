@@ -21,7 +21,8 @@ public sealed partial class OptimisationPage : Page
             App.Services.GetRequiredService<IOptimisationService>(),
             App.Services.GetRequiredService<IFanControlService>(),
             App.Services.GetRequiredService<FanLabelStore>(),
-            App.Services.GetRequiredService<IGameProfileService>());
+            App.Services.GetRequiredService<IGameProfileService>(),
+            App.Services.GetRequiredService<IHardwareMonitorService>());
 
         // The Frame creates a fresh OptimisationPage (and OptimisationViewModel) on every
         // navigation to this page — without unsubscribing here, each one leaks a permanent
@@ -89,4 +90,9 @@ public sealed partial class OptimisationPage : Page
     }
 
     public string FormatScannedDetail(double scanned) => $"of {scanned:F0} scanned";
+
+    public static string FormatPercent(double percent) => double.IsFinite(percent) ? $"{percent:F0}%" : "—";
+
+    /// <summary>Re-flows the metric-card rows (startup, memory results) to the current width.</summary>
+    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e) => Controls.FluidWrapGrid.Apply(this);
 }

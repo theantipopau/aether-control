@@ -5,6 +5,7 @@
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
     xmlns:local="using:AetherControl.App.Views"
+    SizeChanged="OnPageSizeChanged"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
@@ -255,7 +256,6 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <controls:MetricCard
-                                    CardWidth="208"
                                     Label="{Binding Model}"
                                     NumericValue="{Binding FreeGb}" Format="F0" Unit="GB free"
                                     Detail="{Binding DetailText}"
