@@ -59,7 +59,21 @@ internal sealed class NumberTween(Action<double> onUpdate)
     {
         var elapsedMs = Stopwatch.GetElapsedTime(_startTimestamp).TotalMilliseconds;
         var current = _state.Advance(elapsedMs / DurationMs);
-        onUpdate(current);
+
+        try
+        {
+            onUpdate(current);
+        }
+        catch
+        {
+            // CompositionTarget.Rendering is one multicast event shared by every tween in the
+            // app: a handler that throws skips every subscriber after it *and* aborts the frame's
+            // dispatch (the assignment it was mid-way through never paints). One broken control
+            // must not blank every other number — unsubscribe first so the global handler logs
+            // this once instead of once per frame, then let it surface for diagnosis.
+            Stop();
+            throw;
+        }
 
         if (!_state.IsAnimating)
         {

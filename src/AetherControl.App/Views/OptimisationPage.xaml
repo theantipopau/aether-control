@@ -6,7 +6,6 @@
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
     xmlns:local="using:AetherControl.App.Views"
-    SizeChanged="OnPageSizeChanged"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
@@ -226,13 +225,13 @@
                     <!-- Last memory-optimisation result — mirrors Radium PCs Companion's own Before/After/Freed/Trimmed cards. -->
                     <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.LastMemoryResult, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
                         <TextBlock Text="Last memory optimisation" Style="{StaticResource SubsectionLabelTextStyle}" />
-                        <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                        <controls:FluidPanel ItemHeight="106">
                             <controls:MetricCard Label="BEFORE" NumericValue="{x:Bind ViewModel.MemoryBeforeGb, Mode=OneWay}" Format="F1" Unit="GB" Tone="Warm" />
                             <controls:MetricCard Label="AFTER" NumericValue="{x:Bind ViewModel.MemoryAfterGb, Mode=OneWay}" Format="F1" Unit="GB" Tone="Cool" />
                             <controls:MetricCard Label="FREED" NumericValue="{x:Bind ViewModel.MemoryFreedGb, Mode=OneWay}" Format="F2" Unit="GB" Tone="Cool" />
                             <controls:MetricCard Label="TRIMMED" NumericValue="{x:Bind ViewModel.ProcessesTrimmed, Mode=OneWay}" Format="F0"
                                                   Detail="{x:Bind FormatScannedDetail(ViewModel.ProcessesScanned), Mode=OneWay}" />
-                        </VariableSizedWrapGrid>
+                        </controls:FluidPanel>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -288,12 +287,12 @@
                 <StackPanel Spacing="14">
                     <controls:SectionHeader Label="Startup Impact" />
 
-                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                    <controls:FluidPanel ItemHeight="106">
                         <controls:MetricCard Label="ENABLED" NumericValue="{x:Bind ViewModel.StartupEnabledCount, Mode=OneWay}" Format="F0" />
                         <controls:MetricCard Label="HIGH IMPACT" NumericValue="{x:Bind ViewModel.StartupHighImpactCount, Mode=OneWay}" Format="F0"
                                               Tone="{x:Bind ViewModel.StartupHighImpactCount, Mode=OneWay, Converter={StaticResource CountToWarningToneConverter}}" />
                         <controls:MetricCard Label="TOTAL ENTRIES" NumericValue="{x:Bind ViewModel.StartupTotalCount, Mode=OneWay}" Format="F0" />
-                    </VariableSizedWrapGrid>
+                    </controls:FluidPanel>
 
                     <Border Style="{StaticResource InsetBorderStyle}"
                             Visibility="{x:Bind ViewModel.StartupEntries, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">

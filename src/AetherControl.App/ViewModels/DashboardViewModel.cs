@@ -117,6 +117,52 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 
     partial void OnCpuVoltageChanged(double value) => OnPropertyChanged(nameof(HasCpuVoltage));
 
+    // Vendor logo badges (hero + CPU/GPU/Motherboard section headers). Detected from the names
+    // above via Core HardwareBrands — pure string matching, tested there; empty string means
+    // "unknown brand, show nothing" (BrandLogo collapses) rather than a guessed vendor.
+    public string CpuBrandLogo => HardwareBrands.DetectCpu(CpuName)?.LogoUri ?? string.Empty;
+
+    public string GpuBrandLogo => HardwareBrands.DetectGpu(GpuName)?.LogoUri ?? string.Empty;
+
+    public string BoardBrandLogo => HardwareBrands.DetectMotherboard(MotherboardModel)?.LogoUri ?? string.Empty;
+
+    /// <summary>Distinct logos across CPU/GPU/board for the hero badge strip (AMD CPU + Radeon GPU
+    /// show once each, not twice).</summary>
+    public IReadOnlyList<string> HeroBrandLogos
+    {
+        get
+        {
+            var logos = new List<string>();
+            foreach (var logo in new[] { CpuBrandLogo, GpuBrandLogo, BoardBrandLogo })
+            {
+                if (logo.Length > 0 && !logos.Contains(logo))
+                {
+                    logos.Add(logo);
+                }
+            }
+
+            return logos;
+        }
+    }
+
+    partial void OnCpuNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(CpuBrandLogo));
+        OnPropertyChanged(nameof(HeroBrandLogos));
+    }
+
+    partial void OnGpuNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(GpuBrandLogo));
+        OnPropertyChanged(nameof(HeroBrandLogos));
+    }
+
+    partial void OnMotherboardModelChanged(string value)
+    {
+        OnPropertyChanged(nameof(BoardBrandLogo));
+        OnPropertyChanged(nameof(HeroBrandLogos));
+    }
+
     public DashboardViewModel(IHardwareMonitorService hardwareMonitor, ProcessRankerService processRanker)
     {
         _hardwareMonitor = hardwareMonitor;

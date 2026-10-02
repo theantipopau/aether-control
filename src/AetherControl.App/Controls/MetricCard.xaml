@@ -6,7 +6,7 @@
     <Border
         x:Name="RootBorder"
         Style="{StaticResource CardBorderStyle}"
-        MinWidth="160"
+        MinWidth="140"
         Padding="0"
         Translation="0,0,16">
         <Border.Shadow>

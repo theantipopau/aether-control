@@ -5,7 +5,6 @@
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
     xmlns:local="using:AetherControl.App.Views"
-    SizeChanged="OnPageSizeChanged"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
@@ -89,6 +88,21 @@
                             </TextBlock>
                             <TextBlock Text="{x:Bind ViewModel.MotherboardModel, Mode=OneWay}" Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
+
+                        <!-- Vendor marks detected from the names above (Core HardwareBrands): distinct white
+                             silhouettes only; BrandLogo collapses when a brand is unknown. -->
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.HeroBrandLogos, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="14" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <controls:BrandLogo SourceUri="{Binding}" Height="15" MaxWidth="72" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
                         <!-- Quick actions: navigation only — each one goes somewhere real and claims nothing. -->
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
@@ -198,9 +212,9 @@
                 
 
                 <StackPanel Spacing="10">
-                    <controls:SectionHeader Label="CPU" />
+                    <controls:SectionHeader Label="CPU" Logo="{x:Bind ViewModel.CpuBrandLogo, Mode=OneWay}" />
                     <TextBlock Text="{x:Bind ViewModel.CpuName, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
-                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                    <controls:FluidPanel ItemHeight="106">
                         <controls:MetricCard Label="TEMPERATURE" NumericValue="{x:Bind ViewModel.CpuTemperature, Mode=OneWay}" Format="F0" Unit="°C"
                                               Progress="{x:Bind ViewModel.CpuTemperature, Mode=OneWay}"
                                               Tone="{x:Bind ViewModel.CpuTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
@@ -211,13 +225,13 @@
                         <controls:MetricCard Label="CLOCK SPEED" NumericValue="{x:Bind ViewModel.CpuClockSpeed, Mode=OneWay}" Format="F0" Unit="MHz" />
                         <controls:MetricCard Label="VOLTAGE" NumericValue="{x:Bind ViewModel.CpuVoltage, Mode=OneWay}" Format="F2" Unit="V"
                                               Visibility="{x:Bind ViewModel.HasCpuVoltage, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                    </VariableSizedWrapGrid>
+                    </controls:FluidPanel>
                 </StackPanel>
 
                 <StackPanel Spacing="10">
-                    <controls:SectionHeader Label="GPU" />
+                    <controls:SectionHeader Label="GPU" Logo="{x:Bind ViewModel.GpuBrandLogo, Mode=OneWay}" />
                     <TextBlock Text="{x:Bind ViewModel.GpuName, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
-                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                    <controls:FluidPanel ItemHeight="106">
                         <controls:MetricCard Label="HOTSPOT" NumericValue="{x:Bind ViewModel.GpuHotspotTemperature, Mode=OneWay}" Format="F0" Unit="°C"
                                               Progress="{x:Bind ViewModel.GpuHotspotTemperature, Mode=OneWay}"
                                               Tone="{x:Bind ViewModel.GpuHotspotTemperature, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=temperature}" />
@@ -226,19 +240,19 @@
                         <controls:MetricCard Label="FAN SPEED" NumericValue="{x:Bind ViewModel.GpuFanSpeedPercent, Mode=OneWay}" Format="F0" Unit="%"
                                               Detail="{x:Bind local:DashboardPage.FormatGpuFanDetail(ViewModel.GpuFanSpeedPercent, ViewModel.GpuTemperature), Mode=OneWay}"
                                               Progress="{x:Bind ViewModel.GpuFanSpeedPercent, Mode=OneWay}" />
-                    </VariableSizedWrapGrid>
+                    </controls:FluidPanel>
                 </StackPanel>
 
                 <StackPanel Spacing="10">
                     <controls:SectionHeader Label="Memory" />
-                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                    <controls:FluidPanel ItemHeight="106">
                         <controls:MetricCard Label="USED" NumericValue="{x:Bind ViewModel.RamUsedGb, Mode=OneWay}" Format="F1" Unit="GB" />
                         <controls:MetricCard Label="AVAILABLE" NumericValue="{x:Bind ViewModel.RamAvailableGb, Mode=OneWay}" Format="F1" Unit="GB" />
                         <controls:MetricCard Label="UTILISATION" NumericValue="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay}" Format="F0" Unit="%"
                                               Progress="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay}"
                                               Tone="{x:Bind ViewModel.RamUtilisationPercent, Mode=OneWay, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
                         <controls:MetricCard Label="SPEED" NumericValue="{x:Bind ViewModel.RamSpeedMhz, Mode=OneWay}" Format="F0" Unit="MHz" />
-                    </VariableSizedWrapGrid>
+                    </controls:FluidPanel>
                 </StackPanel>
 
                 
@@ -250,7 +264,7 @@
                     <ItemsControl ItemsSource="{x:Bind ViewModel.Drives, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="224" ItemHeight="128" />
+                                <controls:FluidPanel ItemHeight="128" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -268,7 +282,7 @@
                 </StackPanel>
 
                 <StackPanel Spacing="10">
-                    <controls:SectionHeader Label="Motherboard" />
+                    <controls:SectionHeader Label="Motherboard" Logo="{x:Bind ViewModel.BoardBrandLogo, Mode=OneWay}" />
                     <TextBlock Text="{x:Bind ViewModel.MotherboardModel, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
                     <!-- Glyph + text, not colour alone. Collapses entirely while readings are live. -->
                     <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}"
@@ -292,7 +306,7 @@
                     <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardVoltages, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                                <controls:FluidPanel ItemHeight="106" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -310,7 +324,7 @@
                     <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardVrmTemperatures, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                                <controls:FluidPanel ItemHeight="106" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -331,7 +345,7 @@
                     <ItemsControl ItemsSource="{x:Bind ViewModel.MotherboardFanSpeeds, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                                <controls:FluidPanel ItemHeight="106" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -346,14 +360,14 @@
 
                 <StackPanel Spacing="10">
                     <controls:SectionHeader Label="Network" />
-                    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106">
+                    <controls:FluidPanel ItemHeight="106">
                         <controls:MetricCard Label="UPLOAD" NumericValue="{x:Bind ViewModel.NetworkUploadMbps, Mode=OneWay}" Format="F1" Unit="Mbps" />
                         <controls:MetricCard Label="DOWNLOAD" NumericValue="{x:Bind ViewModel.NetworkDownloadMbps, Mode=OneWay}" Format="F1" Unit="Mbps" />
                         <controls:MetricCard Label="LATENCY" NumericValue="{x:Bind ViewModel.NetworkLatencyMs, Mode=OneWay}" Format="F0" Unit="ms" />
                         <controls:MetricCard Label="EXTERNAL IP" Value="{x:Bind ViewModel.NetworkExternalIpDisplay, Mode=OneWay}"
                                               Detail="Click to show / hide" Tapped="OnExternalIpTapped"
                                               ToolTipService.ToolTip="Hidden by default so it doesn't end up in screenshots" />
-                    </VariableSizedWrapGrid>
+                    </controls:FluidPanel>
                 </StackPanel>
 
                 <!-- Ported from Portrait Stats' ProcessRankerService — "what's actually using the
@@ -367,7 +381,7 @@
                     <ItemsControl ItemsSource="{x:Bind ViewModel.TopProcessesByCpu, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="164" ItemHeight="106" />
+                                <controls:FluidPanel ItemHeight="106" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>

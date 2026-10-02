@@ -2,7 +2,42 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02)
+
+## Phase 42 — Responsive card rows that fill, vendor brand imagery (2026-10-02)
+Matt's brief: "not scaling correctly" (with two screenshots at 2554px maximised and 1939px
+restored), and source nice images for AMD, ASUS, Intel, NVIDIA, Radeon, ASRock etc. to show
+alongside the motherboard / GPU / CPU, plus anything else that adds visual value.
+
+**Dashboard scaling — measured first, then rebuilt:**
+- [x] Pixel-measuring both screenshots showed the wrap math never overflowed, but it left ragged
+      tails (5 cards in a 6-card column stops ~200px short), an orphaned lone VOLTAGE row (5 cards
+      in a 4-card column), and cells that got *bigger* when the window got *smaller* (175px cards
+      maximised vs 186px at 1939px) — all symptoms of one uniform ItemWidth per grid.
+- [x] New pure `Core/Layout/FluidLayout` + `Controls/FluidPanel`, replacing `FluidWrapGrid` and
+      every `VariableSizedWrapGrid` on Overview and Performance: flex-wrap stretch — rows always
+      fill edge to edge, a partial row stretches its cells instead of leaving a tail, no lone-child
+      row when avoidable, cells stay within a 152–360px band, and the plan re-runs on every layout
+      pass (measured + arranged fresh), which also retires the scrollbar-shrink race. Pure math is
+      now unit-tested: 16 new `FluidLayoutTests` (134 total).
+- [x] `MetricCard` MinWidth 160 → 140 so the soft-min cell never clips its own card.
+- **Needs Matt:** rows fill edge to edge at both window sizes; the lone Voltage card is gone.
+
+**Vendor brand imagery:**
+- [x] Eight white-silhouette vendor logos in `Assets/Vendors` — AMD, Intel, NVIDIA, Radeon, ASUS,
+      ASRock, GIGABYTE, MSI — rendered from official Wikimedia Commons logo files and normalised
+      (whitened, alpha-trimmed, fitted to a 256×80 box) by `tools/process-vendors.ps1`. One uniform
+      light treatment so every mark reads on the dark theme, including black wordmarks like ASRock.
+      Vendor names/logos are trademarks of their owners, shown for identification only.
+- [x] Pure `Core/Models/HardwareBrands` maps CPU / GPU / motherboard names to a brand — null when
+      unknown, never a guessed badge (same product rule as `FirmwareVendorLinks`) — plus 8
+      `HardwareBrandsTests`.
+- [x] UI: `Controls/BrandLogo` (an empty URI collapses the image), an optional `Logo` on
+      `SectionHeader` so CPU / GPU / Motherboard headings carry their vendor mark, and a
+      distinct-logo strip in the Overview hero (AMD CPU + Radeon GPU show once each).
+- **Needs Matt:** confirm the logos render beside the three headings and in the hero strip.
+      (AMD + ASUS confirmed live 2026-10-02; the Radeon badge turned out to be a white box — fixed
+      in Phase 43.)
 
 ## Phase 41 — Portrait flexibility, fluid dashboard, live optimiser data, real update checks (2026-10-02)
 Matt's brief: improve the actual data the app shows; Portrait Mode isn't as flexible when moving

@@ -121,7 +121,12 @@ public sealed partial class RadialGauge : UserControl
 
         var data = pct > 0.015 ? BuildArc(StartAngle, fillEnd) : null;
         FillPath.Data = data;
-        GlowPath.Data = data;
+        // A separate geometry instance per Path — WinUI's Path.Data rejects a Geometry that is
+        // already parented to another element ("Value does not fall within the expected range",
+        // E_INVALIDARG). Sharing one instance between fill and glow threw on every rendering
+        // frame, which aborted the whole CompositionTarget.Rendering dispatch and blanked every
+        // tween-driven number in the app (50,739 logged exceptions before this fix).
+        GlowPath.Data = pct > 0.015 ? BuildArc(StartAngle, fillEnd) : null;
 
         // Needle dot rides the leading end of the fill arc (hidden at ~empty so it doesn't sit
         // misaligned on the track's start cap).

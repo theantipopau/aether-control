@@ -28,6 +28,8 @@ public sealed partial class OptimisationPage : Page
         // navigation to this page — without unsubscribing here, each one leaks a permanent
         // subscriber on the singleton IGameProfileService, since nothing else calls Dispose().
         Unloaded += (_, _) => ViewModel.Dispose();
+
+        // Fluid metric-card rows plan themselves (Controls.FluidPanel) — no attach/wiring needed.
     }
 
     // Hero stat helpers. The view model reassigns these lists (never mutates them in place), so a
@@ -92,7 +94,4 @@ public sealed partial class OptimisationPage : Page
     public string FormatScannedDetail(double scanned) => $"of {scanned:F0} scanned";
 
     public static string FormatPercent(double percent) => double.IsFinite(percent) ? $"{percent:F0}%" : "—";
-
-    /// <summary>Re-flows the metric-card rows (startup, memory results) to the current width.</summary>
-    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e) => Controls.FluidWrapGrid.Apply(this);
 }

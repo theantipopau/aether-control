@@ -55,7 +55,10 @@ glance whether it's fine, warm, or hot). A "Top Processes" panel answers
 Navigation is grouped into Overview · Performance · Lighting · Devices ·
 History, each area opening on a hero panel that states what it's for. The
 card rows scale with the window — they run edge to edge at any width instead
-of sitting at a fixed size with a ragged right edge.
+of sitting at a fixed size with a ragged right edge, never orphaning a single
+card onto its own row. Vendor marks detected from your hardware (AMD, Intel,
+NVIDIA, Radeon, ASUS, ASRock, GIGABYTE, MSI) appear as clean white badges
+beside the CPU / GPU / Motherboard sections and in the hero strip.
 
 ### Portrait Mode
 A dedicated layout for a second monitor rotated to portrait — CPU/GPU usage
