@@ -1,5 +1,10 @@
 # Aether Control Roadmap
 
+> **Living document split.** This file holds the product vision and the ten guiding principles
+> the app is built against. Phase-by-phase progress and *current status* live in the repository
+> root's [ROADMAP.md](../ROADMAP.md) — that file is the source of truth and is updated as work
+> lands. Anything here describing "current status" is historical context, not live state.
+
 ## Product vision
 
 Aether Control is a vendor-neutral control centre for custom Windows PCs, combining trustworthy hardware monitoring, safe system control, gaming automation, RGB management and a polished secondary-display experience.
@@ -21,9 +26,14 @@ The product should feel calmer, clearer and more transparent than traditional OE
 
 ---
 
-# Current status
+# Status
 
-## Confirmed storage-card defect
+## Storage-card defect — root-caused and resolved (Phase 32)
+
+> Historical record of the investigation. The architectural fix (per-device view models +
+> `LiveCollectionSync`) shipped and was confirmed with a live trace — see the root
+> [ROADMAP.md](../ROADMAP.md) Phases 31–32 for the closing evidence. Kept here because the
+> mechanism below is still the best documentation of *why* card identity must be stable.
 
 The original storage flicker was traced to repeated UI-container replacement rather than incorrect storage data.
 

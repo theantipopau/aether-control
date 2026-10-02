@@ -11,6 +11,8 @@ Phase history and open items live in `ROADMAP.md` — add a phase entry for sign
   "/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" src/AetherControl.App/AetherControl.App.csproj -restore -p:Configuration=Debug -p:Platform=x64 -v:minimal
   ```
 - Tests: `dotnet test tests/AetherControl.Tests` works normally. Keep the suite green before committing.
+  CI runs the same command on push/PR (`.github/workflows/ci.yml`, windows-latest, Release); the App
+  project is deliberately excluded there for the same MSBuild reason as above.
 - Hardware mapping tests use hand-written fakes in `tests/AetherControl.Tests/Fakes/FakeHardware.cs` —
   add real sensor names/values from live captures as fixtures rather than inventing them.
 

@@ -1,0 +1,42 @@
+# Runs the test suite on every push/PR.
+#
+# Deliberately `dotnet test` on the test project only, not a solution build: the WinUI 3 head
+# (AetherControl.App) needs Visual Studio's own MSBuild with the Windows application development
+# workload (`Microsoft.Build.Packaging.Pri.Tasks.dll` is missing from plain dotnet SDKs — see
+# ROADMAP Phase 37), which a runner's `dotnet build` doesn't have either. dotnet test builds
+# Core/Data/Services/Tests transitively, and that's where every test lives.
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build + tests (Core/Data/Services)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run test suite
+        run: dotnet test tests/AetherControl.Tests -c Release --logger "console;verbosity=normal"
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/TestResults/**"
+          retention-days: 7

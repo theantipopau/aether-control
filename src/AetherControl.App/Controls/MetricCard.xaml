@@ -18,7 +18,7 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Tone accent stripe â€” colour set in code from the Tone property. -->
+            <!-- Tone accent stripe — colour set in code from the Tone property. -->
             <Border x:Name="AccentStripe" Grid.Column="0" Background="{StaticResource AetherBorderBrush}" CornerRadius="12,0,0,12" AutomationProperties.AccessibilityView="Raw" />
 
             <StackPanel Grid.Column="1" Spacing="8" Padding="13,12,13,12">

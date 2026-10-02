@@ -16,6 +16,7 @@
   <img alt=".NET" src="https://img.shields.io/badge/.NET-8.0-512BD4" />
   <img alt="UI" src="https://img.shields.io/badge/UI-WinUI%203-4A00E0" />
   <img alt="Status" src="https://img.shields.io/badge/status-active%20development-orange" />
+  <img alt="CI" src="https://github.com/theantipopau/aether-control/actions/workflows/ci.yml/badge.svg" />
 </p>
 
 ---
@@ -43,12 +44,16 @@ parts as the platform allows.
 
 ## Features
 
-### Dashboard
-Live CPU / GPU / RAM / Storage / Motherboard / Network monitoring with
-radial gauges, sparkline history, and tone-based severity colouring (a
-metric doesn't just show a number — it tells you at a glance whether it's
-fine, warm, or hot). A "Top Processes" panel answers "what's actually using
-my CPU right now" without opening Task Manager.
+### Overview (Dashboard)
+The first screen answers one question: *is my PC OK right now?* — a system
+verdict in words (never colour alone), CPU/GPU/memory headline gauges,
+last-minute load trends, and quick actions. Below it, live CPU / GPU / RAM /
+Storage / Motherboard / Network cards with sparkline history and tone-based
+severity colouring (a metric doesn't just show a number — it tells you at a
+glance whether it's fine, warm, or hot). A "Top Processes" panel answers
+"what's actually using my CPU right now" without opening Task Manager.
+Navigation is grouped into Overview · Performance · Lighting · Devices ·
+History, each area opening on a hero panel that states what it's for.
 
 ### Portrait Mode
 A dedicated layout for a second monitor rotated to portrait — CPU/GPU usage
@@ -92,7 +97,16 @@ set, with hysteresis so it doesn't spam you sitting right at the line. The
 tray icon's tooltip shows live metrics on hover — configurable in Settings.
 
 ### History
-Daily/weekly/monthly rollups of every tracked metric, charted.
+Daily/weekly/monthly rollups of every tracked metric, charted. Samples are
+recorded on a 60-second cadence with configurable retention.
+
+### Diagnostics & support bundle
+A capability report (app and loaded library versions, OS, whether the process
+is really elevated, detected hardware, live sensor counts), plus one-click
+export of a support zip — capability report, latest hardware snapshot and the
+last three days of logs — so a bug report carries its own evidence. The About
+panel shows version + commit and does a check-only update check against GitHub
+releases (opt-in at startup, never auto-installs).
 
 ### Plugin framework
 `IAetherPlugin` plus optional capability interfaces
@@ -132,6 +146,10 @@ msbuild src/AetherControl.App/AetherControl.App.csproj -p:Configuration=Debug -p
 ```
 
 Aether Control ships as its own standalone `.exe` — unpackaged, not MSIX.
+
+CI runs the test suite on every push and pull request
+([.github/workflows/ci.yml](.github/workflows/ci.yml)); the WinUI head is
+excluded there for the same reason it's excluded from `dotnet build` above.
 
 ## Architecture at a glance
 
@@ -236,9 +254,12 @@ why, and bugs that were root-caused with real diagnostic traces rather than
 guessed at. Highlights of where things stand:
 
 **Shipped**
-- Full hardware dashboard (CPU/GPU/RAM/Storage/Motherboard/Network) with a
-  responsive two-column layout, radial gauges, sparkline history, and
-  tone-based severity colouring
+- Overview hero — system verdict, headline gauges, last-minute trends, quick
+  actions, over a responsive two-column dashboard with radial gauges,
+  sparkline history, and tone-based severity colouring
+- Grouped navigation (Overview · Performance · Lighting · Devices · History)
+  with a page hero per area and a shared design-token system (colour roles,
+  spacing, radii, type, motion) behind it
 - Portrait Mode — a real, complete port of the reference app's layout, not a
   stub, with working drag-to-monitor and fill-to-screen
 - Optimisation Centre: memory optimisation, Storage Cleaner, Startup
@@ -248,7 +269,14 @@ guessed at. Highlights of where things stand:
 - Peripheral detection by USB vendor ID, zero vendor software required
 - Temperature alerts (Windows toast, configurable thresholds, hysteresis)
 - Tray icon live metrics on hover
-- Accent colour theming
+- Accent colour theming (gauges, cards, chrome all follow the chosen accent)
+- Diagnostics page: capability report + one-click support-bundle export
+- About panel with version/commit and check-only update detection
+- History actually records (60s cadence + retention purge), file logging,
+  and silent-elevation autostart — three settings that previously saved but
+  were read by nothing
+- Self-healing Super I/O reads: poisoned sensor values are detected,
+  withheld from the UI, and the session reopened until reads are clean
 - Plugin framework with a working sample plugin
 
 **Deliberately not done (and why, not just "later")**
@@ -263,11 +291,13 @@ guessed at. Highlights of where things stand:
   direct RGB control exists, just not wired up yet
 
 **In progress / next**
+- Premium UI/UX programme (ROADMAP Phase 39): area consolidation,
+  unified versioned profiles with preview/revert, first-run onboarding,
+  then an accessibility + packaging + screenshots pass
 - Bundled OpenRGB management for non-Corsair RGB devices (removing the
   "start OpenRGB yourself" step entirely)
 - Logitech/Razer direct control, same approach as Corsair
 - Product-style imagery on device/drive cards
-- NavigationView pane visual polish
 
 ## Known limitations
 

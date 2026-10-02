@@ -24,7 +24,7 @@
         </Style>
     </Page.Resources>
 
-    <ScrollViewer Padding="24">
+    <ScrollViewer Padding="{StaticResource PagePadding}">
         <Grid x:Name="RootGrid" ColumnSpacing="32" RowSpacing="28">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="LeftColumnDef" Width="*" />
@@ -54,6 +54,14 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
+
+                    <!-- Same accent wash as PageHero — see PageHero.xaml for why (full-bleed via
+                         -HeroPadding, RadiusHero-matched corners, shared brush so a live accent
+                         change repaints it, behind all content and never hit-testable). -->
+                    <Border Grid.ColumnSpan="3" Grid.RowSpan="3" Margin="-24"
+                            CornerRadius="{StaticResource RadiusHero}"
+                            Background="{StaticResource AetherAccentBrush}" Opacity="0.05"
+                            IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
 
                     <StackPanel Grid.Column="0" Spacing="{StaticResource Space16}" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space12}"

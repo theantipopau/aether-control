@@ -2,7 +2,67 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02)
+
+## Phase 40 — Documentation, presentation & CI pass (2026-10-02)
+Brief: review everything public-facing against what actually shipped (v0.9.1), refresh the
+presentation layer, and give the repo a CI baseline. No hardware-safety paths touched — fan
+floors, BIOS restore, RGB conflict detection and optimisation guards are all untouched.
+
+**Landing page (`docs/index.html`) rebuilt — checked in a browser at desktop and phone widths,
+zero console errors:**
+- Tokens now mirror `Themes/Colors.xaml` (ground #0F1214, card/elevation tones, Status colours)
+  instead of the older near-miss palette, so the site reads as the product rather than a
+  generic dark template.
+- The hero now shows the app itself: a CSS/SVG mock window (title bar with live health readout,
+  grouped nav with the active accent bar, Overview verdict + three SVG gauges, four metric
+  tiles with meters and sparklines) standing in for screenshots until `docs/screenshots/` is
+  populated with real captures.
+- Content brought up to date: Overview/hero/grouped-navigation wording, History's real 60-second
+  recording cadence, a new Diagnostics + support-bundle card, a v0.9.1 badge, and Phase 39-shaped
+  roadmap columns (self-healing Super I/O reads now listed under Shipped).
+- Detail work: blueprint-grid + accent bloom behind the hero, card hover states, reveal-on-scroll
+  with a no-JS fallback and a `prefers-reduced-motion` opt-out, OG/theme-color meta, and a
+  narrow-viewport rule so the header stays readable on phones.
+
+**Docs accuracy:**
+- README: CI badge; Dashboard → Overview (verdict, hero, grouped navigation); History's 60s
+  cadence; new "Diagnostics & support bundle" section; Shipped list extended with the 39.x
+  deliverables and the three revived settings (history recording, file logging, autostart);
+  In-progress list now leads with the Phase 39 remainder; Building section notes CI.
+- `docs/ROADMAP.md`: banner declaring the root ROADMAP.md the source of truth; its status section
+  retitled — the storage-card defect is resolved (Phase 32), with a pointer to the closing
+  evidence instead of reading as an open defect.
+
+**CI (`.github/workflows/ci.yml`):** windows-latest, `dotnet test -c Release` on push/PR/manual,
+read-only contents permission, test-results artifact uploaded on failure. Deliberately does not
+build the WinUI head — Phase 37's toolchain gap applies to runner SDKs too. Not yet observed on
+a real runner at time of writing; the first push confirms it.
+
+**In-app polish (build-verified; visuals need Matt's eyes — UIPI + unpackaged exe still block
+agent-side screenshots):**
+- `RadialGauge`: the default arc now derives from the chosen accent (+ `SystemAccentColorLight2`
+  sheen) instead of a fixed blue→mint pair that ignored the accent picker, and repaints if the
+  accent changes mid-session (one colour compare per tween frame, no listeners). Warm/Hot stay
+  on fixed severity colours — a hot reading must read as hot whatever accent is chosen.
+- Subtle accent wash behind `PageHero` and the Overview hero: 5% of the shared accent brush,
+  full-bleed via `-HeroPadding`, `RadiusHero`-matched corners so it stays flush whether or not
+  the Border clips its child, behind all content and never hit-testable. Same flourish rule as
+  the title-bar hairline — the only two tints in the app.
+- Hygiene: mojibake em-dash in a `MetricCard.xaml` comment, duplicate title-bar comment block in
+  `MainWindow.xaml`, Dashboard `ScrollViewer` padding now comes from the `PagePadding` token.
+- XAML gotcha worth remembering: property elements (`<Grid.ColumnDefinitions>`) must precede any
+  child content — the first wash attempt put the Border before them and XamlCompiler failed with
+  WMC0035 "Duplication assignment to the 'Children' property".
+
+Verified: App builds clean via VS MSBuild (2 pre-existing warnings, neither introduced here);
+78/78 tests pass.
+- [ ] Open: `Motion.cs` CA1416 — `UISettings.AnimationsEnabledChanged` requires 10.0.19041 but
+      `TargetPlatformMinVersion` is 10.0.17763, so the warning fires on every App build (and the
+      API could throw on 1809–1903 machines). Either raise the min version or guard the
+      subscription. Not fixed here — it's a support-matrix decision, not a polish change.
+- [ ] Open: screenshots for `docs/screenshots/` (and wiring them into README + the landing page)
+      still need a human at the machine — crop the Network card's external IP first.
 
 ## Phase 39 — Premium UI/UX programme (planned; sub-phases 39.1–39.2 landed)
 Brief: make Aether a cohesive "dark technical luxury" product without a rewrite and without

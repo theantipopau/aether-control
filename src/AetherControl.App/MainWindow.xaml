@@ -39,12 +39,6 @@
         </tb:TaskbarIcon>
 
         <!--
-            Custom title bar: ExtendsContentIntoTitleBar (set in code-behind) hands the whole
-            titlebar strip to this Grid, which SetTitleBar marks as the draggable region. The
-            system still draws its own min/max/close glyphs top-right; we just supply the
-            branding on the left so the window reads as the app's own chrome, not default Win32.
-        -->
-        <!--
             Custom title bar: ExtendsContentIntoTitleBar (set in code-behind) hands the strip to this
             Grid, which SetTitleBar marks as the drag region. The system still draws min/max/close
             top-right (138px reserved below). Left: icon + wordmark. Right: a compact system-health

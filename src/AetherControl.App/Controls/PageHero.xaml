@@ -5,6 +5,19 @@
 
     <Border Style="{StaticResource HeroBorderStyle}">
         <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="18" RowSpacing="16">
+            <!--
+                Accent wash: the hero surface is the one place a tint is allowed (matching the
+                title-bar hairline as the app's only flourishes). Margin -24 undoes HeroPadding so
+                the wash spans the full hero box, and its own RadiusHero-matching CornerRadius
+                keeps it flush with the card edge regardless of how Border clips. Shared accent
+                brush + low opacity, so a live accent change repaints it too. Behind all content,
+                never hit-testable.
+            -->
+            <Border Grid.ColumnSpan="3" Grid.RowSpan="2" Margin="-24"
+                    CornerRadius="{StaticResource RadiusHero}"
+                    Background="{StaticResource AetherAccentBrush}" Opacity="0.05"
+                    IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+
             <!-- Icon tile: accent glyph on a tinted square so each area is recognisable at a glance. -->
             <Grid Width="52" Height="52" VerticalAlignment="Top">
                 <Border CornerRadius="{StaticResource RadiusCard}" Background="{StaticResource AetherAccentBrush}" Opacity="0.16" />

@@ -28,6 +28,10 @@ public sealed partial class RadialGauge : UserControl
     private readonly NumberTween _tween;
     private readonly List<Ellipse> _ticks = [];
     private string _format = "F0";
+    private MetricTone _tone = MetricTone.Cool;
+    // Accent the default-tone arc was painted with, or null while a severity tone (Warm/Hot) is in
+    // charge. Lets UpdateTicks repaint after a mid-session accent change — see UpdateTicks.
+    private Color? _arcAccent;
 
     public static readonly DependencyProperty LabelProperty =
         DependencyProperty.Register(nameof(Label), typeof(string), typeof(RadialGauge), new PropertyMetadata(string.Empty, OnLabelChanged));
@@ -121,11 +125,21 @@ public sealed partial class RadialGauge : UserControl
 
     private void ApplyToneBrush(MetricTone tone)
     {
+        _tone = tone;
+        // Default (Neutral/Cool) follows the user's swappable accent rather than the old fixed
+        // blue→mint pair, so the gauges repaint with everything else when the accent changes
+        // (their ticks already used the shared accent brush — the arc was the one holdout).
+        // Warm/Hot stay on fixed severity colours: a hot reading must read as hot whatever accent
+        // is chosen (same rule as the Status* tokens in Colors.xaml).
+        _arcAccent = tone is MetricTone.Warm or MetricTone.Hot ? null : CurrentAccent();
+
         var (start, end) = tone switch
         {
             MetricTone.Warm => (Color.FromArgb(255, 0xF5, 0xC8, 0x6B), Color.FromArgb(255, 0xFA, 0xD4, 0x82)),
             MetricTone.Hot => (Color.FromArgb(255, 0xFF, 0x6D, 0x6D), Color.FromArgb(255, 0xFF, 0x99, 0x99)),
-            _ => (Color.FromArgb(255, 0x55, 0xD6, 0xFF), Color.FromArgb(255, 0x84, 0xF0, 0xC4))
+            // Light2 is AccentPalette's own 50%-lightened step of the same accent — same sheen
+            // direction as before, now derived instead of hardcoded.
+            _ => (_arcAccent!.Value, (Color)Application.Current.Resources["SystemAccentColorLight2"])
         };
 
         var brush = new LinearGradientBrush
@@ -159,6 +173,14 @@ public sealed partial class RadialGauge : UserControl
 
     private void UpdateTicks(double pct)
     {
+        // AccentPalette.Apply mutates AetherAccentColor in place; an arc painted before a
+        // mid-session accent change would keep the old colours until severity next changed (which
+        // can be hours). Repaint on drift — one colour compare per tween frame, no listeners.
+        if (_arcAccent is { } painted && painted != CurrentAccent())
+        {
+            ApplyToneBrush(_tone);
+        }
+
         var accentBrush = (Brush)Application.Current.Resources["AetherAccentBrush"];
         var inactiveBrush = (Brush)Application.Current.Resources["AetherBorderBrush"];
 
@@ -167,6 +189,8 @@ public sealed partial class RadialGauge : UserControl
             _ticks[i].Fill = pct > 0.02 && TickFractions[i] <= pct + 0.01 ? accentBrush : inactiveBrush;
         }
     }
+
+    private static Color CurrentAccent() => (Color)Application.Current.Resources["AetherAccentColor"];
 
     private static PathGeometry BuildArc(double startDeg, double endDeg)
     {

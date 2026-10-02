@@ -3,23 +3,42 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aether Control</title>
+<title>Aether Control — hardware monitoring, optimisation and RGB for custom gaming PCs</title>
 <meta name="description" content="An all-in-one control suite for custom gaming PCs — hardware monitoring, a real portrait-display mode, a Windows optimisation centre, RGB control without extra software, and per-game automation." />
+<meta name="theme-color" content="#0F1214" />
+<meta property="og:title" content="Aether Control" />
+<meta property="og:description" content="Hardware monitoring, portrait-display mode, Windows optimisation, RGB control without extra software — in one clean, fast, unpackaged Windows app." />
+<meta property="og:type" content="website" />
 <link rel="icon" href="https://raw.githubusercontent.com/theantipopau/aether-control/main/img/Icon.png" />
 <style>
+  /*
+    Tokens mirrored from the app's own design system (src/AetherControl.App/Themes/Colors.xaml),
+    so this page reads as the product, not a generic dark template: same cool charcoal ground,
+    same card/elevation tones, same single cyan accent, same status colours.
+  */
   :root {
-    --bg: #0F1113;
-    --bg-translucent: #0F1113cc;
-    --surface: #1A1D1F;
-    --surface-raised: #232629;
-    --border: #2C3033;
-    --text-primary: #FFFFFF;
-    --text-secondary: #9BA1A6;
+    --bg: #0F1214;              /* SurfaceApp */
+    --bg-translucent: #0F1214cc;
+    --nav: #0C0F11;             /* SurfaceNavigation */
+    --surface-deep: #14181B;    /* SurfacePrimary */
+    --surface: #1A1E21;         /* SurfaceCard */
+    --surface-raised: #21262A;  /* SurfaceElevated */
+    --surface-interactive: #272D31;
+    --border-subtle: #23282C;
+    --border: #2E3439;
+    --border-strong: #3C444A;
+    --text-primary: #F2F4F5;
+    --text-secondary: #9BA3AA;
+    --text-tertiary: #6E777E;
     --accent: #00E5FF;
     --accent-dim: #00B8CC;
+    --accent-ink: #00191C;
+    --success: #3DD68C;
     --warm: #F5C86B;
     --hot: #FF6D6D;
-    --max-width: 1080px;
+    --max-width: 1120px;
+    --radius-card: 14px;
+    --radius-hero: 20px;
   }
 
   * { box-sizing: border-box; }
@@ -30,8 +49,9 @@
     margin: 0;
     background: var(--bg);
     color: var(--text-primary);
-    font-family: "Segoe UI", "Segoe UI Variable", system-ui, -apple-system, sans-serif;
+    font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
     line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
 
   a { color: var(--accent); text-decoration: none; }
@@ -39,13 +59,25 @@
 
   .wrap { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
 
+  /* ── Reveal-on-scroll (progressive enhancement — content is visible without JS) ── */
+  .reveal { opacity: 1; }
+  .js .reveal { opacity: 0; transform: translateY(14px); transition: opacity 560ms ease, transform 560ms cubic-bezier(.2,.7,.3,1); }
+  .js .reveal.in { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .js .reveal { opacity: 1; transform: none; transition: none; }
+    .live-dot, .g-fill { animation: none !important; }
+  }
+
+  /* ── Nav ── */
   header.nav {
     position: sticky;
     top: 0;
     z-index: 10;
     background: var(--bg-translucent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-subtle);
   }
   header.nav .wrap {
     display: flex;
@@ -54,38 +86,54 @@
     padding-top: 14px;
     padding-bottom: 14px;
   }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; letter-spacing: .01em; }
   .brand img { width: 24px; height: 24px; border-radius: 6px; }
   nav.links { display: flex; gap: 22px; font-size: 13px; color: var(--text-secondary); }
   nav.links a { color: var(--text-secondary); }
   nav.links a:hover { color: var(--text-primary); text-decoration: none; }
 
+  /* ── Hero ── */
   .hero {
-    padding: 96px 0 64px;
+    padding: 84px 0 72px;
     text-align: center;
+    position: relative;
+    overflow: hidden;
     background:
-      radial-gradient(circle at 50% -10%, #00e5ff14, transparent 60%),
-      var(--bg);
+      radial-gradient(900px 420px at 50% -60px, #00e5ff1f, transparent 70%),
+      linear-gradient(180deg, #12161A 0%, var(--bg) 55%);
   }
+  .hero::after {
+    /* faint blueprint grid — the "technical" half of dark technical luxury */
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(#ffffff08 1px, transparent 1px),
+      linear-gradient(90deg, #ffffff08 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(700px 380px at 50% 0%, #000 0%, transparent 75%);
+    pointer-events: none;
+  }
+  .hero .wrap { position: relative; z-index: 1; }
   .hero img.logo {
-    width: 108px;
-    height: 108px;
-    border-radius: 24px;
-    box-shadow: 0 0 0 1px var(--border), 0 20px 60px -20px #00e5ff33;
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    box-shadow: 0 0 0 1px var(--border), 0 24px 70px -24px #00e5ff55;
   }
   .hero h1 {
-    font-size: clamp(32px, 5vw, 52px);
+    font-size: clamp(34px, 5vw, 56px);
     font-weight: 700;
-    margin: 28px 0 12px;
-    letter-spacing: -0.02em;
+    margin: 26px 0 12px;
+    letter-spacing: -0.025em;
   }
   .hero p.tagline {
-    max-width: 640px;
+    max-width: 660px;
     margin: 0 auto;
     color: var(--text-secondary);
     font-size: 17px;
   }
-  .badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 24px 0 0; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 24px; }
   .badge {
     font-size: 12px;
     font-weight: 600;
@@ -97,7 +145,7 @@
   }
   .badge.accent { color: var(--bg); background: var(--accent); border-color: var(--accent); }
 
-  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 32px; }
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
   .btn {
     display: inline-flex;
     align-items: center;
@@ -107,15 +155,143 @@
     font-weight: 600;
     font-size: 14px;
     border: 1px solid var(--border);
-    transition: transform 120ms ease, border-color 120ms ease;
+    transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
   }
   .btn:hover { text-decoration: none; transform: translateY(-1px); }
-  .btn.primary { background: var(--accent); color: #00191c; border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .btn.primary:hover { background: #33ebff; }
   .btn.secondary { background: var(--surface); color: var(--text-primary); }
   .btn.secondary:hover { border-color: var(--accent); }
 
-  section { padding: 64px 0; border-top: 1px solid var(--border); }
+  /* ── App-window mock: the product, drawn in markup — stands in for screenshots ── */
+  .app-window {
+    max-width: 980px;
+    margin: 56px auto 0;
+    text-align: left;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-hero);
+    box-shadow: 0 40px 90px -40px #000000cc, 0 0 0 1px #ffffff0a, 0 0 90px -40px #00e5ff44;
+    overflow: hidden;
+    font-size: 12px;
+  }
+  .aw-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--nav);
+    border-bottom: 1px solid var(--border-subtle);
+    position: relative;
+  }
+  .aw-titlebar::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent), transparent 60%);
+    opacity: .7;
+  }
+  .aw-brand { display: flex; align-items: center; gap: 9px; font-size: 10.5px; font-weight: 600; letter-spacing: .18em; color: var(--text-secondary); }
+  .aw-brand img { width: 14px; height: 14px; border-radius: 3px; }
+  .aw-health { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--success); font-variant-numeric: tabular-nums; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 #3dd68c55; } 50% { box-shadow: 0 0 0 5px #3dd68c00; } }
+
+  .aw-body { display: grid; grid-template-columns: 178px 1fr; min-height: 430px; }
+  .aw-nav { background: var(--nav); border-right: 1px solid var(--border-subtle); padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; }
+  .aw-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 11px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    position: relative;
+  }
+  .aw-nav-item .glyph { width: 15px; text-align: center; opacity: .8; }
+  .aw-nav-item.active { background: var(--surface-interactive); color: var(--text-primary); }
+  .aw-nav-item.active::before {
+    content: "";
+    position: absolute; left: -10px; top: 20%; bottom: 20%;
+    width: 3px; border-radius: 2px;
+    background: var(--accent);
+  }
+  .aw-nav-sep { height: 1px; background: var(--border-subtle); margin: 10px 4px; }
+  .aw-nav-foot { margin-top: auto; }
+
+  .aw-main { padding: 16px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, #12161999, transparent 180px); }
+  .aw-hero {
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    background: linear-gradient(180deg, #00e5ff0d, transparent 60%), var(--surface-deep);
+    padding: 18px;
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .aw-eyebrow { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; color: var(--text-tertiary); }
+  .aw-verdict { display: flex; gap: 13px; align-items: center; }
+  .aw-status-icon {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--surface-raised);
+    border: 1px solid var(--success);
+    color: var(--success);
+    font-size: 15px;
+    flex: none;
+  }
+  .aw-verdict h4 { margin: 3px 0 2px; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+  .aw-verdict .sub { color: var(--text-tertiary); font-size: 11px; }
+  .aw-actions { display: flex; gap: 7px; margin-top: 11px; }
+  .aw-actions span {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 5px 11px;
+    font-size: 11px;
+  }
+  .aw-gauges { display: flex; gap: 14px; flex: none; }
+  .aw-gauge { text-align: center; width: 96px; }
+  .aw-gauge svg { width: 84px; height: 84px; display: block; margin: 0 auto; }
+  .aw-gauge .g-track { fill: none; stroke: var(--border-subtle); stroke-width: 7; stroke-linecap: round; }
+  .aw-gauge .g-fill {
+    fill: none; stroke: url(#gaugeGrad); stroke-width: 7; stroke-linecap: round;
+    animation: grow 1.1s cubic-bezier(.2,.7,.3,1) both;
+  }
+  @keyframes grow { from { stroke-dasharray: 0 400; } }
+  .aw-gauge .g-label { font-size: 9px; font-weight: 700; letter-spacing: .16em; color: var(--text-tertiary); margin-top: 3px; }
+  .aw-gauge .g-value { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .aw-gauge .g-value small { font-size: 10px; color: var(--text-tertiary); font-weight: 400; }
+  .aw-gauge .g-sub { font-size: 10px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+
+  .aw-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .aw-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 13px;
+    position: relative;
+    overflow: hidden;
+  }
+  .aw-tile::before {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--tint, var(--accent));
+    border-radius: 12px 0 0 12px;
+  }
+  .aw-tile .t-label { font-size: 9px; font-weight: 700; letter-spacing: .16em; color: var(--text-tertiary); }
+  .aw-tile .t-value { font-size: 23px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 5px; letter-spacing: -.01em; }
+  .aw-tile .t-value small { font-size: 11px; color: var(--text-tertiary); font-weight: 400; margin-left: 3px; }
+  .aw-tile .t-meter { height: 3px; border-radius: 2px; background: var(--border); margin-top: 9px; overflow: hidden; }
+  .aw-tile .t-meter i { display: block; height: 100%; width: var(--v, 50%); background: var(--tint, var(--accent)); border-radius: 2px; }
+  .aw-tile .t-spark { margin-top: 8px; height: 22px; width: 100%; display: block; }
+  .aw-tile .t-spark polyline { fill: none; stroke: var(--tint, var(--accent)); stroke-width: 1.5; opacity: .85; }
+
+  /* ── Sections ── */
+  section { padding: 68px 0; border-top: 1px solid var(--border-subtle); }
   section.no-border { border-top: none; }
 
   h2.section-title {
@@ -127,30 +303,32 @@
     margin: 0 0 8px;
   }
   h3.section-heading {
-    font-size: 28px;
+    font-size: clamp(24px, 3.4vw, 30px);
     font-weight: 700;
     margin: 0 0 20px;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
   p.lede {
     color: var(--text-secondary);
     font-size: 16px;
-    max-width: 720px;
+    max-width: 740px;
     margin: 0 0 36px;
   }
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
     gap: 16px;
   }
 
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: var(--radius-card);
     padding: 22px;
+    transition: border-color 160ms ease, transform 160ms ease;
   }
+  .card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
   .card h4 {
     margin: 0 0 8px;
     font-size: 16px;
@@ -161,6 +339,7 @@
   .card h4 .dot {
     width: 8px; height: 8px; border-radius: 50%;
     background: var(--accent);
+    box-shadow: 0 0 10px #00e5ff88;
     flex: none;
   }
   .card p { margin: 0; color: var(--text-secondary); font-size: 14px; }
@@ -171,7 +350,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-left: 3px solid var(--accent);
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 18px 20px;
   }
   .principle strong { display: block; margin-bottom: 4px; font-size: 15px; }
@@ -186,18 +365,19 @@
   table.stack th, table.stack td {
     text-align: left;
     padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-subtle);
   }
   table.stack th { color: var(--text-secondary); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
-  table.stack td.tfm { color: var(--accent); white-space: nowrap; font-family: Consolas, monospace; }
+  table.stack td.tfm { color: var(--accent); white-space: nowrap; font-family: "Cascadia Code", Consolas, monospace; }
   table.stack tr:last-child td { border-bottom: none; }
-  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 6px 16px; overflow-x: auto; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 6px 16px; overflow-x: auto; }
 
   .status-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
   .status-col h4 { font-size: 14px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
   .status-col ul { margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 14px; }
   .status-col li { margin-bottom: 8px; }
-  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .status-col li strong { color: var(--text-primary); font-weight: 600; }
+  .pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
   .pill.shipped { background: #00e5ff22; color: var(--accent); }
   .pill.deferred { background: #ff6d6d22; color: var(--hot); }
   .pill.progress { background: #f5c86b22; color: var(--warm); }
@@ -205,11 +385,26 @@
   .provenance { display: grid; gap: 12px; }
   .provenance .card p { font-size: 13.5px; }
 
-  footer { padding: 48px 0 64px; text-align: center; color: var(--text-secondary); font-size: 13px; }
+  footer { padding: 48px 0 64px; text-align: center; color: var(--text-secondary); font-size: 13px; border-top: 1px solid var(--border-subtle); }
   footer a { color: var(--text-secondary); }
   footer a:hover { color: var(--accent); }
-  footer .foot-links { display: flex; gap: 18px; justify-content: center; margin-bottom: 16px; }
+  footer .foot-links { display: flex; gap: 18px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
+
+  @media (max-width: 760px) {
+    /* keep the header readable on phones — the page itself is the content */
+    nav.links { display: none; }
+    .hero { padding-top: 56px; }
+  }
+
+  @media (max-width: 860px) {
+    .app-window { margin-top: 40px; }
+    .aw-body { grid-template-columns: 1fr; }
+    .aw-nav { display: none; }
+    .aw-hero { flex-direction: column; align-items: flex-start; }
+    .aw-tiles { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
+<script>/* set before first paint so .reveal never flashes visible-then-hidden */ document.documentElement.classList.add('js');</script>
 </head>
 <body>
 
@@ -243,12 +438,121 @@
       <span class="badge">Windows 10 / 11</span>
       <span class="badge">.NET 8.0</span>
       <span class="badge">WinUI 3</span>
+      <span class="badge">v0.9.1</span>
       <span class="badge accent">Active development</span>
     </div>
     <div class="cta-row">
       <a class="btn primary" href="https://github.com/theantipopau/aether-control">View on GitHub</a>
       <a class="btn secondary" href="https://github.com/theantipopau/aether-control/blob/main/README.md">Read the README</a>
       <a class="btn secondary" href="https://github.com/theantipopau/aether-control/blob/main/ROADMAP.md">Full build log</a>
+    </div>
+
+    <!--
+      The product, drawn in markup: title bar with live health readout, grouped navigation,
+      the Overview hero (verdict + headline gauges) and a row of metric cards. Stands in for
+      real screenshots until docs/screenshots/ is populated — crop personal data (external IP)
+      from any real capture before committing it.
+    -->
+    <div class="app-window reveal" aria-hidden="true">
+      <div class="aw-titlebar">
+        <div class="aw-brand">
+          <img src="https://raw.githubusercontent.com/theantipopau/aether-control/main/img/Icon.png" alt="" />
+          AETHER CONTROL
+        </div>
+        <div class="aw-health"><span class="live-dot"></span>Normal · CPU 54° · GPU 47°</div>
+      </div>
+      <div class="aw-body">
+        <nav class="aw-nav">
+          <div class="aw-nav-item active"><span class="glyph">⌂</span> Overview</div>
+          <div class="aw-nav-item"><span class="glyph">◈</span> Performance</div>
+          <div class="aw-nav-item"><span class="glyph">✦</span> Lighting</div>
+          <div class="aw-nav-item"><span class="glyph">▣</span> Devices</div>
+          <div class="aw-nav-item"><span class="glyph">◷</span> History</div>
+          <div class="aw-nav-sep"></div>
+          <div class="aw-nav-item"><span class="glyph">▭</span> Portrait Mode</div>
+          <div class="aw-nav-foot">
+            <div class="aw-nav-sep"></div>
+            <div class="aw-nav-item"><span class="glyph">⚒</span> Diagnostics</div>
+            <div class="aw-nav-item"><span class="glyph">⚙</span> Settings</div>
+          </div>
+        </nav>
+        <main class="aw-main">
+          <div class="aw-hero">
+            <div class="aw-verdict">
+              <div class="aw-status-icon">✓</div>
+              <div>
+                <div class="aw-eyebrow">SYSTEM STATUS</div>
+                <h4>All readings normal</h4>
+                <div class="sub">Ryzen 7 9800X3D · RX 9070 XT · PRIME B650EM-A WIFI</div>
+                <div class="aw-actions"><span>▶ Portrait Mode</span><span>Performance</span><span>Lighting</span></div>
+              </div>
+            </div>
+            <div class="aw-gauges">
+              <div class="aw-gauge">
+                <svg viewBox="0 0 100 100">
+                  <circle class="g-track" cx="50" cy="50" r="42" stroke-dasharray="198 400" transform="rotate(135 50 50)" />
+                  <circle class="g-fill" cx="50" cy="50" r="42" stroke-dasharray="107 400" transform="rotate(135 50 50)" />
+                </svg>
+                <div class="g-label">CPU</div>
+                <div class="g-value">54<small>°C</small></div>
+                <div class="g-sub">12% load</div>
+              </div>
+              <div class="aw-gauge">
+                <svg viewBox="0 0 100 100">
+                  <circle class="g-track" cx="50" cy="50" r="42" stroke-dasharray="198 400" transform="rotate(135 50 50)" />
+                  <circle class="g-fill" cx="50" cy="50" r="42" stroke-dasharray="93 400" transform="rotate(135 50 50)" />
+                </svg>
+                <div class="g-label">GPU</div>
+                <div class="g-value">47<small>°C</small></div>
+                <div class="g-sub">0% load</div>
+              </div>
+              <div class="aw-gauge">
+                <svg viewBox="0 0 100 100">
+                  <circle class="g-track" cx="50" cy="50" r="42" stroke-dasharray="198 400" transform="rotate(135 50 50)" />
+                  <circle class="g-fill" cx="50" cy="50" r="42" stroke-dasharray="75 400" transform="rotate(135 50 50)" />
+                </svg>
+                <div class="g-label">MEMORY</div>
+                <div class="g-value">38<small>%</small></div>
+                <div class="g-sub">12.2 GB used</div>
+              </div>
+            </div>
+          </div>
+          <div class="aw-tiles">
+            <div class="aw-tile" style="--tint:#FF6D6D">
+              <div class="t-label">PACKAGE POWER</div>
+              <div class="t-value">58<small>W</small></div>
+              <div class="t-meter"><i style="--v:46%"></i></div>
+              <svg class="t-spark" viewBox="0 0 100 22" preserveAspectRatio="none"><polyline points="0,15 10,14 20,16 30,9 40,12 50,7 60,11 70,6 80,10 90,8 100,12" /></svg>
+            </div>
+            <div class="aw-tile" style="--tint:#00E5FF">
+              <div class="t-label">DOWNLOAD</div>
+              <div class="t-value">118<small>Mbps</small></div>
+              <div class="t-meter"><i style="--v:62%"></i></div>
+              <svg class="t-spark" viewBox="0 0 100 22" preserveAspectRatio="none"><polyline points="0,18 10,17 20,12 30,14 40,6 50,9 60,4 70,10 80,7 90,13 100,9" /></svg>
+            </div>
+            <div class="aw-tile" style="--tint:#3DD68C">
+              <div class="t-label">NVME · SYSTEM</div>
+              <div class="t-value">412<small>GB free</small></div>
+              <div class="t-meter"><i style="--v:58%"></i></div>
+              <svg class="t-spark" viewBox="0 0 100 22" preserveAspectRatio="none"><polyline points="0,10 10,11 20,10 30,12 40,11 50,13 60,12 70,14 80,13 90,12 100,14" /></svg>
+            </div>
+            <div class="aw-tile" style="--tint:#F5C86B">
+              <div class="t-label">FAN · CPU</div>
+              <div class="t-value">964<small>RPM</small></div>
+              <div class="t-meter"><i style="--v:38%"></i></div>
+              <svg class="t-spark" viewBox="0 0 100 22" preserveAspectRatio="none"><polyline points="0,13 10,12 20,14 30,11 40,13 50,10 60,12 70,9 80,11 90,10 100,12" /></svg>
+            </div>
+          </div>
+        </main>
+      </div>
+      <svg width="0" height="0" style="position:absolute">
+        <defs>
+          <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#00E5FF" />
+            <stop offset="1" stop-color="#80EFFF" />
+          </linearGradient>
+        </defs>
+      </svg>
     </div>
   </div>
 </section>
@@ -274,31 +578,35 @@
     <h2 class="section-title">Features</h2>
     <h3 class="section-heading">What it actually does</h3>
     <div class="grid">
-      <div class="card">
-        <h4><span class="dot"></span>Dashboard</h4>
-        <p>Live CPU / GPU / RAM / Storage / Motherboard / Network monitoring with radial gauges, sparkline history, and tone-based severity colouring. A Top Processes panel answers "what's using my CPU right now" without opening Task Manager.</p>
+      <div class="card reveal">
+        <h4><span class="dot"></span>Overview dashboard</h4>
+        <p>One panel answers "is my PC OK right now?" — a system verdict in words, headline CPU/GPU/memory gauges, last-minute load trends, then live CPU / GPU / RAM / Storage / Motherboard / Network cards with sparkline history and tone-based severity colouring. A Top Processes panel answers "what's using my CPU" without opening Task Manager.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h4><span class="dot"></span>Portrait Mode</h4>
         <p>A dedicated layout for a second monitor rotated to portrait — usage rings with history sparklines, per-fan RPM with click-to-rename, RAM/drive temp, live FPS via RTSS shared memory, and a top-processes panel. Drag it onto any monitor and one-click fill the screen.</p>
       </div>
-      <div class="card">
-        <h4><span class="dot"></span>Optimisation Centre</h4>
+      <div class="card reveal">
+        <h4><span class="dot"></span>Performance (Optimisation Centre)</h4>
         <p>Memory optimisation with a before/after/freed readout, a Storage Cleaner that scans real on-disk sizes before touching anything, a Startup Manager with publisher/impact per entry, Fan Control that reads <em>and</em> writes PWM headers with a safety floor, and Game Profiles that auto-apply a performance plan while a tracked game is running.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h4><span class="dot"></span>RGB Control</h4>
         <p>Corsair keyboards and mice controlled directly over USB — no iCUE, no OpenRGB, nothing to install. Everything else routes through OpenRGB's SDK server if it's running. Peripheral detection works independently and needs zero vendor software either.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h4><span class="dot"></span>Device Utilities &amp; Firmware</h4>
         <p>Detected peripherals by vendor, quick links to each vendor's own configuration software, and a current-version-only firmware/driver overview. Aether Control never auto-installs updates — only tells you what you have and links you to check.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h4><span class="dot"></span>Alerts, Tray &amp; History</h4>
-        <p>Toast notifications when CPU/GPU temperature crosses a threshold you set, with hysteresis so it doesn't spam you at the line. Live metrics on tray hover. Daily/weekly/monthly rollups of every tracked metric, charted.</p>
+        <p>Toast notifications when CPU/GPU temperature crosses a threshold you set, with hysteresis so it doesn't spam you at the line. Live metrics on tray hover. History records every tracked metric on a 60-second cadence and rolls it up daily/weekly/monthly, charted.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
+        <h4><span class="dot"></span>Diagnostics &amp; support bundle</h4>
+        <p>A capability report (app and library versions, OS, elevation state, detected hardware, live sensor counts) plus one-click export of a support zip — report, latest snapshot and recent logs — so a bug report carries its own evidence.</p>
+      </div>
+      <div class="card reveal">
         <h4><span class="dot"></span>Plugin framework</h4>
         <p><code>IAetherPlugin</code> plus optional capability interfaces (<code>IDashboardWidgetProvider</code>, <code>ITrayMetricProvider</code>, <code>IOptimisationTaskProvider</code>). Each plugin loads into its own collectible <code>AssemblyLoadContext</code> — add or remove one without restarting the app.</p>
       </div>
@@ -311,23 +619,23 @@
     <h2 class="section-title">Design principles</h2>
     <h3 class="section-heading">Ideas that shaped real decisions</h3>
     <div class="principles">
-      <div class="principle">
+      <div class="principle reveal">
         <strong>No extra software required, wherever avoidable</strong>
         <span>Corsair RGB is controlled directly over USB HID — the same wire-level access OpenRGB itself uses, just without needing OpenRGB installed. FPS reads RTSS's shared memory segment directly rather than requiring a plugin.</span>
       </div>
-      <div class="principle">
+      <div class="principle reveal">
         <strong>Confidently wrong is worse than honestly unavailable</strong>
-        <span>When a sensor doesn't exist for a given board/CPU, the UI hides that card rather than display a plausible-looking wrong number.</span>
+        <span>When a sensor doesn't exist for a given board/CPU, the UI hides that card rather than display a plausible-looking wrong number. Stale, unsupported and unconnected readings are labelled as exactly that — never shown as zero.</span>
       </div>
-      <div class="principle">
+      <div class="principle reveal">
         <strong>Trace real data before fixing</strong>
         <span>More than one "obvious" sensor-mapping bug turned out to be real hardware/OS behaviour (Windows core-parking rotating which CPU cores are active at idle looks identical to a flicker bug at a glance) — chased down with a real diagnostic trace instead of a fourth guess.</span>
       </div>
-      <div class="principle">
+      <div class="principle reveal">
         <strong>A vendor library's own number isn't automatically the right one</strong>
         <span>GPU% is read from the same Windows GPU-engine performance counter Task Manager itself uses rather than LibreHardwareMonitor's driver-level load sensor; RAM usage is read via <code>GlobalMemoryStatusEx</code> directly after LibreHardwareMonitor's own Memory sensor was caught, via a live diagnostic, reporting physically impossible numbers on real hardware.</span>
       </div>
-      <div class="principle">
+      <div class="principle reveal">
         <strong>Reversibility for anything touching live hardware state</strong>
         <span>Fan control clamps away from 0% and always reverts to automatic/BIOS control on exit; memory optimisation never terminates a process; Storage Cleaner previews real sizes before deleting anything.</span>
       </div>
@@ -347,18 +655,19 @@
           <tr><td><code>AetherControl.Plugins.Abstractions</code></td><td class="tfm">net8.0</td><td><code>IAetherPlugin</code> and capability interfaces third-party modules implement</td></tr>
           <tr><td><code>AetherControl.Data</code></td><td class="tfm">net8.0</td><td>SQLite schema, migrations, repositories (settings, history, layouts)</td></tr>
           <tr><td><code>AetherControl.Services</code></td><td class="tfm">net8.0-windows</td><td>Hardware monitoring, optimisation, RGB (Corsair direct HID + OpenRGB), firmware/driver detection, plugin loading</td></tr>
-          <tr><td><code>AetherControl.App</code></td><td class="tfm">net8.0-windows10.0.19041.0</td><td>WinUI 3 shell — dashboard, portrait mode, tray, all feature pages</td></tr>
+          <tr><td><code>AetherControl.App</code></td><td class="tfm">net8.0-windows10.0.19041.0</td><td>WinUI 3 shell — overview, portrait mode, tray, all feature pages</td></tr>
           <tr><td><code>AetherControl.Plugins.Sample</code></td><td class="tfm">net8.0</td><td>Reference plugin (system uptime widget)</td></tr>
-          <tr><td><code>tests/AetherControl.Tests</code></td><td class="tfm">net8.0-windows</td><td>xUnit tests against the Data/Services layer</td></tr>
+          <tr><td><code>tests/AetherControl.Tests</code></td><td class="tfm">net8.0-windows</td><td>xUnit tests against the Data/Services layer (run in CI on every push)</td></tr>
         </tbody>
       </table>
     </div>
     <p class="lede" style="margin-top:24px;margin-bottom:0;">
       MVVM throughout the app layer (<code>CommunityToolkit.Mvvm</code>), one safe
-      LibreHardwareMonitor session shared across the whole app, SQLite (WAL mode)
-      for durable state, and small JSON stores for state that doesn't need a
-      relational shape. Ships as its own standalone <code>.exe</code> —
-      unpackaged, not MSIX.
+      LibreHardwareMonitor session shared across the whole app (with self-healing
+      reads that detect poisoned Super I/O values and reopen instead of publishing
+      garbage), SQLite (WAL mode) for durable state, and small JSON stores for
+      state that doesn't need a relational shape. Ships as its own standalone
+      <code>.exe</code> — unpackaged, not MSIX.
     </p>
   </div>
 </section>
@@ -377,22 +686,27 @@
       <div class="status-col">
         <h4><span class="pill shipped">Shipped</span></h4>
         <ul>
-          <li>Full hardware dashboard with radial gauges, sparklines, tone-based severity</li>
+          <li><strong>Overview hero</strong> — system verdict, headline gauges, last-minute trends, quick actions</li>
+          <li><strong>Grouped navigation &amp; page heroes</strong> — Overview / Performance / Lighting / Devices / History, shared design tokens (spacing, radii, type, colour roles)</li>
+          <li>Full hardware monitoring with radial gauges, sparklines, tone-based severity</li>
           <li>Portrait Mode — a real, complete port, not a stub</li>
-          <li>Optimisation Centre: memory, storage, startup, fan control, game profiles</li>
+          <li>Performance: memory, storage, startup, fan control (read <em>and</em> write), game profiles</li>
           <li>RGB Control: direct-HID Corsair + OpenRGB, merged behind one interface</li>
           <li>Peripheral detection by USB vendor ID, zero vendor software required</li>
-          <li>Temperature alerts, tray live metrics, accent theming</li>
+          <li>Temperature alerts, tray live metrics, swappable accent theming</li>
+          <li>Diagnostics page + one-click support bundle; About panel with check-only update check</li>
+          <li>History recording (60s cadence + retention), file logging, silent-elevation autostart</li>
           <li>Plugin framework with a working sample plugin</li>
+          <li>Self-healing Super I/O reads — poisoned sensor values detected, withheld and recovered</li>
         </ul>
       </div>
       <div class="status-col">
         <h4><span class="pill progress">In progress / next</span></h4>
         <ul>
+          <li><strong>Phase 39</strong> — premium UI/UX programme: area consolidation, unified profiles with preview &amp; revert, first-run onboarding, accessibility &amp; packaging pass</li>
           <li>Bundled OpenRGB management for non-Corsair RGB devices</li>
           <li>Logitech/Razer direct control, same approach as Corsair</li>
           <li>Product-style imagery on device/drive cards</li>
-          <li>NavigationView pane visual polish</li>
         </ul>
       </div>
       <div class="status-col">
@@ -413,15 +727,15 @@
     <h3 class="section-heading">Reused from Matt's existing projects</h3>
     <p class="lede">Rather than re-deriving hardware-sensor behaviour from scratch, the parts that needed real-hardware validation were ported from proven, already-tested code.</p>
     <div class="provenance grid">
-      <div class="card">
+      <div class="card reveal">
         <h4><span class="dot"></span>Portrait Stats</h4>
         <p>CPU/GPU/RAM sensor name-matching, best-GPU-by-VRAM selection, <code>FanLabelStore</code>, <code>ProcessRankerService</code>, <code>RtssFpsSource</code>, and Portrait Mode's entire layout and control set.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h4><span class="dot"></span>OmenCore</h4>
         <p><code>CorsairHidDirect</code> ported into <code>CorsairHidDirectService</code> — direct-HID Corsair RGB control, including the full known-product table and per-PID HID report layouts.</p>
       </div>
-      <div class="card">
+      <div class="card reveal">
         <h4><span class="dot"></span>Radium PCs Companion</h4>
         <p>Visual reference for radial gauges, animated numbers, severity-based tone colouring, the RAM cleaner technique, and Startup Manager's layout.</p>
       </div>
@@ -440,6 +754,21 @@
     All rights reserved. This is Matt's personal project, shared publicly for visibility; no license is granted for reuse without permission.
   </div>
 </footer>
+
+<script>
+  // Reveal-on-scroll: progressive enhancement only — everything is visible without JS,
+  // and motion is skipped entirely when the OS asks for reduced motion.
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      }
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  } else {
+    document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
+  }
+</script>
 
 </body>
 </html>
