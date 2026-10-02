@@ -40,6 +40,10 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
     [ObservableProperty] private string motherboardAgeText = "—";
     [ObservableProperty] private string conflictingSoftwareText = "None detected";
 
+    public string CpuBrandLogo => HardwareBrands.DetectCpu(CpuName)?.LogoUri ?? string.Empty;
+    public string GpuBrandLogo => HardwareBrands.DetectGpu(GpuName)?.LogoUri ?? string.Empty;
+    public string BoardBrandLogo => HardwareBrands.DetectMotherboard(MotherboardModel)?.LogoUri ?? string.Empty;
+
     private readonly IFanControlService _fanControl;
 
     public DiagnosticsViewModel(IHardwareMonitorService hardwareMonitor, IFanControlService fanControl)
@@ -73,6 +77,12 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         FanSensorCount = snapshot.Motherboard.FanSpeeds.Count;
         TemperatureSensorCount = snapshot.Motherboard.VrmTemperatures.Count;
         DriveCount = snapshot.Drives.Count;
+
+        // Vendor badges beside the CPU/GPU/motherboard rows — same HardwareBrands rule as the
+        // Overview (unknown → empty string → BrandLogo collapses, never a wrong brand).
+        OnPropertyChanged(nameof(CpuBrandLogo));
+        OnPropertyChanged(nameof(GpuBrandLogo));
+        OnPropertyChanged(nameof(BoardBrandLogo));
 
         // Surfaced here because the fallback to last-known-good values hides poisoned Super I/O
         // reads everywhere else in the UI — a live log (2026-09-25) showed ~340 reopen cycles/hour

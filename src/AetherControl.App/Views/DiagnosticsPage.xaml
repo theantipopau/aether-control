@@ -60,6 +60,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition />
@@ -85,12 +86,15 @@
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="CPU" Style="{StaticResource DiagnosticRowLabelStyle}" />
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.CpuName}" Style="{StaticResource DiagnosticRowValueStyle}" />
+                        <controls:BrandLogo Grid.Row="0" Grid.Column="2" SourceUri="{x:Bind ViewModel.CpuBrandLogo, Mode=OneWay}" Height="12" MaxWidth="56" VerticalAlignment="Center" Margin="12,0,0,0" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="GPU" Style="{StaticResource DiagnosticRowLabelStyle}" />
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.GpuName}" Style="{StaticResource DiagnosticRowValueStyle}" />
+                        <controls:BrandLogo Grid.Row="1" Grid.Column="2" SourceUri="{x:Bind ViewModel.GpuBrandLogo, Mode=OneWay}" Height="12" MaxWidth="56" VerticalAlignment="Center" Margin="12,0,0,0" />
 
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Motherboard" Style="{StaticResource DiagnosticRowLabelStyle}" />
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.MotherboardModel}" Style="{StaticResource DiagnosticRowValueStyle}" />
+                        <controls:BrandLogo Grid.Row="2" Grid.Column="2" SourceUri="{x:Bind ViewModel.BoardBrandLogo, Mode=OneWay}" Height="12" MaxWidth="56" VerticalAlignment="Center" Margin="12,0,0,0" />
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="Voltage sensors reported" Style="{StaticResource DiagnosticRowLabelStyle}" />
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.VoltageSensorCount}" Style="{StaticResource DiagnosticRowValueStyle}" />

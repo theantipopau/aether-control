@@ -64,7 +64,7 @@
             <!-- ── Gaming ── -->
             <Border Style="{StaticResource SectionCardBorderStyle}">
                 <StackPanel Spacing="14">
-                    <controls:SectionHeader Label="Gaming Profile" />
+                    <controls:SectionHeader Label="Gaming Profile" Logo="{x:Bind ViewModel.GpuBrandLogo, Mode=OneWay}" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                         <TextBlock Text="Game Mode + High Performance power plan (fully reversible)"
                                    Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" VerticalAlignment="Center" />
@@ -121,7 +121,7 @@
             <Border Style="{StaticResource SectionCardBorderStyle}">
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto">
-                        <controls:SectionHeader Label="Fan Control" VerticalAlignment="Center" />
+                        <controls:SectionHeader Label="Fan Control" Logo="{x:Bind ViewModel.BoardBrandLogo, Mode=OneWay}" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                             <Button Command="{x:Bind ViewModel.RefreshFanChannelsCommand}" ToolTipService.ToolTip="Re-read fan headers">
                                 <StackPanel Orientation="Horizontal" Spacing="6">

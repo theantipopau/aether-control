@@ -2,7 +2,41 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02) · [Phase 44 (vendor badges — Diagnostics, Performance, Storage)](#phase-44--vendor-badges-on-diagnostics-performance-and-storage-cards-2026-10-03)
+
+## Phase 44 — Vendor badges on Diagnostics, Performance and Storage cards (2026-10-03)
+Matt's brief: extend the vendor logo badges (Phase 42) to the Diagnostics and Performance pages,
+and add drive-vendor marks to the Storage cards.
+
+**Six new drive-vendor silhouettes (`Assets/Vendors`, now 14 total):**
+- [x] Seagate, Western Digital, Samsung, Crucial, Kingston, Acer sourced from Wikimedia Commons
+      (SVG files rendered to PNG by the Commons thumbnailer — still no local SVG rasteriser) and
+      put through the existing `tools/process-vendors.ps1` whiten → alpha-trim → fit pipeline.
+- [x] Samsung's first pick (`Samsung logo wordmark.svg`) rendered as an opaque blob (96 % opaque —
+      the same failure mode as the old Radeon badge), so it was swapped for `Samsung wordmark.svg`
+      and re-audited; all 14 assets verified clean (transparent corners, 10–51 % ink) with
+      `tools/logo-stats.ps1`.
+
+**Drive detection — `HardwareBrands.DetectDrive`:**
+- [x] Matches friendly names (`Seagate BarraCuda`, `Predator SSD GM7`, `INTEL SSDPE…`) *and* bare
+      WMI model codes, because WMI's Model field usually omits the vendor entirely:
+      `ST3000LM024-1SL174` → Seagate, `WDC WD10EZEX-08WN4A0`/`WDS250…` → WD,
+      `CT1000MX500SSD1` → Crucial, `SA400S37480G`/`SKC2000…` → Kingston,
+      `MZVLB1T0HALR` → Samsung. Two-letter prefixes require a following digit (or space for `WD`)
+      so a coincidental `ST…` start can't earn a badge.
+- [x] Same product rule as every other Detect*: vendors with no logo stay null (SanDisk, Micron,
+      SK hynix, Kioxia fall through) rather than borrowing a related brand's mark.
+
+**UI:**
+- [x] `MetricCard` gains a `Logo` DP (BrandLogo badge beside the label, collapses when empty) and
+      the Dashboard's Storage cards bind `StorageDriveViewModel.BrandLogo` (recomputed on Model).
+- [x] Diagnostics → Detected Hardware: brand badges beside the CPU / GPU / Motherboard rows via
+      `DiagnosticsViewModel.{Cpu,Gpu,Board}BrandLogo` (computed from the same snapshot names).
+- [x] Performance → Gaming Profile header shows the GPU's mark, Fan Control the motherboard's
+      (`OptimisationViewModel.{Gpu,Board}BrandLogo`, derived in `ApplyMemory` — no extra polling).
+- 23 new `HardwareBrandsTests` rows — 169 total.
+- **Needs Matt:** confirm badges appear on Diagnostics rows and the two Performance headers, and
+  that Storage cards show a vendor mark for your drives (unknown drives must show none).
 
 ## Phase 43 — Resource conservation: adaptive poll cadence (2026-10-02)
 Matt's brief: tune polling intervals for idle periods and reduce CPU/GPU overhead of the monitor

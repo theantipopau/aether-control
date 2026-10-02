@@ -38,6 +38,10 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
     [ObservableProperty] private double memoryTotalGb;
     [ObservableProperty] private double memoryUsedPercent;
     [ObservableProperty] private string memoryUsageText = "Waiting for sensor data…";
+    // Vendor badges for section headers: Gaming Profile shows the GPU's brand, Fan Control the
+    // motherboard's (PWM headers live on the board). Empty → BrandLogo collapses (unknown brand).
+    [ObservableProperty] private string gpuBrandLogo = string.Empty;
+    [ObservableProperty] private string boardBrandLogo = string.Empty;
 
     public OptimisationViewModel(
         IOptimisationService optimisationService,
@@ -85,6 +89,11 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
         MemoryUsageText = memory.TotalBytes > 0
             ? $"{MemoryUsedGb:F1} GB in use · {MemoryAvailableGb:F1} GB available of {MemoryTotalGb:F1} GB"
             : "Memory readings not available yet.";
+
+        // Derived from the same snapshot — no extra polling, same HardwareBrands rules as the
+        // Overview (unknown → empty).
+        GpuBrandLogo = HardwareBrands.DetectGpu(snapshot.Gpu.Name)?.LogoUri ?? string.Empty;
+        BoardBrandLogo = HardwareBrands.DetectMotherboard(snapshot.Motherboard.Model)?.LogoUri ?? string.Empty;
     }
 
     private void OnGameProfilesChanged(object? sender, EventArgs e) =>

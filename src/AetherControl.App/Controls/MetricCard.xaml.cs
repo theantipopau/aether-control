@@ -54,6 +54,12 @@ public sealed partial class MetricCard : UserControl
     public static readonly DependencyProperty CardWidthProperty =
         DependencyProperty.Register(nameof(CardWidth), typeof(double), typeof(MetricCard), new PropertyMetadata(double.NaN, OnCardWidthChanged));
 
+    /// <summary>Vendor logo URI (Assets/Vendors, e.g. a drive's brand via HardwareBrands.DetectDrive).
+    /// Empty — the default — collapses the badge, so cards for unknown brands show nothing rather
+    /// than a broken image.</summary>
+    public static readonly DependencyProperty LogoProperty =
+        DependencyProperty.Register(nameof(Logo), typeof(string), typeof(MetricCard), new PropertyMetadata(string.Empty, OnLogoChanged));
+
     /// <summary>Opt-in correlation tag (e.g. a drive's DeviceId) — when non-empty, this instance
     /// participates in the temporary storage-flicker diagnostics (see <see cref="StorageDiagnostics"/>):
     /// it traces every NumericValue change when <see cref="StorageDiagnostics.TraceEnabled"/> is set,
@@ -153,6 +159,12 @@ public sealed partial class MetricCard : UserControl
         set => SetValue(DiagnosticTagProperty, value);
     }
 
+    public string Logo
+    {
+        get => (string)GetValue(LogoProperty);
+        set => SetValue(LogoProperty, value);
+    }
+
     private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var card = (MetricCard)d;
@@ -228,6 +240,12 @@ public sealed partial class MetricCard : UserControl
         var detail = (string)e.NewValue;
         card.DetailText.Text = detail;
         card.DetailText.Visibility = string.IsNullOrEmpty(detail) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private static void OnLogoChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var card = (MetricCard)d;
+        card.LogoElement.SourceUri = (string)e.NewValue;
     }
 
     private static void OnCardWidthChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

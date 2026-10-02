@@ -76,6 +76,50 @@ public class HardwareBrandsTests
         Assert.Null(HardwareBrands.DetectMotherboard(null));
     }
 
+    [Theory]
+    // Friendly names (WMI Model sometimes includes the vendor, sometimes not).
+    [InlineData("Seagate BarraCuda Compute 3TB", "seagate")]
+    [InlineData("Samsung SSD 990 PRO 2TB", "samsung")]
+    [InlineData("Crucial P5 Plus 1TB", "crucial")]
+    [InlineData("Predator SSD GM7 1TB", "acer")]
+    [InlineData("INTEL SSDPEKNW512G8", "intel")]
+    // Bare model codes — the actual WMI Model shape on most machines ("ST3000LM024-1SL174",
+    // "WDC WD10EZEX-08WN4A0") carries no vendor word at all.
+    [InlineData("ST3000LM024-1SL174", "seagate")]
+    [InlineData("ST1000DM010-2EP102", "seagate")]
+    [InlineData("WDC WD10EZEX-08WN4A0", "wd")]
+    [InlineData("WD Blue SN570 1TB", "wd")]
+    [InlineData("WDS250G2B0A-00SGH0", "wd")]
+    [InlineData("CT1000MX500SSD1", "crucial")]
+    [InlineData("Kingston SA400S37480G", "kingston")]
+    [InlineData("HyperX Fury 240GB", "kingston")]
+    [InlineData("SKC2000S8250G", "kingston")]
+    [InlineData("MZVLB1T0HALR-000L7", "samsung")]
+    public void DetectDrive_MatchesRealModelStrings(string model, string expectedKey)
+    {
+        var brand = HardwareBrands.DetectDrive(model);
+
+        Assert.NotNull(brand);
+        Assert.Equal(expectedKey, brand!.Key);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("Not detected")]
+    // Unknown ODM code that merely starts with two letters must not earn a badge — a wrong
+    // brand mark is worse than none (same rule as every other Detect* here).
+    [InlineData("Some ODM Ltd. SSD")]
+    [InlineData("SATA SSD 512GB")]
+    // Vendors we hold no logo for stay null instead of borrowing a related brand's mark.
+    [InlineData("SanDisk SSD PLUS 480GB")]
+    [InlineData("Micron 2400 MTFDKBA1T0QFM")]
+    public void DetectDrive_UnknownOrUnlogoed_ReturnsNull(string? model)
+    {
+        Assert.Null(HardwareBrands.DetectDrive(model));
+    }
+
     [Fact]
     public void AllBrands_PointAtARealAppAsset()
     {
@@ -83,6 +127,8 @@ public class HardwareBrandsTests
         {
             HardwareBrands.Amd, HardwareBrands.Intel, HardwareBrands.Nvidia, HardwareBrands.Radeon,
             HardwareBrands.Asus, HardwareBrands.Asrock, HardwareBrands.Gigabyte, HardwareBrands.Msi,
+            HardwareBrands.Seagate, HardwareBrands.Wd, HardwareBrands.Samsung,
+            HardwareBrands.Crucial, HardwareBrands.Kingston, HardwareBrands.Acer,
         };
 
         foreach (var brand in brands)

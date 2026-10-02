@@ -271,6 +271,7 @@
                             <DataTemplate>
                                 <controls:MetricCard
                                     Label="{Binding Model}"
+                                    Logo="{Binding BrandLogo}"
                                     NumericValue="{Binding FreeGb}" Format="F0" Unit="GB free"
                                     Detail="{Binding DetailText}"
                                     Progress="{Binding UsedPercent}"

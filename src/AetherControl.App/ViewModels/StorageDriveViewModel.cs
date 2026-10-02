@@ -79,6 +79,12 @@ public sealed partial class StorageDriveViewModel : ObservableObject
         OnPropertyChanged(nameof(UsedPercent));
     }
 
+    /// <summary>Vendor mark for this drive (HardwareBrands.DetectDrive over <see cref="Model"/>).
+    /// Empty for unknown/unlogoed vendors — the card's badge collapses rather than guessing.</summary>
+    public string BrandLogo => HardwareBrands.DetectDrive(Model)?.LogoUri ?? string.Empty;
+
+    partial void OnModelChanged(string value) => OnPropertyChanged(nameof(BrandLogo));
+
     partial void OnHealthChanged(DriveHealthStatus value) => OnPropertyChanged(nameof(DetailText));
     partial void OnTemperatureCelsiusChanged(double value) => OnPropertyChanged(nameof(DetailText));
     partial void OnFreeSpaceQualityChanged(MetricQuality value) => OnPropertyChanged(nameof(DetailText));
