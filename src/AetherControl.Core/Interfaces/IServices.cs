@@ -45,6 +45,12 @@ public interface INetworkMonitorService : IDisposable
     void Start(TimeSpan interval);
 
     void Stop();
+
+    /// <summary>Lower bound between samples regardless of the timer's own period — lets the
+    /// hardware monitor ease network sampling (interface counters + the synchronous ICMP ping)
+    /// onto its idle cadence without tearing down and restarting the network timer every time
+    /// the cadence tier changes.</summary>
+    void SetMinimumInterval(TimeSpan interval);
 }
 
 public interface IOptimisationService

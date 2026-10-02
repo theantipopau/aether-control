@@ -68,6 +68,8 @@
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="16">
                         <NumberBox Header="Dashboard refresh rate (ms)" Value="{x:Bind ViewModel.DashboardRefreshMs, Mode=TwoWay}" SpinButtonPlacementMode="Inline" Minimum="250" Maximum="10000" />
+                        <TextBlock Text="While no Aether window is focused and the machine is quiet, polling eases to 5× this rate (up to 10 s) to cut background CPU, disk and network overhead — any activity snaps it straight back."
+                                   Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                         <NumberBox Header="History retention (days)" Value="{x:Bind ViewModel.HistoryRetentionDays, Mode=TwoWay}" SpinButtonPlacementMode="Inline" Minimum="1" Maximum="365" />
                     </StackPanel>
                 </Border>

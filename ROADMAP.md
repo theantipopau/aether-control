@@ -2,7 +2,48 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02)
+
+## Phase 43 — Resource conservation: adaptive poll cadence (2026-10-02)
+Matt's brief: tune polling intervals for idle periods and reduce CPU/GPU overhead of the monitor
+loop. Mid-phase live feedback: one vendor logo renders as a white box, and "still not scaling
+when the window isn't full screen".
+
+**Adaptive poll cadence (the monitor loop):**
+- [x] New pure `Core/Timing/IdleDetector` — CPU *and* GPU under 10 % for a sustained 15 s counts
+      as idle; a single busy sample exits idle immediately (one-sided hysteresis: a lull between
+      bursts never slows polling, a spike is always caught at full rate). Plus `UiActivityTracker`,
+      a cross-window focus flag each window's `Activated` handler writes on the UI thread.
+- [x] `HardwareMonitorService` keeps its timer ticking at the configured rate but gates real polls:
+      full cadence while any Aether window is focused or the machine is busy; eases to 5× the
+      refresh rate (clamped to 5–10 s, never below the base rate) only when no window is focused
+      *and* the system has been quiet. Each transition is logged once (`Poll cadence → …`) so the
+      behaviour is observable instead of invisible background magic.
+- [x] Network sampling rides the same tier via the new `INetworkMonitorService.SetMinimumInterval`
+      (no timer teardown on tier flips), and the synchronous ICMP ping is coalesced to ≥2 s — it
+      used to fire once per second with a 1 s timeout budget for a card that can't visually change
+      that fast.
+- [x] `StorageHealthProbe`'s WMI queries (Win32_DiskDrive + the partition-association query — the
+      most expensive part of a fast tick) are now cached for 3 s; drive temperatures still come
+      from LHM on every real poll.
+- [x] Top Processes ranking eases 2 s → 10 s while idle (same detector) in `DashboardViewModel`.
+- [x] Settings → Performance explains the easing next to the refresh-rate box.
+- 12 new tests (`IdleDetectorTests`, `UiActivityTrackerTests`) — 146 total.
+- **Needs Matt:** hide the window ~20 s on a quiet desktop → `logs/aether-*.log` should show
+  `Poll cadence → 5000 ms (idle…)`; any click back into the app should log the return to 1000 ms.
+
+**Live feedback fixes:**
+- [x] Radeon badge rendered as a solid white box: its source was a fully-opaque square logo badge
+      (93 % opaque — whitening blanked the glyph inside it). Swapped for the transparent 2019
+      "Radeon" wordmark (73 % transparent) and verified all eight assets with a new
+      `tools/logo-stats.ps1` alpha audit.
+- [x] New `fluid-layout.log` in `%APPDATA%\Aether Control` — every `FluidPanel` plan transition
+      (width, child count, rows, cells), because the elevated app can't be screenshotted and the
+      "still not scaling" screenshot that prompted it had no logos and a lone VOLTAGE row: a
+      pre-Phase-42 build. Launch evidence from the current build: `w=795 → rows=[5] cells=[159]`
+      — five CPU cards share one row at that width.
+- **Needs Matt:** resize the window down and confirm five CPU cards stay on one row, and that the
+  Radeon/GPU badges now show as wordmarks instead of a white box.
 
 ## Phase 42 — Responsive card rows that fill, vendor brand imagery (2026-10-02)
 Matt's brief: "not scaling correctly" (with two screenshots at 2554px maximised and 1939px

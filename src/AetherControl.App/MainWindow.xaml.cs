@@ -3,6 +3,7 @@ using AetherControl.Core.Enums;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
+using AetherControl.Core.Timing;
 using AetherControl.Services.Tray;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -76,6 +77,13 @@ public sealed partial class MainWindow : Window
         _ = InitializeTrayPreferencesAsync();
         _ = CheckForUpdatesAtStartupAsync();
         App.Services.GetRequiredService<IHardwareMonitorService>().SnapshotUpdated += OnSnapshotUpdatedForTray;
+
+        // Adaptive poll cadence: focus on either Aether window keeps the monitor at its full rate;
+        // both windows unfocused (minimised, closed to tray, or simply alt-tabbed away) plus a
+        // quiet machine lets it ease back — see HardwareMonitorService.ComputeEffectiveInterval.
+        var uiActivity = App.Services.GetRequiredService<UiActivityTracker>();
+        Activated += (_, e) => uiActivity.SetWindowActive(
+            UiActivityTracker.MainWindowKey, e.WindowActivationState != WindowActivationState.Deactivated);
     }
 
     private async Task InitializeTrayPreferencesAsync()

@@ -1,4 +1,5 @@
 using AetherControl.Core.Interfaces;
+using AetherControl.Core.Timing;
 using AetherControl.Data;
 using AetherControl.Data.Repositories;
 using AetherControl.Plugins.Abstractions;
@@ -28,6 +29,10 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IHistoryService, HistoryService>();
+
+        // Shared cross-window focus flag for the adaptive poll cadence — written by each window's
+        // Activated handler, read by HardwareMonitorService's background timer.
+        services.AddSingleton<UiActivityTracker>();
 
         services.AddHttpClient<INetworkMonitorService, NetworkMonitorService>();
         services.AddHttpClient<AetherControl.Core.Updates.IUpdateCheckService, Updates.GitHubUpdateCheckService>(

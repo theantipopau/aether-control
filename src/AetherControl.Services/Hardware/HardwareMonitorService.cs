@@ -2,6 +2,7 @@ using System.Diagnostics;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
+using AetherControl.Core.Timing;
 using AetherControl.Services.Processes;
 using LibreHardwareMonitor.Hardware;
 using Microsoft.Extensions.Logging;
@@ -79,6 +80,16 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
     private Timer? _timer;
     private readonly object _pollLock = new();
+    // Adaptive cadence (Phase 43): the timer keeps ticking at the base rate, but ticks that arrive
+    // before the eased idle interval has elapsed are cheap no-ops. _idleInterval is always at or
+    // above _baseInterval (ComputeIdleInterval), so idling can only ever slow polling down.
+    private TimeSpan _baseInterval = TimeSpan.FromSeconds(1);
+    private TimeSpan _idleInterval = TimeSpan.FromSeconds(5);
+    private DateTimeOffset _lastPollUtc = DateTimeOffset.MinValue;
+    private TimeSpan _lastEffectiveInterval = TimeSpan.FromTicks(-1);
+    private TimeSpan _appliedNetworkMinimum = TimeSpan.FromTicks(-1);
+    private readonly IdleDetector _idleDetector = new();
+    private readonly UiActivityTracker _uiActivity;
     private bool _reopenPending;
     private DateTime _lastReopenAttemptUtc = DateTime.MinValue;
     private DateTimeOffset _motherboardReadUtc = DateTimeOffset.UtcNow;
@@ -111,11 +122,13 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     public HardwareMonitorService(
         ILogger<HardwareMonitorService> logger,
         INetworkMonitorService networkMonitor,
-        ProcessRankerService processRanker)
+        ProcessRankerService processRanker,
+        UiActivityTracker uiActivity)
     {
         _logger = logger;
         _networkMonitor = networkMonitor;
         _processRanker = processRanker;
+        _uiActivity = uiActivity;
         _computer = new Computer
         {
             IsCpuEnabled = true,
@@ -242,6 +255,8 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
     public void Start(TimeSpan pollingInterval)
     {
+        _baseInterval = pollingInterval;
+        _idleInterval = ComputeIdleInterval(pollingInterval);
         _networkMonitor.Start(pollingInterval);
         _timer?.Dispose();
         _timer = new Timer(_ => SafePoll(), null, TimeSpan.Zero, pollingInterval);
@@ -256,12 +271,28 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
     public void SetPollingInterval(TimeSpan interval)
     {
+        _baseInterval = interval;
+        _idleInterval = ComputeIdleInterval(interval);
+        _lastPollUtc = DateTimeOffset.MinValue; // apply the new rate on the very next tick
         _timer?.Change(TimeSpan.Zero, interval);
         _networkMonitor.Start(interval);
     }
 
     private void SafePoll()
     {
+        var now = DateTimeOffset.UtcNow;
+        var effective = ComputeEffectiveInterval(now);
+
+        // Idle tier only. The timer still wakes at the base rate (each empty wakeup is a couple of
+        // field comparisons), but a tick landing before the eased interval has elapsed does
+        // nothing. The base tier is deliberately never gated this way — sub-millisecond timer
+        // jitter would otherwise be able to skip a whole fast tick — so at full cadence this is
+        // behaviourally identical to the old fixed-period timer.
+        if (effective > _baseInterval && now - _lastPollUtc < effective)
+        {
+            return;
+        }
+
         if (!Monitor.TryEnter(_pollLock))
         {
             return; // previous poll still running (e.g. slow WMI call) — skip this tick rather than pile up
@@ -270,6 +301,7 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         try
         {
             Poll();
+            _lastPollUtc = now;
         }
         catch (Exception ex)
         {
@@ -279,6 +311,57 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
         {
             Monitor.Exit(_pollLock);
         }
+    }
+
+    /// <summary>
+    /// Full cadence unless BOTH idle conditions hold: no Aether window is focused (minimised,
+    /// closed to tray, or alt-tabbed away — see <see cref="UiActivityTracker"/>) and the machine
+    /// has been quiet for <see cref="IdleDetector.MinimumIdleDuration"/> (CPU and GPU both under
+    /// the busy threshold). Anything else — a game loading, the user clicking back into the
+    /// dashboard — returns to the base rate on the very next tick. Each transition is logged once
+    /// so cadence changes show up in the app log instead of being invisible background behaviour.
+    /// </summary>
+    private TimeSpan ComputeEffectiveInterval(DateTimeOffset now)
+    {
+        var snapshot = LatestSnapshot;
+        // Detector observed unconditionally, even while a window is focused: its streak needs the
+        // samples so that alt-tabbing away after a genuinely quiet stretch can slow down at once,
+        // while leaving the window right as the machine stops working still serves the full
+        // quiet-stretch before easing off.
+        var systemIdle = snapshot is not null &&
+                         _idleDetector.IsIdle(now, snapshot.Cpu.UtilisationPercent, snapshot.Gpu.UtilisationPercent);
+        var idle = systemIdle && !_uiActivity.AnyWindowActive;
+        var effective = idle ? _idleInterval : _baseInterval;
+
+        if (effective != _lastEffectiveInterval)
+        {
+            _lastEffectiveInterval = effective;
+            if (snapshot is not null)
+            {
+                _logger.LogInformation("Poll cadence → {IntervalMs} ms ({Reason})",
+                    effective.TotalMilliseconds,
+                    idle ? "idle: no focused Aether window, system quiet" : "active");
+            }
+        }
+
+        if (_appliedNetworkMinimum != effective)
+        {
+            _appliedNetworkMinimum = effective;
+            _networkMonitor.SetMinimumInterval(effective);
+        }
+
+        return effective;
+    }
+
+    /// <summary>5× the configured rate clamped to [5s, 10s], then floored at the base rate itself
+    /// — idling may only ever ease a cadence the user configured, never tighten or outrun it.</summary>
+    private static TimeSpan ComputeIdleInterval(TimeSpan baseInterval)
+    {
+        var scaled = TimeSpan.FromTicks(baseInterval.Ticks * 5);
+        var min = TimeSpan.FromSeconds(5);
+        var max = TimeSpan.FromSeconds(10);
+        var clamped = scaled < min ? min : scaled > max ? max : scaled;
+        return clamped < baseInterval ? baseInterval : clamped;
     }
 
     private void Poll()

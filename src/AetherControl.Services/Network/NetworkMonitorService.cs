@@ -15,6 +15,11 @@ namespace AetherControl.Services.Network;
 public sealed class NetworkMonitorService : INetworkMonitorService
 {
     private static readonly TimeSpan ExternalIpRefreshInterval = TimeSpan.FromMinutes(5);
+    // The ICMP send below is synchronous with a 1s timeout — at a 1s sampling cadence that is a
+    // permanent ping-per-second background cost for a card that can't visually change faster than
+    // a person reads it. Coalescing to ≥2s halves it outright; at the eased idle cadence the
+    // sample itself is already further apart than this, so the coalescing never binds there.
+    private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(2);
     private const string LatencyProbeHost = "1.1.1.1";
 
     private readonly ILogger<NetworkMonitorService> _logger;
@@ -32,8 +37,12 @@ public sealed class NetworkMonitorService : INetworkMonitorService
     private long _lastBytesSent;
     private long _lastBytesReceived;
     private DateTimeOffset _lastSampleAt;
+    private DateTimeOffset _lastRunAt = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastPingAt = DateTimeOffset.MinValue;
+    private double _lastLatencyMs;
     private DateTimeOffset _lastExternalIpFetch = DateTimeOffset.MinValue;
     private string _externalIp = string.Empty;
+    private TimeSpan _minimumInterval = TimeSpan.Zero;
 
     public NetworkMonitorService(ILogger<NetworkMonitorService> logger, HttpClient httpClient)
     {
@@ -48,6 +57,7 @@ public sealed class NetworkMonitorService : INetworkMonitorService
 
     public void Start(TimeSpan interval)
     {
+        _lastRunAt = DateTimeOffset.MinValue; // first sample after a (re)start runs immediately
         _activeInterface = FindActiveInterface();
         if (_activeInterface is not null)
         {
@@ -67,6 +77,9 @@ public sealed class NetworkMonitorService : INetworkMonitorService
         _timer = null;
     }
 
+    public void SetMinimumInterval(TimeSpan interval) =>
+        _minimumInterval = interval < TimeSpan.Zero ? TimeSpan.Zero : interval;
+
     private void SafeSample()
     {
         try
@@ -81,6 +94,13 @@ public sealed class NetworkMonitorService : INetworkMonitorService
 
     private void Sample()
     {
+        var ranAt = DateTimeOffset.UtcNow;
+        if (ranAt - _lastRunAt < _minimumInterval)
+        {
+            return; // eased onto the hardware monitor's idle cadence — see SetMinimumInterval
+        }
+
+        _lastRunAt = ranAt;
         _activeInterface ??= FindActiveInterface();
         var info = new NetworkInfo { AdapterName = _activeInterface?.Description ?? "Unknown", ExternalIpAddress = _externalIp };
 
@@ -101,7 +121,13 @@ public sealed class NetworkMonitorService : INetworkMonitorService
             _lastSampleAt = now;
         }
 
-        info.LatencyMs = MeasureLatency();
+        if (ranAt - _lastPingAt >= PingInterval)
+        {
+            _lastPingAt = ranAt;
+            _lastLatencyMs = MeasureLatency();
+        }
+
+        info.LatencyMs = _lastLatencyMs;
 
         if (DateTimeOffset.UtcNow - _lastExternalIpFetch > ExternalIpRefreshInterval)
         {

@@ -3,6 +3,7 @@ using AetherControl.Core.Collections;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
+using AetherControl.Core.Timing;
 using AetherControl.Services.Processes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Dispatching;
@@ -12,6 +13,13 @@ namespace AetherControl.App.ViewModels;
 public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 {
     private static readonly TimeSpan ProcessRankingInterval = TimeSpan.FromSeconds(2);
+    // Top processes barely move on a quiet machine — a full Process.GetProcesses() sweep every 2s
+    // while the dashboard sits unattended is pure background cost. Eases to 10s once CPU and GPU
+    // have both been under the busy threshold for the sustained stretch (same IdleDetector the
+    // hardware monitor's idle cadence uses), back to 2s on the first busy sample.
+    private static readonly TimeSpan IdleProcessRankingInterval = TimeSpan.FromSeconds(10);
+    private readonly IdleDetector _processRankingIdleDetector = new();
+    private DateTimeOffset _lastProcessRankingRunUtc = DateTimeOffset.MinValue;
     // Matches Portrait Mode's own sparkline window — a minute of history at the default 1s poll.
     private const int TrendHistoryCapacity = 60;
 
@@ -184,6 +192,16 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void RefreshTopProcesses()
     {
+        var now = DateTimeOffset.UtcNow;
+        var interval = _processRankingIdleDetector.IsIdle(now, CpuUtilisation, GpuUtilisation)
+            ? IdleProcessRankingInterval
+            : ProcessRankingInterval;
+        if (now - _lastProcessRankingRunUtc < interval)
+        {
+            return; // still inside the (possibly eased) interval for the current cadence
+        }
+
+        _lastProcessRankingRunUtc = now;
         var top = _processRanker.GetTopByCpu(5);
         _dispatcherQueue.TryEnqueue(() => _topProcessesSync.Sync(top));
     }

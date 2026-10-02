@@ -41,9 +41,26 @@ internal static class StorageHealthProbe
     // real, dramatic capacity change (see StorageDriveInfo.FreeSpaceQuality).
     private static readonly Dictionary<string, double> LastGoodFreeBytesByDiskId = new();
 
+    private static readonly TimeSpan WmiRefreshInterval = TimeSpan.FromSeconds(3);
+    private static DateTimeOffset _lastWmiRefreshUtc = DateTimeOffset.MinValue;
+    private static List<StorageDriveInfo> _lastWmiDrives = new();
+
     public static IReadOnlyList<StorageDriveInfo> Enrich(IReadOnlyList<StorageDriveInfo> lhmDrives)
     {
-        var wmiDrives = QueryPhysicalDisks();
+        // WMI (Win32_DiskDrive + the partition-association query behind it) is the single most
+        // expensive part of a fast-tier hardware tick — tens of milliseconds per poll for numbers
+        // that change on the scale of seconds (free space, health, status). Cached briefly so a
+        // 1s cadence pays for it at most a few times a minute; drive temperatures still come from
+        // LHM on every real poll, so only capacity/health/status can lag by up to this long. At the
+        // eased idle cadence (5s ticks) the TTL is never reached and every tick refreshes as before.
+        var now = DateTimeOffset.UtcNow;
+        if (now - _lastWmiRefreshUtc >= WmiRefreshInterval)
+        {
+            _lastWmiDrives = QueryPhysicalDisks();
+            _lastWmiRefreshUtc = now;
+        }
+
+        var wmiDrives = _lastWmiDrives;
         var wmiByDeviceId = wmiDrives.ToDictionary(d => d.DeviceId);
         var unclaimed = new List<StorageDriveInfo>(wmiDrives);
 

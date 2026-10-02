@@ -1,5 +1,6 @@
 using AetherControl.App.ViewModels;
 using AetherControl.Core.Interfaces;
+using AetherControl.Core.Timing;
 using AetherControl.Services.Hardware;
 using AetherControl.Services.Processes;
 using Microsoft.Extensions.DependencyInjection;
@@ -91,6 +92,14 @@ public sealed partial class PortraitWindow : Window
         // While FILL is on, the window stays locked to whichever display it's on — the "dragged it
         // to the other monitor and now it's a floating portrait-sized rectangle on a landscape
         // screen" failure mode.
+        // Same adaptive-cadence focus flag as the main window, keyed per window — the portrait
+        // panel being actively used keeps polling at full rate even while the main window sits in
+        // the tray. Hiding (close is intercepted to hide, not destroy) deactivates the window, so
+        // the flag clears itself without needing a separate path here.
+        var uiActivity = App.Services.GetRequiredService<UiActivityTracker>();
+        Activated += (_, e) => uiActivity.SetWindowActive(
+            UiActivityTracker.PortraitWindowKey, e.WindowActivationState != WindowActivationState.Deactivated);
+
         AppWindow.Changed += OnAppWindowChanged;
         Closed += OnClosed;
     }

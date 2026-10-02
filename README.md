@@ -58,7 +58,10 @@ card rows scale with the window — they run edge to edge at any width instead
 of sitting at a fixed size with a ragged right edge, never orphaning a single
 card onto its own row. Vendor marks detected from your hardware (AMD, Intel,
 NVIDIA, Radeon, ASUS, ASRock, GIGABYTE, MSI) appear as clean white badges
-beside the CPU / GPU / Motherboard sections and in the hero strip.
+beside the CPU / GPU / Motherboard sections and in the hero strip. While no
+Aether window is focused and the machine is quiet, polling eases to 5× the
+configured refresh rate (up to 10 s) to cut background CPU, disk and network
+overhead — any activity snaps it straight back.
 
 ### Portrait Mode
 A dedicated layout for a second monitor rotated to portrait — CPU/GPU usage
