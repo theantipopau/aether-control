@@ -1,5 +1,6 @@
 using AetherControl.App.ViewModels;
 using AetherControl.Core.Interfaces;
+using AetherControl.Core.Layout;
 using AetherControl.Core.Timing;
 using AetherControl.Services.Hardware;
 using AetherControl.Services.Processes;
@@ -237,6 +238,94 @@ public sealed partial class PortraitWindow : Window
     {
         AppWindow.MoveAndResize(new RectInt32(_preFillPosition.X, _preFillPosition.Y, _preFillSize.Width, _preFillSize.Height));
         _isFilled = false;
+    }
+
+    /// <summary>SIZE — cycles the window down (then back up) through PortraitSizing's presets and
+    /// centres it on the display it's on, so shrinking to a corner panel is one click instead of
+    /// an edge-drag. The nearest preset is re-derived from the live width each click, so the cycle
+    /// stays honest after a manual edge-resize. FILL and a preset size are mutually exclusive:
+    /// unchecking FILL restores the old floating bounds first, which the preset resize below then
+    /// immediately replaces — two moves in the same tick, no visible intermediate. The floating
+    /// bounds are re-pointed at the preset so a later FILL-off restores the size the user picked,
+    /// not the one the window opened with.</summary>
+    private void OnSizeCycleClick(object sender, RoutedEventArgs e)
+    {
+        var display = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
+        var bounds = display.OuterBounds;
+
+        var step = PortraitSizing.NextStep(PortraitSizing.NearestStep(AppWindow.Size.Width));
+        var (width, height) = PortraitSizing.SizeForStep(step, bounds.Width, bounds.Height);
+
+        if (_isFilled)
+        {
+            FillScreenToggle.IsChecked = false; // fires OnFillScreenUnchecked → _isFilled = false
+        }
+
+        var x = bounds.X + (bounds.Width - width) / 2;
+        var y = bounds.Y + Math.Max(0, (bounds.Height - height) / 2);
+        AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+
+        _preFillPosition = new PointInt32(x, y);
+        _preFillSize = new SizeInt32(width, height);
+        SizeCycleButton.Content = $"{PortraitSizing.PercentForStep(step)}%";
+    }
+
+    /// <summary>MON — hops the panel to the next connected display at its current size, centred,
+    /// instead of dragging it across the desktop. Indexes DisplayArea.FindAll with Count/[i] and
+    /// no LINQ — the WinRT projection for that return type throws InvalidCastException on
+    /// enumeration (see <see cref="FindPortraitDisplay"/> for the crash evidence). A FILLed window
+    /// needs no special case here: the move changes position, OnAppWindowChanged resolves the new
+    /// display and re-snaps it to that display's full bounds.</summary>
+    private void OnMoveMonitorClick(object sender, RoutedEventArgs e)
+    {
+        var displays = DisplayArea.FindAll();
+        if (displays.Count < 2)
+        {
+            return; // single display — nowhere to hop to
+        }
+
+        var current = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
+        var currentIndex = 0;
+        for (var i = 0; i < displays.Count; i++)
+        {
+            var bounds = displays[i].OuterBounds;
+            var currentBounds = current.OuterBounds;
+            if (bounds.X == currentBounds.X && bounds.Y == currentBounds.Y &&
+                bounds.Width == currentBounds.Width && bounds.Height == currentBounds.Height)
+            {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        var target = displays[PortraitSizing.NextDisplay(currentIndex, displays.Count)];
+        var targetBounds = target.OuterBounds;
+
+        // Keep the current size; only cap it if the target display is genuinely smaller.
+        var width = Math.Min(AppWindow.Size.Width, targetBounds.Width);
+        var height = Math.Min(AppWindow.Size.Height, targetBounds.Height);
+        var x = targetBounds.X + Math.Max(0, (targetBounds.Width - width) / 2);
+        var y = targetBounds.Y + Math.Max(0, (targetBounds.Height - height) / 2);
+        AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+
+        if (!_isFilled)
+        {
+            // Same reason as SIZE: FILL-off must restore the window as it looked on the last
+            // display, not as it opened.
+            _preFillPosition = new PointInt32(x, y);
+            _preFillSize = new SizeInt32(width, height);
+        }
+    }
+
+    /// <summary>Header breathability as the window shrinks: below ~560px the title label goes
+    /// (clock stays — it's the point of a stats panel), below ~420px the date line goes too, so
+    /// five header buttons + time always fit on one line even at the 50% preset. Re-fires when the
+    /// collapsing changes the root's own height, but the values are idempotent, so it settles.</summary>
+    private void OnRootGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var width = e.NewSize.Width;
+        HeaderText.Visibility = width >= 560 ? Visibility.Visible : Visibility.Collapsed;
+        DateText.Visibility = width >= 420 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnFanNameLostFocus(object sender, RoutedEventArgs e)

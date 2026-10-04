@@ -32,10 +32,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly AutostartService _autostartService;
     private readonly AetherControl.Core.Alerts.AlertLog _alertLog;
 
-    // No light or system theme is actually implemented anywhere — Themes/Colors.xaml is a single
-    // hardcoded dark palette with no RequestedTheme/prefers-color-scheme handling at all. AppSettings
-    // still has a Theme field (left alone — no reason to force a data migration over this), but the
-    // picker that let a user select an option with zero effect was removed from Settings' UI.
+    // Dark-only: Themes/Colors.xaml is a single hardcoded dark palette and App.xaml pins
+    // RequestedTheme="Dark" so stock WinUI chrome matches it regardless of the system theme.
+    // AppSettings still has a Theme field (left alone — no reason to force a data migration over
+    // this), but the picker that let a user select an option with zero effect was removed from
+    // Settings' UI.
     [ObservableProperty] private AccentColor accent;
     [ObservableProperty] private double dashboardRefreshMs;
     [ObservableProperty] private bool startWithWindows;

@@ -2,7 +2,46 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02) · [Phase 44 (vendor badges — Diagnostics, Performance, Storage)](#phase-44--vendor-badges-on-diagnostics-performance-and-storage-cards-2026-10-03) · [Phase 45 (landscape layout pass)](#phase-45--landscape-layout-pass-the-other-pages-spread-out-2026-10-03) · [Phase 46 (flow layout, window-scaled type, colour tune)](#phase-46--flow-layout-window-scaled-type-colour-tune-2026-10-03) · [Phase 47 (alerts, portrait network, type tokens)](#phase-47--alerts-visible-portrait-network-type-tokens-2026-10-04)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02) · [Phase 44 (vendor badges — Diagnostics, Performance, Storage)](#phase-44--vendor-badges-on-diagnostics-performance-and-storage-cards-2026-10-03) · [Phase 45 (landscape layout pass)](#phase-45--landscape-layout-pass-the-other-pages-spread-out-2026-10-03) · [Phase 46 (flow layout, window-scaled type, colour tune)](#phase-46--flow-layout-window-scaled-type-colour-tune-2026-10-03) · [Phase 47 (alerts, portrait network, type tokens)](#phase-47--alerts-visible-portrait-network-type-tokens-2026-10-04) · [Phase 48 (portrait shrink & monitor hop, dark chrome everywhere)](#phase-48--portrait-shrink--monitor-hop-dark-chrome-everywhere-2026-10-04)
+
+## Phase 48 — Portrait shrink & monitor hop, dark chrome everywhere (2026-10-04)
+Matt's brief: continue further enhancements and improvements to the visuals;
+the portrait mode also can shrink easily, and move between monitors easily too.
+
+**Portrait Mode — shrink is now one click:**
+- [x] New **SIZE** header button cycles the window 100% → 80% → 65% → 50% of the
+      768×1366 design size, centred on the display it's on, then back to full. The
+      preset is re-derived from the live width each click, so it stays honest after
+      an edge-drag or a FILL. FILL turns off first when a preset is picked (they're
+      mutually exclusive), and the floating bounds are re-pointed at the preset so
+      a later FILL-off restores what the user chose, not the opening size.
+- [x] All the maths is pure `Core/Layout/PortraitSizing` (steps, nearest-preset,
+      aspect-preserving fit to the display, MinWidth floor, percent labels) —
+      unit-tested (21 tests) alongside `NextDisplay` (monitor-hop indexing).
+- [x] Header adapts as it narrows: below ~560 px the title label collapses (clock
+      stays), below ~420 px the date line goes too — five header buttons + time
+      never overflow even at the 50% preset.
+
+**Portrait Mode — monitor hopping:**
+- [x] New **MON** header button moves the panel to the next connected display at
+      its current size, centred — one click instead of a drag across the desktop.
+      Same `DisplayArea.FindAll` Count/[i] pattern as `FindPortraitDisplay` (the
+      LINQ-enumeration WinRT crash). A FILLed window re-snaps to the new display's
+      full bounds via the existing `OnAppWindowChanged` path.
+
+**Visuals — one dark app regardless of Windows mode:**
+- [x] `App.xaml` now pins `RequestedTheme="Dark"`. The palette was already a single
+      hardcoded dark scheme and the backdrop is MicaKind.BaseAlt, but stock WinUI
+      chrome (nav flyouts, TextBox/toggle states, scrollbar rails, tooltips) still
+      followed the *system* theme — on a light-mode desktop that rendered light
+      controls against the dark cards. Forcing Dark makes chrome match everywhere.
+      (Settings' stale "no RequestedTheme at all" comment updated to match.)
+
+Verified: 214/214 tests, MSBuild exit 0, app relaunches with no new entries in
+`unhandled-exceptions.log`. **Needs Matt:** click SIZE through 50% and back on the
+portrait panel; press MON with two displays attached (and with FILL on); confirm
+the header clock survives the 50% preset without clipping; check a page with
+flyouts/scrollbars while Windows is in light mode.
 
 ## Phase 47 — Alerts visible, portrait network, type tokens (2026-10-04)
 Matt's brief: keep building — improvements across the differing pages, visual

@@ -1,7 +1,15 @@
 <Application
     x:Class="AetherControl.App.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    RequestedTheme="Dark">
+    <!--
+        The app has exactly one palette: Themes/Colors.xaml is a hardcoded dark scheme and the
+        Mica backdrop is MicaKind.BaseAlt (dark-tinted). Without this, XamlControlsResources
+        still follows the *system* theme, so on a light-mode desktop every stock control — nav
+        flyouts, text-box backgrounds, toggle states, scrollbar rails, tooltips — renders light
+        against the dark cards. Forcing Dark makes the chrome match the palette everywhere.
+    -->
 
     <Application.Resources>
         <ResourceDictionary>

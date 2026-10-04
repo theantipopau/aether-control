@@ -5,7 +5,7 @@
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters">
 
-    <Grid x:Name="RootGrid" Background="{StaticResource PortraitPageBgBrush}">
+    <Grid x:Name="RootGrid" Background="{StaticResource PortraitPageBgBrush}" SizeChanged="OnRootGridSizeChanged">
         <Grid.Resources>
             <converters:OneDecimalPercentConverter x:Key="OneDecimalPercentConverter" />
         </Grid.Resources>
@@ -42,18 +42,22 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Grid x:Name="DragRegion" Grid.Column="0" Background="Transparent">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="SYSTEM MONITOR" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold"
-                                   Foreground="{StaticResource PortraitTextMutedBrush}" />
+                        <!-- HeaderText/DateText collapse at narrow widths (OnRootGridSizeChanged) so
+                             five header buttons + clock never overflow a shrunk window. -->
+                        <TextBlock x:Name="HeaderText" Grid.Column="0" Text="SYSTEM MONITOR" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{StaticResource PortraitTextMutedBrush}" TextTrimming="CharacterEllipsis" />
                         <StackPanel Grid.Column="1" HorizontalAlignment="Right" Margin="0,0,14,0">
                             <TextBlock Text="{x:Bind ViewModel.CurrentTimeText, Mode=OneWay}" FontFamily="{StaticResource FontMono}"
                                        FontSize="18" FontWeight="Bold" Foreground="{StaticResource PortraitTextPrimaryBrush}" HorizontalAlignment="Right" />
-                            <TextBlock Text="{x:Bind ViewModel.CurrentDateText, Mode=OneWay}" FontSize="11"
+                            <TextBlock x:Name="DateText" Text="{x:Bind ViewModel.CurrentDateText, Mode=OneWay}" FontSize="11"
                                        Foreground="{StaticResource PortraitTextSecondaryBrush}" HorizontalAlignment="Right" />
                         </StackPanel>
                     </Grid>
@@ -64,9 +68,22 @@
                                   Style="{StaticResource PortraitHeaderIconButtonStyle}" Margin="0,0,8,0"
                                   Checked="OnOledToggleChanged" Unchecked="OnOledToggleChanged" ToolTipService.ToolTip="Pure black (OLED)" />
                     <ToggleButton x:Name="FillScreenToggle" Grid.Column="3" Content="FILL" FontSize="10" FontWeight="SemiBold" Width="44"
-                                  Style="{StaticResource PortraitHeaderIconButtonStyle}"
+                                  Style="{StaticResource PortraitHeaderIconButtonStyle}" Margin="0,0,8,0"
                                   Checked="OnFillScreenChecked" Unchecked="OnFillScreenUnchecked"
                                   ToolTipService.ToolTip="Fill whichever monitor this window is currently on — drag it onto your portrait monitor first, then toggle this. While on, the window follows you if you drag it to another monitor; uncheck to resize freely. Toggle again to restore." />
+                    <!-- SIZE: cycles 100 → 80 → 65 → 50% of the 768x1366 design size (centred on the
+                         current display), so shrinking is one click instead of an edge-drag. Label is
+                         refreshed in code-behind after every resize, including manual ones. -->
+                    <Button x:Name="SizeCycleButton" Grid.Column="4" Content="100%" FontSize="10" FontWeight="SemiBold" Width="44"
+                            Style="{StaticResource PortraitHeaderIconButtonStyle}" Margin="0,0,8,0"
+                            Click="OnSizeCycleClick"
+                            ToolTipService.ToolTip="Shrink to the next size preset (100% → 80% → 65% → 50% of 768×1366) and centre it on this display. Cycles back to full after the smallest — FILL turns off first if it was on." />
+                    <!-- MON: hops to the next connected display at the same size (centred), instead
+                         of dragging the panel across the desktop by hand. -->
+                    <Button x:Name="MoveMonitorButton" Grid.Column="5" Content="MON" FontSize="10" FontWeight="SemiBold" Width="44"
+                            Style="{StaticResource PortraitHeaderIconButtonStyle}"
+                            Click="OnMoveMonitorClick"
+                            ToolTipService.ToolTip="Move to the next connected display, keeping this size (FILL stays locked to the new display). One click instead of a long drag." />
                 </Grid>
 
                 <!-- CPU -->
