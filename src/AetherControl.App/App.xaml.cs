@@ -67,7 +67,10 @@ public partial class App : Application
         var hardwareMonitor = Services.GetRequiredService<IHardwareMonitorService>();
         hardwareMonitor.Start(TimeSpan.FromMilliseconds(settings.Current.DashboardRefreshMs));
 
-        _temperatureAlertService = new TemperatureAlertService(hardwareMonitor, Services.GetRequiredService<AlertSettingsStore>());
+        _temperatureAlertService = new TemperatureAlertService(
+            hardwareMonitor,
+            Services.GetRequiredService<AlertSettingsStore>(),
+            Services.GetRequiredService<AetherControl.Core.Alerts.AlertLog>());
         _historyRecorderService = new HistoryRecorderService(hardwareMonitor, Services.GetRequiredService<IHistoryService>(), settings);
         Services.GetRequiredService<IGameProfileService>().Start();
 

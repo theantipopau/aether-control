@@ -20,6 +20,10 @@ public sealed partial class RgbPage : Page
             App.Services.GetRequiredService<IPeripheralDetectionService>());
     }
 
+    // Window-size-dependent type scale — text grows/shrinks with the page width (WindowScale).
+    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e) =>
+        Controls.ResponsiveScale.Apply(RootContent, e.NewSize.Width, e.NewSize.Height);
+
     private async void OnSwatchClick(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: RgbDeviceInfo device, Tag: string hex }

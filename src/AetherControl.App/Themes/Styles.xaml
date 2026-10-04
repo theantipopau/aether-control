@@ -8,6 +8,13 @@
         Colour tokens live in Colors.xaml.
     -->
 
+    <!-- ── Font families ──
+         FontMono carries every live telemetry number and machine-written string (paths, PIDs,
+         clocks) — the same instrument-readout voice Portrait Mode established, now the app-wide
+         rule instead of nine hand-written "Cascadia Mono, Consolas" literals. Falls back to
+         Consolas on machines without Cascadia. UI prose keeps WinUI's default text font. -->
+    <FontFamily x:Key="FontMono">Cascadia Mono, Consolas</FontFamily>
+
     <!-- ── Spacing scale (4 · 8 · 12 · 16 · 24 · 32 · 48) ── -->
     <x:Double x:Key="Space4">4</x:Double>
     <x:Double x:Key="Space8">8</x:Double>
@@ -94,14 +101,17 @@
     </Style>
 
     <!-- Live numbers. Pair with Typography.NumeralAlignment="Tabular" on the element itself (an
-         attached property can't be set reliably from a Style setter) so digits don't reflow. -->
+         attached property can't be set reliably from a Style setter) so digits don't reflow.
+         FontMono makes them read as instrument values, matching Portrait Mode's tiles. -->
     <Style x:Key="TelemetryLargeTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontMono}" />
         <Setter Property="FontSize" Value="28" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
     </Style>
 
     <Style x:Key="TelemetrySecondaryTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontMono}" />
         <Setter Property="FontSize" Value="18" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
@@ -158,6 +168,7 @@
     </Style>
 
     <Style x:Key="StatValueTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontMono}" />
         <Setter Property="FontSize" Value="22" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />

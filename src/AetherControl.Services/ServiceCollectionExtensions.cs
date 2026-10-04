@@ -39,6 +39,9 @@ public static class ServiceCollectionExtensions
             client => client.Timeout = TimeSpan.FromSeconds(10));
         services.AddSingleton<FanLabelStore>();
         services.AddSingleton<AlertSettingsStore>();
+        // Session alert history (Core AlertLog): written by TemperatureAlertService's background
+        // trips, read once per dashboard poll to surface the latest alert in the Overview hero.
+        services.AddSingleton<AetherControl.Core.Alerts.AlertLog>();
         services.AddSingleton<AutostartService>();
         // HardwareMonitorService implements both interfaces but must stay a single instance —
         // it owns the one LibreHardwareMonitor Computer session the whole process is allowed to

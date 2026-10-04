@@ -82,6 +82,17 @@
 
                         <TextBlock Text="{x:Bind ViewModel.HealthDetail, Mode=OneWay}" Style="{StaticResource PageSubtitleTextStyle}" MaxWidth="560" HorizontalAlignment="Left" />
 
+                        <!-- Latest alert fired this session (age-gated in AlertLog.Recent): glyph +
+                             words, never colour alone. Collapses when nothing recent has fired. -->
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}" MaxWidth="560"
+                                    Visibility="{x:Bind ViewModel.HasRecentAlert, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    ToolTipService.ToolTip="{x:Bind ViewModel.RecentAlertDetail, Mode=OneWay}">
+                            <FontIcon Glyph="&#xE7BA;" FontSize="12" Foreground="{StaticResource StatusWarningBrush}"
+                                      VerticalAlignment="Top" Margin="0,3,0,0" />
+                            <TextBlock Text="{x:Bind ViewModel.RecentAlertText, Mode=OneWay}"
+                                       Style="{StaticResource StatusTextStyle}" Foreground="{StaticResource StatusWarningBrush}" />
+                        </StackPanel>
+
                         <StackPanel Spacing="4">
                             <TextBlock Style="{StaticResource CaptionTextStyle}" TextTrimming="CharacterEllipsis">
                                 <Run Text="{x:Bind ViewModel.CpuName, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{x:Bind ViewModel.GpuName, Mode=OneWay}" />

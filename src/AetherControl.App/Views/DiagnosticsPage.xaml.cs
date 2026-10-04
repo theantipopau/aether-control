@@ -16,4 +16,8 @@ public sealed partial class DiagnosticsPage : Page
             App.Services.GetRequiredService<IHardwareMonitorService>(),
             App.Services.GetRequiredService<IFanControlService>());
     }
+
+    // Window-size-dependent type scale — text grows/shrinks with the page width (WindowScale).
+    private void OnPageSizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e) =>
+        Controls.ResponsiveScale.Apply(RootContent, e.NewSize.Width, e.NewSize.Height);
 }

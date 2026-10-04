@@ -32,6 +32,10 @@ public sealed partial class OptimisationPage : Page
         // Fluid metric-card rows plan themselves (Controls.FluidPanel) — no attach/wiring needed.
     }
 
+    // Window-size-dependent type scale — text grows/shrinks with the page width (WindowScale).
+    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e) =>
+        Controls.ResponsiveScale.Apply(RootContent, e.NewSize.Width, e.NewSize.Height);
+
     // Hero stat helpers. The view model reassigns these lists (never mutates them in place), so a
     // OneWay function binding re-evaluates on every PropertyChanged for the list.
     public static string FormatCount(IReadOnlyList<FanControlChannel> items) => items.Count.ToString();

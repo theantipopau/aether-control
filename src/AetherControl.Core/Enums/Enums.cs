@@ -13,7 +13,11 @@ public enum AccentColor
     Blue,
     Green,
     Amber,
-    Purple
+    Purple,
+    // Added in Phase 47 — persisted as the enum's string name, so appending is migration-free
+    // (existing rows still parse; the picker enumerates the enum so both show up automatically).
+    Rose,
+    Teal
 }
 
 public enum PortraitLayoutType

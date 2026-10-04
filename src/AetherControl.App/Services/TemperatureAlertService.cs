@@ -1,3 +1,4 @@
+using AetherControl.Core.Alerts;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Services.Hardware;
@@ -21,13 +22,15 @@ public sealed class TemperatureAlertService : IDisposable
 
     private readonly IHardwareMonitorService _hardwareMonitor;
     private readonly AlertSettingsStore _settingsStore;
+    private readonly AlertLog _alertLog;
     private bool _cpuTripped;
     private bool _gpuTripped;
 
-    public TemperatureAlertService(IHardwareMonitorService hardwareMonitor, AlertSettingsStore settingsStore)
+    public TemperatureAlertService(IHardwareMonitorService hardwareMonitor, AlertSettingsStore settingsStore, AlertLog alertLog)
     {
         _hardwareMonitor = hardwareMonitor;
         _settingsStore = settingsStore;
+        _alertLog = alertLog;
         _hardwareMonitor.SnapshotUpdated += OnSnapshotUpdated;
     }
 
@@ -48,7 +51,12 @@ public sealed class TemperatureAlertService : IDisposable
         if (!tripped && currentTemp >= threshold)
         {
             tripped = true;
-            ShowAlert($"{label} running hot", $"{label} temperature has reached {currentTemp:F0}°C (threshold {threshold:F0}°C).");
+            var title = $"{label} running hot";
+            var message = $"{label} temperature has reached {currentTemp:F0}°C (threshold {threshold:F0}°C).";
+            // Session history as well as a toast: the Overview hero surfaces the latest entry so a
+            // crossing that fired while the window was hidden isn't gone the moment the toast fades.
+            _alertLog.Add(DateTimeOffset.UtcNow, title, message);
+            ShowAlert(title, message);
         }
         else if (tripped && currentTemp <= threshold - HysteresisCelsius)
         {
@@ -56,7 +64,9 @@ public sealed class TemperatureAlertService : IDisposable
         }
     }
 
-    private static void ShowAlert(string title, string message)
+    /// <summary>Shows a Windows toast. Public static so Settings' "Send test notification" can
+    /// exercise the exact same pipeline a real temperature trip uses.</summary>
+    public static void ShowAlert(string title, string message)
     {
         try
         {

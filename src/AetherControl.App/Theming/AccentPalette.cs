@@ -53,6 +53,8 @@ internal static class AccentPalette
         AccentColor.Green => Color.FromArgb(255, 0x22, 0xC5, 0x5E),
         AccentColor.Amber => Color.FromArgb(255, 0xF5, 0x9E, 0x0B),
         AccentColor.Purple => Color.FromArgb(255, 0xA8, 0x55, 0xF7),
+        AccentColor.Rose => Color.FromArgb(255, 0xF4, 0x3F, 0x5E),
+        AccentColor.Teal => Color.FromArgb(255, 0x2D, 0xD4, 0xBF),
         _ => Color.FromArgb(255, 0x00, 0xE5, 0xFF)
     };
 

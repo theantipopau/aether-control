@@ -16,7 +16,8 @@ public sealed partial class DashboardPage : Page
         InitializeComponent();
         ViewModel = new DashboardViewModel(
             App.Services.GetRequiredService<IHardwareMonitorService>(),
-            App.Services.GetRequiredService<ProcessRankerService>());
+            App.Services.GetRequiredService<ProcessRankerService>(),
+            App.Services.GetRequiredService<AetherControl.Core.Alerts.AlertLog>());
 
         // The Frame creates a fresh DashboardPage (and DashboardViewModel) on every navigation to
         // this page — without unsubscribing here, each one leaks a permanent subscriber on the

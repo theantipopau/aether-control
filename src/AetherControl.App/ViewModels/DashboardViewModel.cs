@@ -23,8 +23,13 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     // Matches Portrait Mode's own sparkline window — a minute of history at the default 1s poll.
     private const int TrendHistoryCapacity = 60;
 
+    // How long a fired alert stays visible in the hero. Beyond this it's history, not a current
+    // warning — matches the spirit of the motherboard-stale threshold (3 s) at a human timescale.
+    private static readonly TimeSpan RecentAlertWindow = TimeSpan.FromMinutes(15);
+
     private readonly IHardwareMonitorService _hardwareMonitor;
     private readonly ProcessRankerService _processRanker;
+    private readonly AetherControl.Core.Alerts.AlertLog _alertLog;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Timer _processRankingTimer;
     private readonly PortraitHistory _cpuUsageHistory = new(TrendHistoryCapacity);
@@ -77,6 +82,14 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     // Empty while live. Same rule as Portrait Mode's FANS header: poisoned Super I/O reads are
     // replaced by last-known-good values, which must not be presented as current readings.
     [ObservableProperty] private string motherboardStaleText = string.Empty;
+
+    // Latest alert fired this session (temperature threshold crossed, or a test notification),
+    // only while it's still within RecentAlertWindow — empty otherwise. Detail is the full toast
+    // sentence, kept for a tooltip.
+    [ObservableProperty] private string recentAlertText = string.Empty;
+    [ObservableProperty] private string recentAlertDetail = string.Empty;
+    partial void OnRecentAlertTextChanged(string value) => OnPropertyChanged(nameof(HasRecentAlert));
+    public bool HasRecentAlert => RecentAlertText.Length > 0;
 
     // Overview hero verdict — see SystemHealth for exactly what it does and doesn't claim.
     [ObservableProperty] private AetherControl.Core.Health.HealthLevel healthLevel = AetherControl.Core.Health.HealthLevel.Unknown;
@@ -171,10 +184,12 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HeroBrandLogos));
     }
 
-    public DashboardViewModel(IHardwareMonitorService hardwareMonitor, ProcessRankerService processRanker)
+    public DashboardViewModel(IHardwareMonitorService hardwareMonitor, ProcessRankerService processRanker,
+        AetherControl.Core.Alerts.AlertLog alertLog)
     {
         _hardwareMonitor = hardwareMonitor;
         _processRanker = processRanker;
+        _alertLog = alertLog;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _hardwareMonitor.SnapshotUpdated += OnSnapshotUpdated;
 
@@ -252,6 +267,14 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         HealthLevel = health.Level;
         HealthTitle = health.Title;
         HealthDetail = health.Detail;
+
+        // Age-gated in Core (AlertLog.Recent) so an alert silently ages out of the hero rather
+        // than needing a dismissal interaction.
+        var recent = _alertLog.Recent(RecentAlertWindow, DateTimeOffset.UtcNow);
+        RecentAlertText = recent.Count == 0
+            ? string.Empty
+            : $"{recent[0].Utc.ToLocalTime():HH:mm} · {recent[0].Title}";
+        RecentAlertDetail = recent.Count == 0 ? string.Empty : recent[0].Message;
 
         _voltagesSync.Sync(snapshot.Motherboard.Voltages);
         _fanSpeedsSync.Sync(snapshot.Motherboard.FanSpeeds);

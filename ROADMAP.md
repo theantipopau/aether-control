@@ -2,7 +2,117 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02) · [Phase 44 (vendor badges — Diagnostics, Performance, Storage)](#phase-44--vendor-badges-on-diagnostics-performance-and-storage-cards-2026-10-03)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02) · [Phase 44 (vendor badges — Diagnostics, Performance, Storage)](#phase-44--vendor-badges-on-diagnostics-performance-and-storage-cards-2026-10-03) · [Phase 45 (landscape layout pass)](#phase-45--landscape-layout-pass-the-other-pages-spread-out-2026-10-03) · [Phase 46 (flow layout, window-scaled type, colour tune)](#phase-46--flow-layout-window-scaled-type-colour-tune-2026-10-03) · [Phase 47 (alerts, portrait network, type tokens)](#phase-47--alerts-visible-portrait-network-type-tokens-2026-10-04)
+
+## Phase 47 — Alerts visible, portrait network, type tokens (2026-10-04)
+Matt's brief: keep building — improvements across the differing pages, visual
+appearance, portrait mode, fonts/colours/themes, and any functionality worth
+utilising.
+
+**Alerts became a visible feature instead of a toast that vanishes:**
+- [x] New pure `Core/Alerts/AlertLog` — bounded, thread-safe session log of fired
+      alerts (background-thread writes from temperature trips, UI-thread reads from
+      the dashboard), with age-gating in Core (`Recent(15 min)`) so a CPU that ran
+      hot an hour ago can't read as a current warning. Unit-tested (6 tests).
+- [x] `TemperatureAlertService` records every trip into the log as well as toasting
+      — a crossing that fires while the window is hidden survives the toast.
+- [x] Overview hero shows the latest recent alert (warning glyph + "14:32 · CPU
+      running hot", tooltip carries the full sentence), collapsing when none.
+- [x] Settings → Alerts gains **Send test notification** — fires the exact same
+      toast + log path a real trip uses, so "do alerts work?" is answerable in one
+      click without heating the CPU. (Its `ShowAlert` went private → public static.)
+
+**Portrait Mode — network row:**
+- [x] New UPLOAD / DOWNLOAD / LATENCY tile row between RAM/DRIVE and FPS, fed from
+      the same snapshot (no extra polling). Latency shows `--` rather than `0 ms`
+      when the probe got no reply — 0 would read as a perfect ping.
+
+**Typography — one mono voice:**
+- [x] New `FontMono` token (Cascadia Mono → Consolas fallback) in Styles.xaml;
+      `TelemetryLarge`/`TelemetrySecondary`/`StatValue` styles now set it, so every
+      live number across Overview/Performance/History reads as an instrument value
+      matching Portrait's tiles. Replaces nine hand-written `FontFamily="Cascadia
+      Mono, Consolas"` literals (Portrait window ×6, PortraitMetricTile,
+      Optimisation paths ×2).
+- [x] New `TextOnAccent` colour/brush — near-black for labels on bright fills
+      (the startup impact badge was a literal `Foreground="Black"`).
+
+**Theme:** two new accent colours, **Rose** and **Teal** (enum append — persisted
+as string names, so no migration; the Settings picker enumerates the enum).
+
+**Page polish:**
+- [x] History chart gained an accent area wash under the trace (shape of the run
+      is readable at a glance, not a lone hairline); page paddings moved onto the
+      `PagePadding` token (History, Devices); redundant `FontSize="12"` overrides
+      and hand-rolled secondary text collapsed into `SecondaryTextStyle`
+      (Diagnostics, Devices, RGB).
+- FlowLayoutTests/WindowScaleTests untouched; AlertLogTests +6 → **193 tests**.
+- App project compiles clean via VS MSBuild; final copy blocked only by the
+  running elevated instance (elevation prompt timed out — see Needs Matt).
+- **Needs Matt:** approve the `taskkill` elevation prompt so the build can finish
+  and relaunch; then: Settings → Alerts → *Send test notification* should toast
+  **and** appear in the Overview hero for ~15 minutes; Portrait Mode should show
+  the new network row; check the mono telemetry numbers on Overview/Performance
+  and try Rose/Teal in the accent picker (stock controls need a restart).
+
+## Phase 46 — Flow layout, window-scaled type, colour tune (2026-10-03)
+Matt's brief: a big pass over the Performance/optimiser page and the RAM cleaner;
+"scale the windows better — scaling the text size etc. depending on window size";
+"colors could be improved".
+
+**Window-size flow (replaces Phase 45's fixed two-column grids):**
+- [x] New pure `Core/Layout/FlowLayout` + `App/Controls/FlowPanel` — variable-height section
+      wrapping: sections reflow 1→n columns purely from window width (per-page MinItemWidth:
+      Devices 440, Settings 460, Diagnostics/Firmware 480, Performance 560, RGB 620 so the swatch
+      row is never squeezed). A narrow window collapses to one full-width column instead of
+      squeezing a fixed pair — the caveat Phase 45 left open is now closed.
+
+**Window-scaled type:**
+- [x] New pure `Core/Layout/WindowScale` (0.90–1.15 in 0.05 steps, reference 1400 px) +
+      `App/Controls/ResponsiveScale` — text and spacing grow on a maximised window and step down
+      before a narrow one crowds them. WinUI in this project has no `LayoutTransform`, so the
+      page's ScrollViewer lays out at width/scale and renders back through a ScaleTransform —
+      scroll extents stay correct. Wired into Performance, Settings, Diagnostics, Devices,
+      Firmware, Lighting and History (Portrait stays fixed by design; the Dashboard keeps its
+      own FluidPanel scaling).
+
+**Performance page + RAM cleaner:**
+- [x] LIVE MEMORY readout upgraded to an 18 px tabular telemetry number with a thicker bar;
+      Startup section gained the description every other section already had; storage sizes
+      already tabular, Before/After/Freed/Trimmed cards already tone-coded.
+
+**Colour tune (`Themes/Colors.xaml`, role tokens and legacy aliases moved together so
+`CardBorderStyle` etc. actually pick it up):**
+- [x] Surface steps lifted a card-level for clearer depth (card/elevated/interactive), text
+      secondary brightened for readability on dark, the border scale strengthened one notch.
+      Same palette, same swappable accent — hierarchy reads more clearly.
+
+- FlowLayoutTests (7) + WindowScaleTests (11) → 187 tests; build exit 0.
+- **Needs Matt:** resize a page window across widths — sections should re-wrap (one column when
+  narrow, two/three when wide) and type should step up/down with the window; check the tuned
+  contrast on Performance/Settings and whether the type scale feels right at maximised size.
+
+## Phase 45 — Landscape layout pass: the other pages spread out (2026-10-03)
+Matt's brief: apart from the main dashboard, every page "is very portrait" —
+narrow 720–900 px columns stacked down the middle of a landscape window.
+Spread the information/data across the width.
+
+- [x] Settings, Diagnostics, Performance (Optimisation), Lighting (RGB),
+      Devices and Firmware raised from 720/760/900 px caps to 1400, with
+      independent sections pairing off in two columns: Settings' seven
+      sections in aligned row pairs (Appearance+Alerts, Performance+Tray Icon,
+      Startup+Logging, Data), Diagnostics' Environment | Detected Hardware
+      beside each other with Support Bundle full-width below, Performance's
+      Gaming|Cooling → Quick Tasks (full width) → Storage|Startup, RGB split
+      3|2 so the swatch row keeps its width, Devices' peripherals | vendor
+      links, Firmware's installed | pending.
+- [x] History: the metric/range/Load controls and the summary now share one
+      line, and the chart is 380 px tall instead of 320.
+- XAML-only — no view-model or binding changes; 169 tests still green, build
+  exit 0.
+- **Needs Matt:** open each page on a wide window — sections should sit
+  two-up instead of one narrow column; then shrink the window and confirm the
+  paired cards stay usable.
 
 ## Phase 44 — Vendor badges on Diagnostics, Performance and Storage cards (2026-10-03)
 Matt's brief: extend the vendor logo badges (Phase 42) to the Diagnostics and Performance pages,

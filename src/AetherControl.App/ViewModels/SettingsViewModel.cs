@@ -30,6 +30,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ISettingsService _settingsService;
     private readonly AlertSettingsStore _alertSettingsStore;
     private readonly AutostartService _autostartService;
+    private readonly AetherControl.Core.Alerts.AlertLog _alertLog;
 
     // No light or system theme is actually implemented anywhere — Themes/Colors.xaml is a single
     // hardcoded dark palette with no RequestedTheme/prefers-color-scheme handling at all. AppSettings
@@ -65,9 +66,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string RuntimeText { get; } = $".NET {Environment.Version} · {System.Runtime.InteropServices.RuntimeInformation.OSDescription}";
 
     public SettingsViewModel(ISettingsService settingsService, AlertSettingsStore alertSettingsStore, AutostartService autostartService,
-        IUpdateCheckService updateCheckService)
+        IUpdateCheckService updateCheckService, AetherControl.Core.Alerts.AlertLog alertLog)
     {
         _updateCheckService = updateCheckService;
+        _alertLog = alertLog;
         _settingsService = settingsService;
         CheckForUpdatesOnStartup = settingsService.Current.CheckForUpdatesOnStartup;
         _alertSettingsStore = alertSettingsStore;
@@ -142,6 +144,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         // ThemeResource chains that don't reliably re-resolve without a restart.
         AccentPalette.Apply(updated.Accent);
         StatusMessage = "Settings saved. Restart Aether Control for the new accent colour to fully apply everywhere.";
+    }
+
+    /// <summary>Fires the exact toast + AlertLog path a real temperature trip uses, so the whole
+    /// pipeline (registration → toast → Overview hero) is verifiable without heating the CPU.
+    /// Records the test as an alert on purpose — seeing it appear in the hero is the point.</summary>
+    [RelayCommand]
+    private void SendTestAlert()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var title = "Test alert";
+        var message = $"This is a test — thresholds are {CpuTemperatureAlertThreshold:F0} °C (CPU) and {GpuTemperatureAlertThreshold:F0} °C (GPU).";
+        _alertLog.Add(now, title, message);
+        TemperatureAlertService.ShowAlert(title, message);
+        StatusMessage = "Test notification sent.";
     }
 
     [RelayCommand]

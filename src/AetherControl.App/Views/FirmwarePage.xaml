@@ -6,6 +6,7 @@
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
     xmlns:local="using:AetherControl.App.Views"
+    SizeChanged="OnPageSizeChanged"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
@@ -14,11 +15,13 @@
         <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
     </Page.Resources>
 
-    <ScrollViewer Padding="{StaticResource PagePadding}">
-        <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+    <ScrollViewer x:Name="RootContent" Padding="{StaticResource PagePadding}">
+        <StackPanel Spacing="16">
             <controls:PageHero Glyph="&#xE9F5;" Eyebrow="Devices" Title="Firmware &amp; Drivers"
                                Subtitle="Installed versions for everything Windows can see, plus an optional search of Windows Update for pending driver and firmware updates. Aether Control never installs updates — you review and install them in Windows." />
 
+            <!-- Reflows with the window (FlowPanel): one column when narrow, more as it widens. -->
+            <controls:FlowPanel MinItemWidth="480" Spacing="28">
             <!-- ── Installed components ── -->
             <Border Style="{StaticResource SectionCardBorderStyle}">
                 <StackPanel Spacing="14">
@@ -115,6 +118,7 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+            </controls:FlowPanel>
         </StackPanel>
     </ScrollViewer>
 </Page>

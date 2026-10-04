@@ -13,7 +13,7 @@
             <TextBlock x:Name="TitleText" Grid.Row="0" FontSize="11" FontWeight="SemiBold"
                        Foreground="{StaticResource PortraitTextSecondaryBrush}" Margin="0,0,0,4" />
 
-            <TextBlock x:Name="ValueText" Grid.Row="1" FontFamily="Cascadia Mono, Consolas" FontSize="26" FontWeight="Bold"
+            <TextBlock x:Name="ValueText" Grid.Row="1" FontFamily="{StaticResource FontMono}" FontSize="26" FontWeight="Bold"
                        TextTrimming="CharacterEllipsis" />
 
             <Grid x:Name="BarTrack" Grid.Row="2" Height="5" Margin="0,8,0,0" CornerRadius="3"

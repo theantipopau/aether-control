@@ -18,23 +18,26 @@
     <Color x:Key="SurfaceAppTranslucentColor">#B80F1214</Color>
     <Color x:Key="SurfaceNavigationColor">#0C0F11</Color>
     <Color x:Key="SurfacePrimaryColor">#14181B</Color>
-    <Color x:Key="SurfaceCardColor">#1A1E21</Color>
-    <Color x:Key="SurfaceElevatedColor">#21262A</Color>
-    <Color x:Key="SurfaceInteractiveColor">#272D31</Color>
+    <Color x:Key="SurfaceCardColor">#1B2024</Color>
+    <Color x:Key="SurfaceElevatedColor">#232A2F</Color>
+    <Color x:Key="SurfaceInteractiveColor">#2A3238</Color>
     <Color x:Key="SurfaceFlyoutColor">#1E2326</Color>
     <Color x:Key="SurfaceDialogColor">#1E2326</Color>
     <Color x:Key="SurfaceHoverOverlayColor">#0FFFFFFF</Color>
     <Color x:Key="SurfacePressedOverlayColor">#08FFFFFF</Color>
 
     <!-- ── Text ── -->
-    <Color x:Key="TextPrimaryColor">#F2F4F5</Color>
-    <Color x:Key="TextSecondaryColor">#9BA3AA</Color>
-    <Color x:Key="TextTertiaryColor">#6E777E</Color>
+    <Color x:Key="TextPrimaryColor">#F4F6F7</Color>
+    <Color x:Key="TextSecondaryColor">#A6AEB5</Color>
+    <Color x:Key="TextTertiaryColor">#767F86</Color>
+    <!-- Near-black for labels sitting ON a bright fill (accent chips, impact badges, swatches) —
+         the one case the light-on-dark text scale doesn't cover. -->
+    <Color x:Key="TextOnAccentColor">#0A0D0F</Color>
 
     <!-- ── Borders ── -->
-    <Color x:Key="BorderSubtleColor">#23282C</Color>
-    <Color x:Key="BorderStandardColor">#2E3439</Color>
-    <Color x:Key="BorderStrongColor">#3C444A</Color>
+    <Color x:Key="BorderSubtleColor">#272E33</Color>
+    <Color x:Key="BorderStandardColor">#343C42</Color>
+    <Color x:Key="BorderStrongColor">#444D54</Color>
 
     <!-- ── Accent (runtime-swappable, see AccentPalette.Apply) ── -->
     <Color x:Key="AetherAccentColor">#00E5FF</Color>
@@ -70,6 +73,7 @@
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
     <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiaryColor}" />
+    <SolidColorBrush x:Key="TextOnAccentBrush" Color="{StaticResource TextOnAccentColor}" />
 
     <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource BorderSubtleColor}" />
     <SolidColorBrush x:Key="BorderStandardBrush" Color="{StaticResource BorderStandardColor}" />
@@ -97,11 +101,11 @@
     <!-- ── Legacy aliases (pre-token names). Prefer the role names above in new XAML. ── -->
     <Color x:Key="AetherBackgroundColor">#0F1214</Color>
     <Color x:Key="AetherBackgroundTranslucentColor">#B80F1214</Color>
-    <Color x:Key="AetherSurfaceColor">#1A1E21</Color>
-    <Color x:Key="AetherSurfaceRaisedColor">#21262A</Color>
-    <Color x:Key="AetherBorderColor">#2E3439</Color>
-    <Color x:Key="AetherTextPrimaryColor">#F2F4F5</Color>
-    <Color x:Key="AetherTextSecondaryColor">#9BA3AA</Color>
+    <Color x:Key="AetherSurfaceColor">#1B2024</Color>
+    <Color x:Key="AetherSurfaceRaisedColor">#232A2F</Color>
+    <Color x:Key="AetherBorderColor">#343C42</Color>
+    <Color x:Key="AetherTextPrimaryColor">#F4F6F7</Color>
+    <Color x:Key="AetherTextSecondaryColor">#A6AEB5</Color>
     <Color x:Key="AetherWarmColor">#F5C86B</Color>
     <Color x:Key="AetherHotColor">#FF6D6D</Color>
     <!-- Opaque — Portrait Mode is an always-on display and must never let the desktop show through. -->

@@ -71,6 +71,12 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private string fpsText = "--";
 
+    // Network row (Phase 47): upload/download/latency straight from the same snapshot the
+    // dashboard's Network cards read — no extra polling. "--" until the first sample lands.
+    [ObservableProperty] private string netUploadText = "--";
+    [ObservableProperty] private string netDownloadText = "--";
+    [ObservableProperty] private string netLatencyText = "--";
+
     // Empty while live. Poisoned Super I/O reads are silently replaced by last-known-good values,
     // so without this the fan list can show numbers tens of seconds old as though they were current.
     [ObservableProperty] private string fansStaleText = string.Empty;
@@ -165,6 +171,13 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
             DriveTempText = $"{primaryDrive.TemperatureCelsius:F0}°C";
             DriveTempSeverity = PortraitSeverityThresholds.ForTemp(primaryDrive.TemperatureCelsius, warn: 50, critical: 60);
         }
+
+        var network = snapshot.Network;
+        NetUploadText = network.UploadKbps > 0 ? $"{network.UploadKbps / 1000:F1} Mbps" : "--";
+        NetDownloadText = network.DownloadKbps > 0 ? $"{network.DownloadKbps / 1000:F1} Mbps" : "--";
+        // Latency 0 means the probe didn't get a reply (see NetworkMonitorService.MeasureLatency)
+        // — showing "0 ms" would read as a perfect ping rather than a failed one.
+        NetLatencyText = network.LatencyMs > 0 ? $"{network.LatencyMs:F0} ms" : "--";
 
         // A 0 RPM header is almost always an unpopulated fan header on this board, not a real fan
         // that stopped — Dashboard still shows every header raw (that page's job is "show the board

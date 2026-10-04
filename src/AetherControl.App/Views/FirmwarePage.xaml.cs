@@ -17,6 +17,10 @@ public sealed partial class FirmwarePage : Page
         ViewModel = new FirmwareViewModel(App.Services.GetRequiredService<IFirmwareDriverService>());
     }
 
+    // Window-size-dependent type scale — text grows/shrinks with the page width (WindowScale).
+    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e) =>
+        Controls.ResponsiveScale.Apply(RootContent, e.NewSize.Width, e.NewSize.Height);
+
     /// <summary>Hides the "not checked yet" hint once a search has produced an on-screen state.</summary>
     public static Visibility HideWhenChecked(bool hasCheckedForUpdates) =>
         hasCheckedForUpdates ? Visibility.Collapsed : Visibility.Visible;

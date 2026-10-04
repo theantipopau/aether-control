@@ -14,4 +14,8 @@ public sealed partial class DeviceUtilitiesPage : Page
         InitializeComponent();
         ViewModel = new DeviceUtilitiesViewModel(App.Services.GetRequiredService<IPeripheralDetectionService>());
     }
+
+    // Window-size-dependent type scale — text grows/shrinks with the page width (WindowScale).
+    private void OnPageSizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e) =>
+        Controls.ResponsiveScale.Apply(RootContent, e.NewSize.Width, e.NewSize.Height);
 }

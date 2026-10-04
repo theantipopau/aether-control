@@ -32,6 +32,7 @@
     <SolidColorBrush x:Key="PortraitFpsAccentBrush" Color="{StaticResource AetherAccentColor}" />
     <SolidColorBrush x:Key="PortraitProcessAccentBrush" Color="{StaticResource AetherAccentColor}" />
     <SolidColorBrush x:Key="PortraitDriveAccentBrush" Color="{StaticResource AetherAccentColor}" />
+    <SolidColorBrush x:Key="PortraitNetworkAccentBrush" Color="{StaticResource AetherAccentColor}" />
 
     <SolidColorBrush x:Key="PortraitSeverityNormalBrush" Color="{StaticResource AetherTextPrimaryColor}" />
     <SolidColorBrush x:Key="PortraitSeverityWarningBrush" Color="{StaticResource AetherWarmColor}" />

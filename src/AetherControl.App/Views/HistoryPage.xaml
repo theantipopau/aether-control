@@ -4,28 +4,40 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
+    SizeChanged="OnPageSizeChanged"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
         <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
     </Page.Resources>
 
-    <ScrollViewer Padding="24">
+    <ScrollViewer x:Name="RootContent" Padding="{StaticResource PagePadding}">
         <StackPanel Spacing="16">
             <controls:PageHero Glyph="&#xE9D2;" Eyebrow="History" Title="Performance History"
                                Subtitle="Recorded sensor readings over time. Pick a metric and a range, then Load." />
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <ComboBox x:Name="MetricComboBox" Header="Metric" ItemsSource="{x:Bind ViewModel.AvailableMetrics}" SelectedItem="{x:Bind ViewModel.SelectedMetric, Mode=TwoWay}" Width="200" />
-                <ComboBox x:Name="ResolutionComboBox" Header="Range" ItemsSource="{x:Bind ViewModel.AvailableResolutions}" SelectedItem="{x:Bind ViewModel.SelectedResolution, Mode=TwoWay}" Width="140" />
-                <Button Content="Load" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.LoadCommand}" VerticalAlignment="Bottom" />
-            </StackPanel>
-
-            <TextBlock Text="{x:Bind ViewModel.Summary, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" />
+            <!-- Controls left, summary beside them — the summary used to sit on its own line
+                 under the pickers, wasting the width a landscape window has to offer. -->
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="20">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <ComboBox x:Name="MetricComboBox" Header="Metric" ItemsSource="{x:Bind ViewModel.AvailableMetrics}" SelectedItem="{x:Bind ViewModel.SelectedMetric, Mode=TwoWay}" Width="200" />
+                    <ComboBox x:Name="ResolutionComboBox" Header="Range" ItemsSource="{x:Bind ViewModel.AvailableResolutions}" SelectedItem="{x:Bind ViewModel.SelectedResolution, Mode=TwoWay}" Width="140" />
+                    <Button Content="Load" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.LoadCommand}" VerticalAlignment="Bottom" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.Summary, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+            </Grid>
 
             <Grid>
-                <Border Style="{StaticResource CardBorderStyle}" Height="320">
+                <Border Style="{StaticResource CardBorderStyle}" Height="380">
                     <Canvas x:Name="ChartCanvas" SizeChanged="OnChartCanvasSizeChanged">
+                        <!-- Area wash under the trace (accent, low alpha): the shape of the run is
+                             readable at a glance instead of a lone hairline on an empty card.
+                             Points are set together with ChartLine in RedrawChart. -->
+                        <Polygon
+                            x:Name="ChartArea"
+                            Fill="{StaticResource AetherAccentBrush}"
+                            Opacity="0.12" />
                         <Polyline
                             x:Name="ChartLine"
                             Stroke="{StaticResource AetherAccentBrush}"

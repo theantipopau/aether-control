@@ -4,14 +4,15 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:AetherControl.App.Controls"
     xmlns:converters="using:AetherControl.App.Converters"
+    SizeChanged="OnPageSizeChanged"
     Background="{StaticResource AetherBackgroundTranslucentBrush}">
 
     <Page.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
     </Page.Resources>
 
-    <ScrollViewer Padding="24">
-        <StackPanel Spacing="28" MaxWidth="720" HorizontalAlignment="Left">
+    <ScrollViewer x:Name="RootContent" Padding="24">
+        <StackPanel Spacing="28">
             <controls:PageHero Glyph="&#xE713;" Eyebrow="Preferences" Title="Settings"
                                Subtitle="Startup, appearance, alerts and updates. Stored locally — no account, no telemetry." />
 
@@ -54,6 +55,9 @@
                 </StackPanel>
             </Border>
 
+            <!-- Reflows with the window (FlowPanel): one column when narrow, more as it widens. -->
+            <controls:FlowPanel MinItemWidth="460" Spacing="28">
+
             <StackPanel Spacing="12">
                 <controls:SectionHeader Label="Appearance" />
                 <Border Style="{StaticResource CardBorderStyle}">
@@ -93,6 +97,13 @@
                         <ToggleSwitch Header="Notify when CPU/GPU temperature crosses a threshold" IsOn="{x:Bind ViewModel.TemperatureAlertsEnabled, Mode=TwoWay}" />
                         <NumberBox Header="CPU temperature threshold (°C)" Value="{x:Bind ViewModel.CpuTemperatureAlertThreshold, Mode=TwoWay}" SpinButtonPlacementMode="Inline" Minimum="40" Maximum="110" />
                         <NumberBox Header="GPU temperature threshold (°C)" Value="{x:Bind ViewModel.GpuTemperatureAlertThreshold, Mode=TwoWay}" SpinButtonPlacementMode="Inline" Minimum="40" Maximum="110" />
+                        <StackPanel Spacing="4">
+                            <!-- Exercises the real toast pipeline end-to-end (and shows up in the
+                                 Overview hero), so "alerts don't work" is answerable in one click. -->
+                            <Button Content="Send test notification" Command="{x:Bind ViewModel.SendTestAlertCommand}" />
+                            <TextBlock Text="Sends a Windows notification through the same path a real temperature alert takes."
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -136,6 +147,7 @@
                     </StackPanel>
                 </Border>
             </StackPanel>
+            </controls:FlowPanel>
 
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <Button Content="Save" Command="{x:Bind ViewModel.SaveCommand}" Style="{StaticResource AccentButtonStyle}" />
