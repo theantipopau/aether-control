@@ -68,11 +68,17 @@ overhead — any activity snaps it straight back.
 ### Portrait Mode
 A dedicated layout for a second monitor rotated to portrait — CPU/GPU usage
 rings with history sparklines, per-fan RPM with click-to-rename, RAM/drive
-temp, live FPS (reads RTSS shared memory directly, no plugin needed), and a
-top-processes panel. Drag it onto any monitor and one-click fill the screen
-exactly; toggle again to restore. The window is resizable from its edges, and
-while FILL is on it follows the display you drag it onto instead of getting
-stranded as a portrait-sized rectangle on a landscape screen.
+temp, live FPS (reads RTSS shared memory directly, no plugin needed), a
+network row (upload / download / latency), and a top-processes panel. Drag it
+onto any monitor and one-click fill the screen exactly; toggle again to
+restore. The window is resizable from its edges, and while FILL is on it
+follows the display you drag it onto instead of getting stranded as a
+portrait-sized rectangle on a landscape screen. A **SIZE** button cycles the
+panel through 100 / 80 / 65 / 50% presets centred on the current display, and
+a **MON** button hops it to the next connected display at the same size — one
+click each instead of an edge-drag or a drag across the desktop. The header
+sheds its title, then the date, as the window narrows so the clock and
+buttons never clip at the smallest preset.
 
 ### Windows Optimisation Centre
 - **Memory optimisation** — trims working sets and purges the standby list,
@@ -111,8 +117,12 @@ review and install through Windows.
 
 ### Alerts & Tray
 Windows toast notifications when CPU/GPU temperature crosses a threshold you
-set, with hysteresis so it doesn't spam you sitting right at the line. The
-tray icon's tooltip shows live metrics on hover — configurable in Settings.
+set, with hysteresis so it doesn't spam you sitting right at the line. Every
+fired alert is also recorded in a session alert log — the Overview hero shows
+the latest one (age-gated, so a spike an hour ago can't read as a current
+warning) — and Settings has a one-click **Send test notification** that runs
+the exact same toast → log → hero path without heating the CPU. The tray
+icon's tooltip shows live metrics on hover — configurable in Settings.
 
 ### History
 Daily/weekly/monthly rollups of every tracked metric, charted. Samples are
@@ -287,7 +297,8 @@ guessed at. Highlights of where things stand:
 - Peripheral detection by USB vendor ID, zero vendor software required
 - Temperature alerts (Windows toast, configurable thresholds, hysteresis)
 - Tray icon live metrics on hover
-- Accent colour theming (gauges, cards, chrome all follow the chosen accent)
+- Accent colour theming (gauges, cards, chrome all follow the chosen accent —
+  seven accents including Rose and Teal)
 - Diagnostics page: capability report + one-click support-bundle export
 - About panel with version/commit and check-only update detection
 - History actually records (60s cadence + retention purge), file logging,
@@ -296,6 +307,20 @@ guessed at. Highlights of where things stand:
 - Self-healing Super I/O reads: poisoned sensor values are detected,
   withheld from the UI, and the session reopened until reads are clean
 - Plugin framework with a working sample plugin
+- Responsive layout programme (Phases 42–46): card rows that flow and fill at
+  any window width, window-scaled type, landscape width caps on every page,
+  and a shared design-token colour/type pass
+- Vendor brand imagery (AMD, Intel, NVIDIA, drive vendors and more) beside
+  hardware sections, in the hero strip, on Diagnostics / Performance headers
+  and every Storage card
+- Idle-aware polling — sampling eases to 5× the configured rate while
+  nothing is focused or watching, and snaps back on any activity
+- Session alert log surfaced on the Overview hero, plus a one-click test
+  notification in Settings
+- Portrait Mode: live network row, one-click size presets (100 → 50%),
+  one-click monitor hopping, and a header that adapts as the window narrows
+- Dark chrome pinned app-wide (`RequestedTheme="Dark"`) so stock WinUI
+  controls match the dark palette even when Windows is in light mode
 
 **Deliberately not done (and why, not just "later")**
 - Undervolting — the reference implementation needs a kernel-mode driver
@@ -315,7 +340,6 @@ guessed at. Highlights of where things stand:
 - Bundled OpenRGB management for non-Corsair RGB devices (removing the
   "start OpenRGB yourself" step entirely)
 - Logitech/Razer direct control, same approach as Corsair
-- Product-style imagery on device/drive cards
 
 ## Known limitations
 
