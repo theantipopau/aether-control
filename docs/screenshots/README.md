@@ -1,12 +1,11 @@
 # Screenshots
 
-Drop PNGs here and reference them from the main [README.md](../../README.md).
+Live captures of the shipped app, referenced from the main
+[README.md](../../README.md):
 
-Suggested set:
-- Dashboard (wide layout)
-- Optimisation Centre — Fan Control + Game Profiles sections
-- RGB Control — Detected Hardware
-- Portrait Mode
+- `overview.png` — Overview (dashboard)
+- `performance.png` — Performance (Optimisation Centre)
+- `settings.png` — Settings
 
 Crop or blur any personal data before committing (e.g. the Network card's
 external IP address).

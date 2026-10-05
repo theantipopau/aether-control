@@ -33,14 +33,17 @@ parts as the platform allows.
 
 ## Screenshots
 
-<!--
-  TODO: drop real screenshots into docs/screenshots/ and reference them here.
-  Suggested set: Dashboard (wide), Optimisation Centre (Fan Control + Game
-  Profiles), RGB Control (Detected Hardware), Portrait Mode. Crop out any
-  personal data (e.g. the Network card's external IP) before committing.
--->
+**Overview** — system verdict, headline gauges and live sensor cards:
 
-*Screenshots coming soon — see [docs/screenshots](docs/screenshots).*
+![Overview — system status, gauges, CPU/GPU/memory/storage/network cards and top processes](docs/screenshots/overview.png)
+
+**Performance** — Optimisation Centre: Gaming Profile, Fan Control and Quick Tasks:
+
+![Performance — Optimisation Centre with gaming profile, fan control and quick tasks](docs/screenshots/performance.png)
+
+**Settings** — appearance, polling, startup, alerts, tray, logging and data:
+
+![Settings — appearance, performance, startup and tray, alerts, tray icon, logging and data options](docs/screenshots/settings.png)
 
 ## Features
 
