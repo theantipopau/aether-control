@@ -45,7 +45,13 @@ public sealed class HistoryRecorderService : IDisposable
         }
 
         _lastRecordedUtc = e.Snapshot.TimestampUtc;
-        _ = _historyService.RecordAsync(e.Snapshot);
+        // Fire-and-forget by design (never block the poll loop on SQLite), but an unobserved
+        // fault would vanish silently — a failed insert would just look like a gap in History.
+        // The continuation observes the exception into the same file as every other last-resort
+        // failure; a fault here never retries the lost minute, it just stops being invisible.
+        _ = _historyService.RecordAsync(e.Snapshot).ContinueWith(
+            t => UnhandledExceptionLog.Write(t.Exception, "History record failed"),
+            TaskContinuationOptions.OnlyOnFaulted);
     }
 
     private async Task PurgeAsync()

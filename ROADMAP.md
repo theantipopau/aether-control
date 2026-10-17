@@ -2,7 +2,101 @@
 
 Source of truth for progress on this build. Updated as work lands.
 
-**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02) · [Phase 44 (vendor badges — Diagnostics, Performance, Storage)](#phase-44--vendor-badges-on-diagnostics-performance-and-storage-cards-2026-10-03) · [Phase 45 (landscape layout pass)](#phase-45--landscape-layout-pass-the-other-pages-spread-out-2026-10-03) · [Phase 46 (flow layout, window-scaled type, colour tune)](#phase-46--flow-layout-window-scaled-type-colour-tune-2026-10-03) · [Phase 47 (alerts, portrait network, type tokens)](#phase-47--alerts-visible-portrait-network-type-tokens-2026-10-04) · [Phase 48 (portrait shrink & monitor hop, dark chrome everywhere)](#phase-48--portrait-shrink--monitor-hop-dark-chrome-everywhere-2026-10-04)
+**Jump to:** [Phases 1-9 (build history)](#phase-1--solution-skeleton) · [Phases 10-14 (forward plan)](#phase-10--flicker-root-cause-for-real) · [Phase 20 (storage/network flicker recurrence)](#phase-20--storagenetwork-flicker-recurrence) · [Phase 21 (CPU/GPU % jitter vs. Portrait Stats)](#phase-21--cpugpu--jitter-vs-portrait-stats) · [Phase 22 (PDH sampling correctness + median filtering)](#phase-22--pdh-sampling-correctness--median-filtering) · [Phase 23 (Optimisation Centre crash + the real flicker cause)](#phase-23--optimisation-centre-crash--the-real-flicker-cause) · [Phases 24-29 (comparable-app review — visual identity, GUI/UX)](#phase-24--visual-identity-icon-and-logo-now-match-the-in-app-accent) · [Phase 30 (formal storage audit — stale-not-zero + regression tests)](#phase-30--formal-storage-audit--stale-not-zero--regression-tests) · [Phase 31 (680/340 flicker — confirmed root cause)](#phase-31--680340-flicker--confirmed-root-cause) · [Phase 32 (per-device view models — the real architecture)](#phase-32--per-device-view-models--the-real-architecture) · [Phase 33 (shared metric-quality model — storage)](#phase-33--shared-metric-quality-model--storage) · [Phase 34 (single hardware owner + self-healing Super I/O reads)](#phase-34--single-hardware-owner--self-healing-super-io-reads) · [Phase 35 (ordered shutdown — tray-icon crash race)](#phase-35--ordered-shutdown--tray-icon-crash-race) · [Phase 36 (sensor-mapping accuracy, dead settings, stable LHM)](#phase-36--sensor-mapping-accuracy-dead-settings-stable-lhm) · [Phase 37 (mapper fixture tests, Diagnostics page, dotnet-CLI Appx toolchain gap)](#phase-37--mapper-fixture-tests-diagnostics-page-dotnet-cli-appx-toolchain-gap) · [Phase 40 (docs, presentation & CI pass)](#phase-40--documentation-presentation--ci-pass-2026-10-02) · [Phase 41 (portrait flexibility, fluid dashboard, live optimiser data, real update checks)](#phase-41--portrait-flexibility-fluid-dashboard-live-optimiser-data-real-update-checks) · [Phase 42 (responsive fill rows + vendor brand imagery)](#phase-42--responsive-card-rows-that-fill-vendor-brand-imagery-2026-10-02) · [Phase 43 (resource conservation — adaptive poll cadence)](#phase-43--resource-conservation-adaptive-poll-cadence-2026-10-02) · [Phase 44 (vendor badges — Diagnostics, Performance, Storage)](#phase-44--vendor-badges-on-diagnostics-performance-and-storage-cards-2026-10-03) · [Phase 45 (landscape layout pass)](#phase-45--landscape-layout-pass-the-other-pages-spread-out-2026-10-03) · [Phase 46 (flow layout, window-scaled type, colour tune)](#phase-46--flow-layout-window-scaled-type-colour-tune-2026-10-03) · [Phase 47 (alerts, portrait network, type tokens)](#phase-47--alerts-visible-portrait-network-type-tokens-2026-10-04) · [Phase 48 (portrait shrink & monitor hop, dark chrome everywhere)](#phase-48--portrait-shrink--monitor-hop-dark-chrome-everywhere-2026-10-04) · [Phase 49 (background hygiene)](#phase-49--background-hygiene-bounded-diagnostics-observed-task-failures-adapter-re-resolve-2026-10-17) · [Phase 50 (dashboard GPU processes, toast click-through)](#phase-50--dashboard-gpu-processes-toast-click-through-2026-10-17) · [Phase 51 (backend/scaling: LHM 0.9.6, prepared inserts, stranded-portrait guard)](#phase-51--backendscaling-lhm-096-prepared-inserts-stranded-portrait-guard-2026-10-17) · [Phase 52 (single-instance, toast deep-links, CI head build, fan-curve engine)](#phase-52--single-instance-toast-deep-links-ci-head-build-fan-curve-engine-2026-10-17)
+
+## Phase 52 — Single-instance, toast deep-links, CI head build, fan-curve engine (2026-10-17)
+Four user-picked enhancements from the review backlog.
+- [x] **Single-instance enforcement.** `SingleInstanceGuard` (Services, unit-tested: first/second/dispose
+      semantics) holds `Local\AetherControl.SingleInstance.v1` for process lifetime; a second launch
+      foregrounds the running window via user32 (`ShowWindow` + `SetForegroundWindow`, same elevation
+      so no UIPI block) and exits before building DI or opening a second LHM session. An abandoned
+      mutex from a crash is acquirable, so a dead holder can never wedge startup.
+- [x] **Toast deep-linking.** Temperature toasts carry `page=dashboard`, the Settings test button
+      `page=settings`; the `NotificationInvoked` handler navigates there (no-op when already there,
+      keeping the nav highlight honest). Unknown/missing keys fall back to the dashboard.
+- [x] **CI App-head build (experiment).** New `app-build` job runs VS MSBuild Release/x64 via
+      `setup-msbuild`. `continue-on-error` until it proves green — if the runner shares the local
+      PRI-task gap this goes red-obvious instead of red-blocking; flip the flag once green.
+- [x] **Fan-curve engine + presets + closed-loop controller.** Pure-Core `FanCurve` (ordered knots,
+      interpolation, endpoint clamping, fail-fast validation), Silent/Balanced/Performance presets
+      floored at the 20% safety floor, a 5pp `ShouldApply` anti-hunting gate (13 tests), and a
+      `FanCurveController` service driving the active curve from snapshot CPU temp (7 tests against
+      fakes: interpolation, gate, missing-sensor/unsafe/inactive skips, stop/dispose reset to
+      automatic, channel-list refresh). Only the preset-picker UI is still unwired — the loop
+      itself is proven without needing a motherboard.
+
+Verified: full suite green, Release build 0 warnings. **Needs Matt:** double-launch the exe
+(second should reveal the first, not open a window); click toasts; watch the new CI job's first
+run; fan presets need a live loop-validation session before any UI wiring.
+
+## Phase 51 — Backend/scaling: LHM 0.9.6, prepared inserts, stranded-portrait guard (2026-10-17)
+From external research (similar-product survey + WinUI multi-monitor guidance) cross-checked
+against this repo's own code — only items that survived contact with the actual code landed.
+- [x] `LibreHardwareMonitorLib` 0.9.5 → **0.9.6** (stable, verified on NuGet) + `System.Management`
+      10.0.1 → **10.0.2** in the same edit — 0.9.6's own nuspec demands 10.0.2, the exact
+      lockstep the csproj comment warns about. Brings Ryzen 9000 fixes (this machine's 9800X3D),
+      NVIDIA GPU core voltage and Intel iGPU telemetry. No mapper changes: the AMD SVI2/SVI3
+      candidates already cover the new voltage names; NVIDIA-voltage *display* needs a model +
+      UI addition and Matt's rig is AMD, so that's recorded as future work, not half-shipped here.
+- [x] `HistoryRepository.InsertAsync` now prepares one INSERT and re-binds parameters per row
+      instead of building 15 separate commands per minute-tick.
+- [x] Portrait Mode re-homes a FILLed window stranded fully off-screen (monitor unplugged while
+      hidden) on next activation — checked only when filled *and* intersecting no live display,
+      so a mid-drag window is never touched. `DisplayAreaWatcher` hot-plug events deliberately
+      not used (documented-unreliable in this WinAppSDK generation).
+- [x] Considered and rejected: CommunityToolkit `ControlSizeTrigger` (new dependency for what
+      `AdaptiveTrigger` + `ResponsiveScale` already cover); DPI-scaling SIZE presets (manifest is
+      PerMonitorV2 and all preset maths is consistently in physical pixels — no verified bug on
+      Matt's 100%-scaled panel, and Win32 DPI interop can't be validated in this environment).
+
+Verified: `dotnet test` green, Release build 0 warnings. **Needs Matt:** live sensor sanity after
+the LHM bump (dashboard values vs. 0.9.5, especially CPU voltage via the Super I/O fallback);
+unplug the portrait monitor while FILLed + hidden, reopen, confirm it re-snaps to a live display.
+
+## Phase 50 — Dashboard GPU processes, toast click-through (2026-10-17)
+Small visual/UX batch, no new backends — both halves reuse already-shipped, already-tested machinery.
+- [x] Dashboard now answers "what's using my GPU" next to "what's using my CPU": a second
+      Top Processes section bound to `ProcessRankerService.GetTopByGpu` (ported long ago, previously
+      only Portrait Mode displayed it), synced through the same `LiveCollectionSync` + 2s cadence
+      as the CPU list, with a matching "Nothing using meaningful GPU right now." empty state.
+- [x] Temperature toasts (and Settings' test notification) are now click-through: a
+      `NotificationInvoked` handler activates the main window instead of the click dismissing
+      silently. Best-effort — foregrounding can be refused — and dispatched, since the callback
+      fires on a background thread.
+
+Verified: full suite green (`dotnet test`); Release build of Core/Data/Services/Tests with
+0 warnings. App-head XAML/codebehind can't compile in this environment (pre-existing toolchain
+gap), so the new bindings need a live review. **Needs Matt:** run a GPU load and confirm the
+new section lists the game (not the CPU list duplicated); click a temperature toast and confirm
+the main window comes forward.
+
+## Phase 49 — Background hygiene: bounded diagnostics, observed task failures, adapter re-resolve (2026-10-17)
+From an in-depth review pass: no new features, just closing background reliability gaps the
+review proved real by reading the code (no behaviour was guessed at).
+- [x] `StorageDiagnosticLog` (`storage-trace.log`) was an unbounded append firing every few
+      seconds in the shipped build — its own comment says "temporary, remove once resolved",
+      but Phase 20's recurrence is still being chased, so it's kept and now truncated at
+      256 KB (same pattern as `FluidPanel`'s layout log), with a temp-path test hook and
+      regression tests proving the cap.
+- [x] `FluidPanel`'s layout log now sits behind `TraceEnabled` (default off) — it was the
+      only remaining dev diagnostic writing to disk unconditionally in normal operation.
+- [x] Two fire-and-forget background writes are now observed instead of silent: a failed
+      history insert lands in `unhandled-exceptions.log` via a fault-only continuation, and
+      the external-IP lookup catches everything (it rides an unobserved task off the sampling
+      timer, so anything escaping it previously vanished entirely).
+- [x] `NetworkMonitorService` re-resolves its adapter when the current NIC drops below
+      `OperationalStatus.Up` (unplug, disable, Wi-Fi → Ethernet handover) instead of reporting
+      the dead adapter as 0 Kbps until restart; a new/changed adapter re-seeds the byte
+      baseline and sits one tick out rather than diffing one adapter's counters against
+      another's. First-sample baseline seeding moved out of `Start()` for the same reason.
+- [x] Deliberately *not* changed: `docs/ROADMAP.md` looked like a stale fork of this file
+      but is actually the vision/principles companion (says so in its own header) — left alone.
+
+Verified: full suite green (`dotnet test`, incl. 2 new `StorageDiagnosticLogTests`), Release
+build of Core/Data/Services/Tests with 0 warnings. App-head behaviour (adapter handover,
+log cap in the wild) needs a live run. **Needs Matt:** switch adapters (or unplug/replug
+the network) and confirm the Network card recovers without an app restart; confirm
+`%APPDATA%\Aether Control\storage-trace.log` never grows past ~256 KB over a long session.
 
 ## Phase 48 — Portrait shrink & monitor hop, dark chrome everywhere (2026-10-04)
 Matt's brief: continue further enhancements and improvements to the visuals;

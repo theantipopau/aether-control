@@ -43,6 +43,7 @@ public sealed class NetworkMonitorService : INetworkMonitorService
     private DateTimeOffset _lastExternalIpFetch = DateTimeOffset.MinValue;
     private string _externalIp = string.Empty;
     private TimeSpan _minimumInterval = TimeSpan.Zero;
+    private bool _baselineSeeded;
 
     public NetworkMonitorService(ILogger<NetworkMonitorService> logger, HttpClient httpClient)
     {
@@ -59,13 +60,9 @@ public sealed class NetworkMonitorService : INetworkMonitorService
     {
         _lastRunAt = DateTimeOffset.MinValue; // first sample after a (re)start runs immediately
         _activeInterface = FindActiveInterface();
-        if (_activeInterface is not null)
-        {
-            var stats = _activeInterface.GetIPv4Statistics();
-            _lastBytesSent = stats.BytesSent;
-            _lastBytesReceived = stats.BytesReceived;
-            _lastSampleAt = DateTimeOffset.UtcNow;
-        }
+        // The byte baseline is seeded on the first Sample (the "new adapter" path there), not
+        // here — so the first throughput delta never divides a just-seeded counter by ~0 elapsed.
+        _baselineSeeded = false;
 
         _timer?.Dispose();
         _timer = new Timer(_ => SafeSample(), null, TimeSpan.Zero, interval);
@@ -101,10 +98,28 @@ public sealed class NetworkMonitorService : INetworkMonitorService
         }
 
         _lastRunAt = ranAt;
+        if (_activeInterface is not null && !IsUsable(_activeInterface))
+        {
+            // Adapter unplugged, disabled, or a Wi-Fi → Ethernet handover: drop it so the
+            // resolver below picks the live adapter instead of reporting the dead one as
+            // 0 Kbps forever — or diffing the new adapter's counters against the old baseline.
+            _activeInterface = null;
+        }
+
+        var previous = _activeInterface;
         _activeInterface ??= FindActiveInterface();
+        // First sample, restart, or adapter change: seed the byte baseline from the current
+        // adapter and sit this tick out (throughput reads 0 once) rather than diff one
+        // adapter's counters against another's — or against a baseline seeded milliseconds ago.
+        var adapterChanged = _activeInterface != previous || !_baselineSeeded;
+        if (adapterChanged)
+        {
+            SeedBaseline();
+        }
+
         var info = new NetworkInfo { AdapterName = _activeInterface?.Description ?? "Unknown", ExternalIpAddress = _externalIp };
 
-        if (_activeInterface is not null)
+        if (_activeInterface is not null && !adapterChanged)
         {
             var stats = _activeInterface.GetIPv4Statistics();
             var now = DateTimeOffset.UtcNow;
@@ -160,9 +175,48 @@ public sealed class NetworkMonitorService : INetworkMonitorService
             var ip = await _httpClient.GetStringAsync("https://api.ipify.org").ConfigureAwait(false);
             _externalIp = ip.Trim();
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex)
         {
+            // Offline, DNS, proxy, rate limit, malformed response — and anything else the
+            // lookup can throw. This rides a fire-and-forget task off the sampling timer,
+            // so anything escaping here would otherwise go entirely unobserved.
             _logger.LogDebug(ex, "External IP lookup failed (offline or blocked)");
+        }
+    }
+
+    private void SeedBaseline()
+    {
+        _baselineSeeded = true;
+        _lastSampleAt = DateTimeOffset.UtcNow;
+        if (_activeInterface is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var stats = _activeInterface.GetIPv4Statistics();
+            _lastBytesSent = stats.BytesSent;
+            _lastBytesReceived = stats.BytesReceived;
+        }
+        catch (NetworkInformationException)
+        {
+            // Adapter vanished between resolve and read — drop it; the next tick re-resolves.
+            _activeInterface = null;
+            _baselineSeeded = false;
+        }
+    }
+
+    private static bool IsUsable(NetworkInterface nic)
+    {
+        try
+        {
+            return nic.OperationalStatus == OperationalStatus.Up;
+        }
+        catch (Exception)
+        {
+            // Adapter removed mid-poll: its properties throw rather than report Down.
+            return false;
         }
     }
 

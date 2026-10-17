@@ -39,6 +39,10 @@ public sealed class FluidPanel : Panel
     private FluidLayoutPlan _plan = FluidLayoutPlan.Empty;
     private double _plannedWidth = -1;
 
+    /// <summary>False (default) is normal operation — no layout logging, no disk writes. True
+    /// re-enables the per-transition plan trace below for diagnosing a layout report.</summary>
+    internal static bool TraceEnabled { get; set; }
+
     // Best-effort layout evidence: the elevated app can't be screenshotted (UIPI), so every plan
     // *transition* is appended here — width, child count, resulting rows — making "it still isn't
     // scaling" diagnosable from a file instead of a pasted screenshot of a possibly-stale build.
@@ -103,6 +107,11 @@ public sealed class FluidPanel : Panel
 
     private void LogPlanIfChanged()
     {
+        if (!TraceEnabled)
+        {
+            return;
+        }
+
         var now = DateTimeOffset.UtcNow;
         var signature = $"{(int)(_plannedWidth / 4)}x{Children.Count}:{string.Join("+", _plan.ItemsPerRow)}";
         if (signature == _lastLoggedSignature || now - _lastLoggedPlan < TimeSpan.FromMilliseconds(500))

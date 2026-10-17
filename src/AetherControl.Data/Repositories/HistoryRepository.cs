@@ -19,14 +19,27 @@ public sealed class HistoryRepository(SqliteConnectionFactory connectionFactory)
         await using var connection = await connectionFactory.CreateConnectionAsync(ct).ConfigureAwait(false);
         await using var transaction = connection.BeginTransaction();
 
+        // One prepared statement with re-bound parameters, not one command per sample — the
+        // statement is compiled once and SQLite reuses the query plan for all 15 rows.
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "INSERT INTO sensor_history (timestamp_utc, metric, value) VALUES ($ts, $metric, $value);";
+        var ts = command.CreateParameter();
+        ts.ParameterName = "$ts";
+        command.Parameters.Add(ts);
+        var metric = command.CreateParameter();
+        metric.ParameterName = "$metric";
+        command.Parameters.Add(metric);
+        var value = command.CreateParameter();
+        value.ParameterName = "$value";
+        command.Parameters.Add(value);
+        await command.PrepareAsync(ct).ConfigureAwait(false);
+
         foreach (var sample in samples)
         {
-            await using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = "INSERT INTO sensor_history (timestamp_utc, metric, value) VALUES ($ts, $metric, $value);";
-            command.Parameters.AddWithValue("$ts", sample.TimestampUtc.UtcDateTime.ToString(IsoFormat, CultureInfo.InvariantCulture));
-            command.Parameters.AddWithValue("$metric", sample.Metric.ToString());
-            command.Parameters.AddWithValue("$value", sample.Value);
+            ts.Value = sample.TimestampUtc.UtcDateTime.ToString(IsoFormat, CultureInfo.InvariantCulture);
+            metric.Value = sample.Metric.ToString();
+            value.Value = sample.Value;
             await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
 

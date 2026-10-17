@@ -122,11 +122,18 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topProcessesSync =
         new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
 
+    // Same ranking, GPU side — ProcessRankerService.GetTopByGpu was ported alongside the CPU
+    // ranking but only Portrait Mode ever displayed it; the dashboard answered "what's using my
+    // CPU" with no equivalent for the GPU a game is actually loading.
+    private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topGpuProcessesSync =
+        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
+
     public ObservableCollection<StorageDriveViewModel> Drives => _drivesSync.Items;
     public ObservableCollection<NamedSensorValueViewModel> MotherboardVoltages => _voltagesSync.Items;
     public ObservableCollection<NamedSensorValueViewModel> MotherboardFanSpeeds => _fanSpeedsSync.Items;
     public ObservableCollection<NamedSensorValueViewModel> MotherboardVrmTemperatures => _vrmTemperaturesSync.Items;
     public ObservableCollection<ProcessUsageViewModel> TopProcessesByCpu => _topProcessesSync.Items;
+    public ObservableCollection<ProcessUsageViewModel> TopProcessesByGpu => _topGpuProcessesSync.Items;
 
     // Not every CPU's own sensor set exposes a real core-voltage measurement (confirmed via a real
     // sensor dump: this AMD Ryzen 7 9800X3D only reports "VID" from the CPU side — the VRM's
@@ -217,8 +224,13 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         }
 
         _lastProcessRankingRunUtc = now;
-        var top = _processRanker.GetTopByCpu(5);
-        _dispatcherQueue.TryEnqueue(() => _topProcessesSync.Sync(top));
+        var topByCpu = _processRanker.GetTopByCpu(5);
+        var topByGpu = _processRanker.GetTopByGpu(5);
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            _topProcessesSync.Sync(topByCpu);
+            _topGpuProcessesSync.Sync(topByGpu);
+        });
     }
 
     private void OnSnapshotUpdated(object? sender, SensorsUpdatedEventArgs e)

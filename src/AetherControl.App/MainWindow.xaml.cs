@@ -296,6 +296,18 @@ public sealed partial class MainWindow : Window
 
     private void ShowAndActivate() => Activate();
 
+    /// <summary>Toast click-through target: foregrounds the window and navigates to the page the
+    /// toast deep-links (temperature alerts → dashboard, test notification → settings). A no-op
+    /// navigation when already there keeps the existing nav highlight honest.</summary>
+    internal void ShowAndNavigateTo(Type pageType)
+    {
+        ShowAndActivate();
+        if (ContentFrame.CurrentSourcePageType != pageType)
+        {
+            ContentFrame.Navigate(pageType);
+        }
+    }
+
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
         var settings = App.Services.GetRequiredService<ISettingsService>();

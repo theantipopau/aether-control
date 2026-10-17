@@ -65,14 +65,18 @@ public sealed class TemperatureAlertService : IDisposable
     }
 
     /// <summary>Shows a Windows toast. Public static so Settings' "Send test notification" can
-    /// exercise the exact same pipeline a real temperature trip uses.</summary>
-    public static void ShowAlert(string title, string message)
+    /// exercise the exact same pipeline a real temperature trip uses. <paramref name="page"/> is
+    /// the deep-link key the App's <c>NotificationInvoked</c> handler navigates to on click
+    /// ("dashboard" for real temperature trips, "settings" for the test button). A click on a
+    /// toast without a recognised key just foregrounds the app.</summary>
+    public static void ShowAlert(string title, string message, string page = "dashboard")
     {
         try
         {
             var notification = new AppNotificationBuilder()
                 .AddText(title)
                 .AddText(message)
+                .AddArgument("page", page)
                 .BuildNotification();
             AppNotificationManager.Default.Show(notification);
         }

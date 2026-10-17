@@ -385,7 +385,7 @@
                 <!-- Ported from Portrait Stats' ProcessRankerService — "what's actually using the
                      CPU right now", the same question Task Manager's Processes tab answers. -->
                 <StackPanel Spacing="10">
-                    <controls:SectionHeader Label="Top Processes" />
+                    <controls:SectionHeader Label="Top Processes — CPU" />
                     <Border Style="{StaticResource CardBorderStyle}" Padding="12"
                             Visibility="{x:Bind ViewModel.TopProcessesByCpu.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
                         <TextBlock Text="Nothing using meaningful CPU right now." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
@@ -401,6 +401,27 @@
                                 <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding CpuPercent}" Format="F1" Unit="%"
                                                       Progress="{Binding CpuPercent}"
                                                       Tone="{Binding CpuPercent, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+                <StackPanel Spacing="10">
+                    <controls:SectionHeader Label="Top Processes — GPU" />
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="12"
+                            Visibility="{x:Bind ViewModel.TopProcessesByGpu.Count, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
+                        <TextBlock Text="Nothing using meaningful GPU right now." Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                    </Border>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.TopProcessesByGpu, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <controls:FluidPanel ItemHeight="106" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:MetricCard Label="{Binding Name}" NumericValue="{Binding GpuPercent}" Format="F1" Unit="%"
+                                                      Progress="{Binding GpuPercent}"
+                                                      Tone="{Binding GpuPercent, Converter={StaticResource SeverityToneConverter}, ConverterParameter=usage}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

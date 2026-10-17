@@ -157,7 +157,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         var title = "Test alert";
         var message = $"This is a test — thresholds are {CpuTemperatureAlertThreshold:F0} °C (CPU) and {GpuTemperatureAlertThreshold:F0} °C (GPU).";
         _alertLog.Add(now, title, message);
-        TemperatureAlertService.ShowAlert(title, message);
+        TemperatureAlertService.ShowAlert(title, message, page: "settings");
         StatusMessage = "Test notification sent.";
     }
 

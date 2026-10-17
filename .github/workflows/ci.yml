@@ -40,3 +40,27 @@ jobs:
           name: test-results
           path: "**/TestResults/**"
           retention-days: 7
+
+  app-build:
+    name: Build WinUI head (experiment)
+    runs-on: windows-latest
+    # Experiment (Phase 52): the App project can't build under plain `dotnet build` anywhere —
+    # it needs Visual Studio's own MSBuild with the Windows application development workload.
+    # windows-latest ships full VS2022, which may have what the local SDKs lack. Runs as
+    # continue-on-error until it proves green; flip that off once it does so XAML/codebehind
+    # breaks fail CI like everything else.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build AetherControl.App (Release, x64)
+        run: msbuild src/AetherControl.App/AetherControl.App.csproj -restore -p:Configuration=Release -p:Platform=x64 -v:minimal

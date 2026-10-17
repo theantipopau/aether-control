@@ -98,8 +98,12 @@ public sealed partial class PortraitWindow : Window
         // the tray. Hiding (close is intercepted to hide, not destroy) deactivates the window, so
         // the flag clears itself without needing a separate path here.
         var uiActivity = App.Services.GetRequiredService<UiActivityTracker>();
-        Activated += (_, e) => uiActivity.SetWindowActive(
-            UiActivityTracker.PortraitWindowKey, e.WindowActivationState != WindowActivationState.Deactivated);
+        Activated += (_, e) =>
+        {
+            uiActivity.SetWindowActive(
+                UiActivityTracker.PortraitWindowKey, e.WindowActivationState != WindowActivationState.Deactivated);
+            EnsureFilledWindowVisible();
+        };
 
         AppWindow.Changed += OnAppWindowChanged;
         Closed += OnClosed;
@@ -127,6 +131,39 @@ public sealed partial class PortraitWindow : Window
         {
             sender.MoveAndResize(bounds);
         }
+    }
+
+    /// <summary>Re-homes a FILLed window that no longer intersects any connected display — the
+    /// monitor it was filling was unplugged (or its topology changed) while the window was hidden,
+    /// so no position/size change ever fired <see cref="OnAppWindowChanged"/> and the panel would
+    /// otherwise reopen onto empty desktop space. Checked on activation (which is exactly when a
+    /// re-shown window would reveal the problem), and only when the window is fully outside every
+    /// display — a partially visible window is the user mid-drag, not stranded. DisplayAreaWatcher
+    /// hot-plug events are deliberately not used here: they are documented-unreliable for physical
+    /// connect/disconnect in this WinAppSDK generation, and this check is idempotent anyway.
+    /// </summary>
+    private void EnsureFilledWindowVisible()
+    {
+        if (!_isFilled)
+        {
+            return;
+        }
+
+        var position = AppWindow.Position;
+        var size = AppWindow.Size;
+        var displays = DisplayArea.FindAll();
+        for (var i = 0; i < displays.Count; i++)
+        {
+            var bounds = displays[i].OuterBounds;
+            if (position.X < bounds.X + bounds.Width && position.X + size.Width > bounds.X &&
+                position.Y < bounds.Y + bounds.Height && position.Y + size.Height > bounds.Y)
+            {
+                return; // intersects a live display — nothing to fix
+            }
+        }
+
+        var nearest = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
+        AppWindow.MoveAndResize(nearest.OuterBounds);
     }
 
     /// <summary>Picks a connected display taller than it is wide — i.e. actually rotated to

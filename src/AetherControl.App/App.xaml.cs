@@ -2,6 +2,7 @@ using AetherControl.App.Services;
 using AetherControl.App.Theming;
 using AetherControl.Core.Interfaces;
 using AetherControl.Services;
+using AetherControl.Services.Infrastructure;
 using AetherControl.Services.Hardware;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,6 +15,7 @@ namespace AetherControl.App;
 public partial class App : Application
 {
     private IHost? _host;
+    private SingleInstanceGuard? _singleInstance;
     private TemperatureAlertService? _temperatureAlertService;
     private HistoryRecorderService? _historyRecorderService;
 
@@ -42,6 +44,18 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // A second process opening its own LibreHardwareMonitor session would contend with the
+        // first for the same Super I/O chip (both sides reading garbage persistently) — refuse
+        // the launch and foreground the running instance instead. Held for process lifetime via
+        // the field; the OS releases it on crash, so a dead holder can never wedge startup.
+        _singleInstance = new SingleInstanceGuard("Local\\AetherControl.SingleInstance.v1");
+        if (!_singleInstance.IsFirstInstance)
+        {
+            SingleInstanceFocus.FocusExisting();
+            Exit();
+            return;
+        }
+
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices(services => services.AddAetherControlServices())
             // No logging provider was ever registered anywhere in this app — every _logger.LogWarning
@@ -58,6 +72,7 @@ public partial class App : Application
         // will do anything — this is what makes the temperature-alert toasts below possible without
         // an MSIX package.
         AppNotificationManager.Default.Register();
+        AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
 
         var settings = Services.GetRequiredService<ISettingsService>();
         await settings.InitializeAsync();
@@ -83,6 +98,38 @@ public partial class App : Application
         {
             MainWindow.AppWindow.Hide();
         }
+    }
+
+    /// <summary>
+    /// Temperature toasts (and Settings' test notification) previously dismissed silently — a
+    /// click now brings the main window forward and navigates to the page the toast deep-links
+    /// (temperature alerts → dashboard, test notification → settings). Fires on a background
+    /// thread, hence the dispatch; best-effort, since foregrounding can be refused.
+    /// </summary>
+    private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationInvokedEventArgs args)
+    {
+        var pageType = ParseToastPage(args.Argument);
+        MainWindow?.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (MainWindow is not null)
+            {
+                MainWindow.ShowAndNavigateTo(pageType);
+            }
+        });
+    }
+
+    private static Type ParseToastPage(string arguments)
+    {
+        // AppNotificationBuilder serialises arguments as "key=value" pairs joined by ';'.
+        foreach (var pair in arguments.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (pair.Trim().Equals("page=settings", StringComparison.OrdinalIgnoreCase))
+            {
+                return typeof(Views.SettingsPage);
+            }
+        }
+
+        return typeof(Views.DashboardPage);
     }
 
     /// <summary>
