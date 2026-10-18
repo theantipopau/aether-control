@@ -75,4 +75,35 @@ public class FlowLayoutTests
         Assert.Equal(3, plan.RowCount);
         Assert.Equal(420, plan.CellWidth, 3);
     }
+
+    [Fact]
+    public void WideWindow_LoneTrailingSectionIsCappedNotFullBleed()
+    {
+        // Optimisation at ~2200px content width, 5 sections of 560+20: 3 per row, 3+2.
+        // Uncapped the last row's 2 cells would stretch to 1090 each; capped they stop at 720
+        // and the row simply ends early instead of growing empty chrome.
+        var plan = FlowLayout.Plan(2200, 5, minItemWidth: 560, spacing: 20);
+
+        Assert.Equal(3, plan.ItemsPerRow);
+        Assert.Equal(2, plan.RowCount);
+        Assert.Equal(720, plan.CellWidth, 3);
+    }
+
+    [Fact]
+    public void CapNeverSqueezesBelowMinWidth()
+    {
+        var plan = FlowLayout.Plan(2200, 5, minItemWidth: 560, spacing: 20, maxCellWidth: 100);
+
+        Assert.Equal(560, plan.CellWidth, 3);
+    }
+
+    [Fact]
+    public void NarrowColumn_FillBelowCapIsUnchanged()
+    {
+        // Single column at 500px: fill (500) is under the cap, so behaviour is identical.
+        var plan = FlowLayout.Plan(500, 7, minItemWidth: 420, spacing: 20);
+
+        Assert.Equal(1, plan.ItemsPerRow);
+        Assert.Equal(500, plan.CellWidth, 3);
+    }
 }

@@ -37,6 +37,17 @@ public sealed class FlowPanel : Panel
         set => SetValue(SpacingProperty, value);
     }
 
+    public static readonly DependencyProperty MaxCellWidthProperty = DependencyProperty.Register(
+        nameof(MaxCellWidth), typeof(double), typeof(FlowPanel), new PropertyMetadata(FlowLayout.DefaultMaxCellWidth));
+
+    /// <summary>Widest a section card may stretch to fill its row — past this the row simply ends
+    /// early (left-aligned) instead of growing a full-bleed bar of empty chrome on wide windows.</summary>
+    public double MaxCellWidth
+    {
+        get => (double)GetValue(MaxCellWidthProperty);
+        set => SetValue(MaxCellWidthProperty, value);
+    }
+
     private FlowLayoutPlan _plan = FlowLayoutPlan.Empty;
     private double _plannedWidth = -1;
     private int _plannedItemCount;
@@ -102,7 +113,7 @@ public sealed class FlowPanel : Panel
             _brokenChildren.Clear();
         }
 
-        _plan = FlowLayout.Plan(width, Children.Count, MinItemWidth, Spacing);
+        _plan = FlowLayout.Plan(width, Children.Count, MinItemWidth, Spacing, MaxCellWidth);
         _plannedWidth = width;
         _plannedItemCount = Children.Count;
     }

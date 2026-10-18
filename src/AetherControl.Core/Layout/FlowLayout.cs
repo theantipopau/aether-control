@@ -13,14 +13,21 @@ public sealed record FlowLayoutPlan(int ItemsPerRow, double CellWidth, int RowCo
 /// <summary>
 /// Greedy wrap plan for section-scale content (cards, settings groups) that must reflow with the
 /// window: how many children fit per row at a given width, given each child's minimum comfortable
-/// width and the gap between them. Unlike <see cref="FluidLayout"/> (fixed-height metric-card rows
-/// with a cell band), this has no upper cap — cells grow to fill the row, so a wide window spreads
-/// the content out instead of pinning it to a maximum card width. One child per row whenever the
-/// width can't fit two side by side; never zero.
+/// width and the gap between them. Cells stretch to share the row — but never past
+/// <paramref name="maxCellWidth"/> (FluidLayout's MaxCellWidth precedent): section content is
+/// authored against ~560–620px comfortable widths, so an uncapped lone trailing section on a wide
+/// window became a full-bleed bar of empty chrome (reported as "huge empty space" on
+/// Optimisation at window sizes where only one or two sections share the row, 2026-10-18).
+/// Capped rows simply don't reach the right edge; the panel left-aligns them. One child per row
+/// whenever the width can't fit two side by side; never zero.
 /// </summary>
 public static class FlowLayout
 {
-    public static FlowLayoutPlan Plan(double width, int count, double minItemWidth, double spacing)
+    /// <summary>Default cap: comfortably past every page's MinItemWidth (440–620), tight enough
+    /// that a lone section never turns into a full-bleed empty bar on a 1440p-maximised window.</summary>
+    public const double DefaultMaxCellWidth = 720;
+
+    public static FlowLayoutPlan Plan(double width, int count, double minItemWidth, double spacing, double maxCellWidth = DefaultMaxCellWidth)
     {
         if (count <= 0)
         {
@@ -36,7 +43,9 @@ public static class FlowLayout
         var perRow = (int)Math.Floor((w + gap) / (min + gap));
         perRow = Math.Max(1, Math.Min(perRow, count));
 
-        var cellWidth = (w - gap * (perRow - 1)) / perRow;
+        // The cap never squeezes below the minimum — a nonsense max just means "fill".
+        var cap = double.IsFinite(maxCellWidth) && maxCellWidth > 0 ? Math.Max(maxCellWidth, min) : min;
+        var cellWidth = Math.Min((w - gap * (perRow - 1)) / perRow, cap);
         var rows = (count + perRow - 1) / perRow;
 
         return new FlowLayoutPlan(perRow, cellWidth, rows);
