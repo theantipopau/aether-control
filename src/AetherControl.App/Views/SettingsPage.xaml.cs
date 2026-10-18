@@ -26,4 +26,18 @@ public sealed partial class SettingsPage : Page
     // Window-size-dependent type scale — text grows/shrinks with the page width (WindowScale).
     private void OnPageSizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e) =>
         Controls.ResponsiveScale.Apply(RootContent, e.NewSize.Width, e.NewSize.Height);
+
+    // Re-opens the first-run dialog (same helper MainWindow uses) — best-effort like the
+    // test-notification button: a guide that fails to open must never break Settings.
+    private async void OnShowWelcomeGuideClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        try
+        {
+            await Controls.OnboardingDialog.ShowAsync(XamlRoot, App.Services.GetRequiredService<ISettingsService>());
+        }
+        catch
+        {
+            // Best-effort; staying on the Settings page is the correct fallback.
+        }
+    }
 }

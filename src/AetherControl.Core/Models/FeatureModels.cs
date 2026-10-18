@@ -159,4 +159,6 @@ public sealed class AppSettings
     public string LogLevel { get; set; } = "Information";
     /// <summary>Opt-in; off by default so the app makes no network call the user didn't ask for.</summary>
     public bool CheckForUpdatesOnStartup { get; set; }
+    /// <summary>First-run welcome dialog. Default false so existing installs see it once after upgrade.</summary>
+    public bool HasSeenOnboarding { get; set; }
 }

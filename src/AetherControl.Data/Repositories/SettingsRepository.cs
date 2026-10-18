@@ -10,7 +10,7 @@ public sealed class SettingsRepository(SqliteConnectionFactory connectionFactory
     {
         await using var connection = await connectionFactory.CreateConnectionAsync(ct).ConfigureAwait(false);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT theme, accent, dashboard_refresh_ms, start_with_windows, start_minimised_to_tray, minimise_to_tray_on_close, history_retention_days, logging_enabled, log_level, check_for_updates_on_startup FROM app_settings WHERE id = 1;";
+        command.CommandText = "SELECT theme, accent, dashboard_refresh_ms, start_with_windows, start_minimised_to_tray, minimise_to_tray_on_close, history_retention_days, logging_enabled, log_level, check_for_updates_on_startup, has_seen_onboarding FROM app_settings WHERE id = 1;";
 
         await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
         if (!await reader.ReadAsync(ct).ConfigureAwait(false))
@@ -29,7 +29,8 @@ public sealed class SettingsRepository(SqliteConnectionFactory connectionFactory
             HistoryRetentionDays = reader.GetInt32(6),
             LoggingEnabled = reader.GetInt32(7) != 0,
             LogLevel = reader.GetString(8),
-            CheckForUpdatesOnStartup = reader.GetInt32(9) != 0
+            CheckForUpdatesOnStartup = reader.GetInt32(9) != 0,
+            HasSeenOnboarding = reader.GetInt32(10) != 0
         };
     }
 
@@ -43,7 +44,7 @@ public sealed class SettingsRepository(SqliteConnectionFactory connectionFactory
                 start_with_windows = $startWithWindows, start_minimised_to_tray = $startMinimised,
                 minimise_to_tray_on_close = $minimiseOnClose, history_retention_days = $retention,
                 logging_enabled = $loggingEnabled, log_level = $logLevel,
-                check_for_updates_on_startup = $checkUpdates
+                check_for_updates_on_startup = $checkUpdates, has_seen_onboarding = $onboardingSeen
             WHERE id = 1;
             """;
         command.Parameters.AddWithValue("$theme", settings.Theme.ToString());
@@ -56,6 +57,7 @@ public sealed class SettingsRepository(SqliteConnectionFactory connectionFactory
         command.Parameters.AddWithValue("$loggingEnabled", settings.LoggingEnabled ? 1 : 0);
         command.Parameters.AddWithValue("$logLevel", settings.LogLevel);
         command.Parameters.AddWithValue("$checkUpdates", settings.CheckForUpdatesOnStartup ? 1 : 0);
+        command.Parameters.AddWithValue("$onboardingSeen", settings.HasSeenOnboarding ? 1 : 0);
 
         await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }

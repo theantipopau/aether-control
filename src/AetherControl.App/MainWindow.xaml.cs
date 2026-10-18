@@ -79,6 +79,7 @@ public sealed partial class MainWindow : Window
 
         _ = InitializeTrayPreferencesAsync();
         _ = CheckForUpdatesAtStartupAsync();
+        _ = ShowOnboardingIfFirstRunAsync();
         App.Services.GetRequiredService<IHardwareMonitorService>().SnapshotUpdated += OnSnapshotUpdatedForTray;
 
         // Adaptive poll cadence: focus on either Aether window keeps the monitor at its full rate;
@@ -93,6 +94,31 @@ public sealed partial class MainWindow : Window
             // GPU cycles — tone updates still land while paused via UpdateHealthIndicator.
             _aura?.SetDriftPaused(!active);
         };
+    }
+
+    /// <summary>First-run welcome dialog, same fire-and-forget shape as the other startup tasks.
+    /// Skipped on minimised-to-tray launches (no visible window to parent the dialog) — the flag
+    /// stays unset so the next visible launch shows it. Best-effort: a welcome dialog must never
+    /// break launch.</summary>
+    private async Task ShowOnboardingIfFirstRunAsync()
+    {
+        try
+        {
+            var settings = App.Services.GetRequiredService<ISettingsService>();
+            if (settings.Current.HasSeenOnboarding || settings.Current.StartMinimisedToTray)
+            {
+                return;
+            }
+
+            if (Content is FrameworkElement root)
+            {
+                await Controls.OnboardingDialog.ShowAsync(root.XamlRoot, settings);
+            }
+        }
+        catch
+        {
+            // Best-effort; the dialog is re-openable from Settings → About.
+        }
     }
 
     private async Task InitializeTrayPreferencesAsync()

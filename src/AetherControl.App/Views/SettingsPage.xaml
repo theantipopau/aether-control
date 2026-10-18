@@ -41,6 +41,8 @@
                     <StackPanel Spacing="{StaticResource Space8}">
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space12}">
                             <Button Content="Check for updates" Command="{x:Bind ViewModel.CheckForUpdatesCommand}" />
+                            <Button Content="Show welcome guide" Click="OnShowWelcomeGuideClicked"
+                                    ToolTipService.ToolTip="Re-open the first-run introduction." />
                             <ProgressRing IsActive="{x:Bind ViewModel.IsCheckingForUpdates, Mode=OneWay}" Width="18" Height="18" />
                         </StackPanel>
                         <TextBlock Text="{x:Bind ViewModel.UpdateStatusText, Mode=OneWay}" Style="{StaticResource StatusTextStyle}"

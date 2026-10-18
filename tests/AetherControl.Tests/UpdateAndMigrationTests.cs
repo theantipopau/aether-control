@@ -34,13 +34,17 @@ public class UpdateAndMigrationTests : IDisposable
         var first = new SettingsRepository(new SqliteConnectionFactory(_dbPath));
         var settings = await first.GetAsync();
         Assert.False(settings.CheckForUpdatesOnStartup); // default off — opt-in only
+        Assert.False(settings.HasSeenOnboarding); // default unseen — existing installs get the dialog once
 
         settings.CheckForUpdatesOnStartup = true;
+        settings.HasSeenOnboarding = true;
         await first.SaveAsync(settings);
 
-        // A fresh factory is a second app launch: the ALTER TABLE must not run again.
+        // A fresh factory is a second app launch: the ALTER TABLEs must not run again.
         var second = new SettingsRepository(new SqliteConnectionFactory(_dbPath));
-        Assert.True((await second.GetAsync()).CheckForUpdatesOnStartup);
+        var reloaded = await second.GetAsync();
+        Assert.True(reloaded.CheckForUpdatesOnStartup);
+        Assert.True(reloaded.HasSeenOnboarding);
     }
 
     [Fact]
@@ -67,6 +71,7 @@ public class UpdateAndMigrationTests : IDisposable
 
         Assert.Equal(AetherControl.Core.Enums.AccentColor.Purple, settings.Accent); // existing data preserved
         Assert.False(settings.CheckForUpdatesOnStartup);
+        Assert.False(settings.HasSeenOnboarding); // 003 backfills unseen on pre-tracking databases too
     }
 
     public void Dispose()
