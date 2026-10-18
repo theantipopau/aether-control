@@ -165,7 +165,7 @@
                                           ToolTipService.ToolTip="Temperature → fan-speed preset. The curve drives every channel from CPU package temperature." />
                                 <Button Grid.Column="1" Content="Apply curve" Command="{x:Bind ViewModel.StartFanCurveCommand}"
                                         IsEnabled="{x:Bind ViewModel.IsManualFanControlEnabled, Mode=OneWay}" />
-                                <Button Grid.Column="2" Content="Stop" Command="{x:Bind ViewModel.StopFanCurveCommand}"
+                                <Button Grid.Column="2" Content="Stop" Command="{x:Bind ViewModel.StopActiveFanCurveCommand}"
                                         IsEnabled="{x:Bind ViewModel.IsCurveActive, Mode=OneWay}" />
                             </Grid>
                             <TextBlock Text="{x:Bind ViewModel.SelectedCurveSummary, Mode=OneWay}"

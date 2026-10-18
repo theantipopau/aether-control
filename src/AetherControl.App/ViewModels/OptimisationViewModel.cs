@@ -306,8 +306,11 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
         RefreshFanChannels();
     }
 
+    // Named StopActiveFanCurve (not StopFanCurveCommand): [RelayCommand] appends "Command" to
+    // the method name, so the latter would generate StopFanCurveCommandCommand while XAML binds
+    // StopFanCurveCommand — resolving to this method, which x:Bind rejects (WMC1121).
     [RelayCommand]
-    private void StopFanCurveCommand()
+    private void StopActiveFanCurve()
     {
         StopFanCurve();
         CurveStatusMessage = "Curve stopped — all channels back to BIOS control.";
