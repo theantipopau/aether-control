@@ -127,6 +127,10 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <controls:SectionHeader Label="Fan Control" Logo="{x:Bind ViewModel.BoardBrandLogo, Mode=OneWay}" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <!-- Section state at a glance: BIOS control vs manual channels. -->
+                            <controls:StatusPill VerticalAlignment="Center"
+                                Text="{x:Bind local:OptimisationPage.FormatFanPillText(ViewModel.FanChannels), Mode=OneWay}"
+                                State="{x:Bind local:OptimisationPage.FormatFanPillState(ViewModel.FanChannels), Mode=OneWay}" />
                             <Button Command="{x:Bind ViewModel.RefreshFanChannelsCommand}" ToolTipService.ToolTip="Re-read fan headers">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE72C;" FontSize="14" />

@@ -97,8 +97,12 @@ public sealed partial class RadialGauge : UserControl
         set => SetValue(ToneProperty, value);
     }
 
-    private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
-        ((RadialGauge)d).LabelText.Text = (string)e.NewValue;
+    private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var gauge = (RadialGauge)d;
+        gauge.LabelText.Text = (string)e.NewValue;
+        gauge.UpdateAutomationName();
+    }
 
     private static void OnUnitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
         ((RadialGauge)d).UnitText.Text = (string)e.NewValue;
@@ -106,11 +110,33 @@ public sealed partial class RadialGauge : UserControl
     private static void OnFormatChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
         ((RadialGauge)d)._format = (string)e.NewValue;
 
-    private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
-        ((RadialGauge)d)._tween.AnimateTo((double)e.NewValue);
+    private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var gauge = (RadialGauge)d;
+        gauge._tween.AnimateTo((double)e.NewValue);
+        gauge.UpdateAutomationName();
+    }
 
-    private static void OnToneChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
-        ((RadialGauge)d).ApplyToneBrush((MetricTone)e.NewValue);
+    private static void OnToneChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var gauge = (RadialGauge)d;
+        gauge.ApplyToneBrush((MetricTone)e.NewValue);
+        gauge.UpdateAutomationName();
+    }
+
+    /// <summary>Narrator gets one sentence ("CPU: 72 °C, hot"). Refreshed on value/tone/label
+    /// changes only — never per animation frame, and never announced unprompted (this is a Name,
+    /// not a live region, so screen readers read it on focus, not on every poll).</summary>
+    private void UpdateAutomationName()
+    {
+        var state = _tone switch
+        {
+            MetricTone.Warm => ", warm",
+            MetricTone.Hot => ", hot",
+            _ => string.Empty
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(this, $"{Label}: {Value.ToString(_format)} {Unit}{state}".Trim());
+    }
 
     private void OnTweenUpdate(double animatedValue)
     {
@@ -172,6 +198,11 @@ public sealed partial class RadialGauge : UserControl
         // The needle rides the end of the gradient, so it takes the end colour — one brush per
         // tone change (rare), never per frame.
         NeedleDot.Fill = new SolidColorBrush(end);
+
+        // The halo reads as heat shimmer: it belongs on a Hot gauge only. Kept in the tree (not
+        // collapsed) so tone flips never disturb layout — zero opacity paints nothing.
+        GlowPath.Opacity = tone == MetricTone.Hot ? 0.25 : 0;
+        GlowPath.Visibility = tone == MetricTone.Hot ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void BuildTicks()

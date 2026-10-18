@@ -175,8 +175,10 @@
                 </StackPanel>
 
                     <!-- Scaled via Viewbox rather than a new size property on RadialGauge: same control,
-                         same tween, just drawn larger. -->
-                    <StackPanel x:Name="HeroGauges" Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource Space24}" VerticalAlignment="Center">
+                         same tween, just drawn larger. Hidden until the first real snapshot — the
+                         skeleton row below holds the space so the hero never flashes "0 °C". -->
+                    <StackPanel x:Name="HeroGauges" Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource Space24}" VerticalAlignment="Center"
+                                Visibility="{x:Bind local:DashboardPage.IsLive(ViewModel.HealthLevel), Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Spacing="{StaticResource Space8}">
                             <Viewbox Width="148">
                                 <controls:RadialGauge Label="CPU" Unit="°C" Max="100"
@@ -210,6 +212,15 @@
                                 <Run Text="{x:Bind local:DashboardPage.FormatOneDecimal(ViewModel.RamUsedGb), Mode=OneWay}" /><Run Text=" GB used" />
                             </TextBlock>
                         </StackPanel>
+                    </StackPanel>
+                    <!-- First-poll shimmer in the gauges' place (same column, same centering) until
+                         HealthLevel leaves Unknown. Same footprint as the three 148px gauges. -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource Space24}" VerticalAlignment="Center"
+                                Visibility="{x:Bind local:DashboardPage.IsWaiting(ViewModel.HealthLevel), Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                AutomationProperties.Name="Loading sensor readings">
+                        <controls:SkeletonBlock Width="148" Height="148" />
+                        <controls:SkeletonBlock Width="148" Height="148" />
+                        <controls:SkeletonBlock Width="148" Height="148" />
                     </StackPanel>
                 </Grid>
             </Border>

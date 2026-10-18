@@ -2,6 +2,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace AetherControl.App.Controls;
 
@@ -24,10 +25,14 @@ public sealed partial class SegmentedToggle : UserControl
 
     public event EventHandler<bool>? Toggled;
 
+    private readonly TranslateTransform _pillShift = new();
+
     public SegmentedToggle()
     {
         InitializeComponent();
+        Pill.RenderTransform = _pillShift;
         Loaded += (_, _) => UpdateVisualState();
+        SizeChanged += (_, _) => PlacePill(snap: true);
     }
 
     public bool IsOn
@@ -71,14 +76,50 @@ public sealed partial class SegmentedToggle : UserControl
         OffButton.Content = OffLabel;
         OnButton.Content = OnLabel;
 
-        var accent = (Brush)Application.Current.Resources["AetherAccentBrush"];
+        // Text only — the sliding pill behind carries the accent now, so both buttons stay
+        // transparent and the selection reads as one moving surface, not two swapping fills.
         var onAccentText = (Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"];
         var secondaryText = (Brush)Application.Current.Resources["AetherTextSecondaryBrush"];
         var transparent = new SolidColorBrush(Colors.Transparent);
 
-        OffButton.Background = IsOn ? transparent : accent;
+        OffButton.Background = transparent;
         OffButton.Foreground = IsOn ? secondaryText : onAccentText;
-        OnButton.Background = IsOn ? accent : transparent;
+        OnButton.Background = transparent;
         OnButton.Foreground = IsOn ? onAccentText : secondaryText;
+
+        PlacePill(snap: false);
+    }
+
+    /// <summary>Sizes the pill to the active button and glides it there. Snaps (no storyboard)
+    /// before first layout, on resize, or under reduced motion — same rule as every other
+    /// animation in the app: the value still changes, only the glide is skipped.</summary>
+    private void PlacePill(bool snap)
+    {
+        var active = IsOn ? OnButton : OffButton;
+        if (active.ActualWidth <= 0)
+        {
+            return; // before first layout — Loaded re-fires UpdateVisualState once sizes exist
+        }
+
+        Pill.Width = active.ActualWidth;
+        var target = active.TransformToVisual(TrackGrid).TransformPoint(new Windows.Foundation.Point(0, 0)).X;
+
+        if (snap || !Theming.Motion.AnimationsEnabled)
+        {
+            _pillShift.X = target;
+            return;
+        }
+
+        var anim = new DoubleAnimation
+        {
+            To = target,
+            Duration = Theming.Motion.ModeChange,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(anim, _pillShift);
+        Storyboard.SetTargetProperty(anim, "X");
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(anim);
+        storyboard.Begin();
     }
 }

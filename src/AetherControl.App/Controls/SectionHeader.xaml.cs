@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
 
 namespace AetherControl.App.Controls;
 
@@ -11,6 +12,9 @@ public sealed partial class SectionHeader : UserControl
 
     public static readonly DependencyProperty LogoProperty =
         DependencyProperty.Register(nameof(Logo), typeof(string), typeof(SectionHeader), new PropertyMetadata(string.Empty, OnLogoChanged));
+
+    public static readonly DependencyProperty ActionProperty =
+        DependencyProperty.Register(nameof(Action), typeof(object), typeof(SectionHeader), new PropertyMetadata(null, OnActionChanged));
 
     public SectionHeader()
     {
@@ -35,4 +39,16 @@ public sealed partial class SectionHeader : UserControl
 
     private static void OnLogoChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
         ((SectionHeader)d).LogoElement.SourceUri = (string)e.NewValue;
+
+    /// <summary>Optional right-aligned action content (a button, a StatusPill). Null (the default)
+    /// leaves the slot empty and the header renders exactly as before.</summary>
+    [ContentProperty(Name = nameof(Action))]
+    public object? Action
+    {
+        get => GetValue(ActionProperty);
+        set => SetValue(ActionProperty, value);
+    }
+
+    private static void OnActionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
+        ((SectionHeader)d).ActionHost.Content = e.NewValue;
 }

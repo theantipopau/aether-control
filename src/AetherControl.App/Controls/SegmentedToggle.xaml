@@ -5,11 +5,18 @@
 
     <Border Background="{StaticResource AetherSurfaceBrush}" BorderBrush="{StaticResource AetherBorderBrush}"
             BorderThickness="1" CornerRadius="18" Padding="3">
-        <StackPanel Orientation="Horizontal" Spacing="2">
-            <Button x:Name="OffButton" MinWidth="88" HorizontalContentAlignment="Center"
-                    CornerRadius="15" Padding="16,7" BorderThickness="0" Click="OnOffClicked" />
-            <Button x:Name="OnButton" MinWidth="88" HorizontalContentAlignment="Center"
-                    CornerRadius="15" Padding="16,7" BorderThickness="0" Click="OnOnClicked" />
-        </StackPanel>
+        <!-- Sliding selection pill: an accent Border behind the labels that glides to the active
+             side instead of hard-swapping backgrounds. Buttons themselves stay transparent so the
+             pill shows through; only the text colours swap. -->
+        <Grid x:Name="TrackGrid">
+            <Border x:Name="Pill" HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                    Background="{StaticResource AetherAccentBrush}" CornerRadius="15" Width="0" />
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <Button x:Name="OffButton" MinWidth="88" HorizontalContentAlignment="Center"
+                        CornerRadius="15" Padding="16,7" BorderThickness="0" Click="OnOffClicked" />
+                <Button x:Name="OnButton" MinWidth="88" HorizontalContentAlignment="Center"
+                        CornerRadius="15" Padding="16,7" BorderThickness="0" Click="OnOnClicked" />
+            </StackPanel>
+        </Grid>
     </Border>
 </UserControl>

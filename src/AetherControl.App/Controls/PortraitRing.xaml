@@ -4,7 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     SizeChanged="OnSizeChanged">
     <Grid>
-        <Ellipse x:Name="TrackEllipse" Stroke="{StaticResource PortraitCardBorderBrush}" />
+        <!-- Ghost track at 12%: the ring whispers its full circle so the fill reads as progress. -->
+        <Ellipse x:Name="TrackEllipse" Stroke="{StaticResource PortraitCardBorderBrush}" Opacity="0.12" />
         <Path x:Name="IndicatorPath" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
         <Ellipse x:Name="TipDot" HorizontalAlignment="Left" VerticalAlignment="Top" />
     </Grid>

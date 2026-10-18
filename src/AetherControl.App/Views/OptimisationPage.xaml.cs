@@ -61,6 +61,21 @@ public sealed partial class OptimisationPage : Page
     public static string FormatManualFans(IReadOnlyList<FanControlChannel> items) =>
         items.Count(c => c.IsSoftwareControlled).ToString();
 
+    /// <summary>Fan-section StatusPill content: "BIOS control" when every channel rides the board,
+    /// "Manual (n)" otherwise. The list is reassigned (never mutated) so the OneWay binding
+    /// re-evaluates on every change — same shape as the hero stat helpers above.</summary>
+    public static string FormatFanPillText(IReadOnlyList<FanControlChannel>? items)
+    {
+        var manual = items?.Count(c => c.IsSoftwareControlled) ?? 0;
+        return manual == 0 ? "BIOS control" : $"Manual ({manual})";
+    }
+
+    public static Controls.StatusPillState FormatFanPillState(IReadOnlyList<FanControlChannel>? items)
+    {
+        var manual = items?.Count(c => c.IsSoftwareControlled) ?? 0;
+        return manual == 0 ? Controls.StatusPillState.Ok : Controls.StatusPillState.Info;
+    }
+
     public static string FormatProfileCount(IReadOnlyList<GameProfile> items) => items.Count.ToString();
 
     public static string FormatGamingMode(bool enabled) => enabled ? "On" : "Off";
