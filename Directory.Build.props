@@ -9,5 +9,11 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <Deterministic>true</Deterministic>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Gate 1 (Phase 54): central package management — versions live in Directory.Packages.props,
+         TFMs stay per-project (App/Services need Windows-specific TFMs). Version stays in the App
+         csproj (single source for Settings → About / update checks / exe metadata), NOT centralised
+         here, so the prompt's suggested Version 0.9.0 was deliberately not applied (would downgrade
+         the shipped 0.9.5). -->
   </PropertyGroup>
 </Project>

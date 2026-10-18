@@ -1,0 +1,41 @@
+<Project>
+  <!-- Gate 1 (Phase 54): single version source for every PackageReference. All versions below are
+       exact stable versions verified on NuGet in Oct 2026 (never guessed). Test-framework packages
+       (xunit/coverlet) deliberately stay at their current pins — migrating xunit v2 → v3 is a
+       separate breaking change, out of scope for a platform gate. LHM stays 0.9.6 (stable; 0.9.7 is
+       prerelease and must not touch fan-write code). System.Management moves UP 10.0.2 → 10.0.13
+       (safe direction: LHM's nuspec minimum is 10.0.2; the silent-zero regression in git history
+       came from pinning BELOW it, never above). -->
+  <ItemGroup>
+    <!-- Platform -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <!-- Must clear the 2.5.1 floor (≥10.0.26100.4654); the old 10.0.26100.1742 pin did not. -->
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+
+    <!-- UI / hosting -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageVersion Include="H.NotifyIcon.WinUI" Version="2.4.1" />
+
+    <!-- Hardware -->
+    <PackageVersion Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <PackageVersion Include="System.Management" Version="10.0.13" />
+    <PackageVersion Include="HidSharp" Version="2.6.4" />
+    <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="10.0.13" />
+
+    <!-- Services shared -->
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
+
+    <!-- Data -->
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.13" />
+
+    <!-- Tests (pinned current — see header note) -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageVersion Include="xunit" Version="2.5.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.0" />
+  </ItemGroup>
+</Project>

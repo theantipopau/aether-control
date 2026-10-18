@@ -25,19 +25,20 @@ public sealed class SingleInstanceGuardTests
     }
 
     [Fact]
-    public void SameName_SecondHolderOnAnotherThread_IsNotFirst()
+    public async Task SameName_SecondHolderOnAnotherThread_IsNotFirst()
     {
         // NOTE: the second holder must be a different thread — a Mutex is reentrant, so the same
         // thread acquiring twice always succeeds. Cross-thread is the real second-process shape.
+        // Async + await (not GetAwaiter().GetResult()) — xUnit1031: blocking can deadlock a test host.
         var name = UniqueName();
         using var first = new SingleInstanceGuard(name);
         Assert.True(first.IsFirstInstance);
 
-        var secondIsFirst = Task.Run(() =>
+        var secondIsFirst = await Task.Run(() =>
         {
             using var second = new SingleInstanceGuard(name);
             return second.IsFirstInstance;
-        }).GetAwaiter().GetResult();
+        });
 
         Assert.False(secondIsFirst);
     }

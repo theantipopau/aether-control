@@ -25,10 +25,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up .NET 8
+      # Phase 54: follows global.json (.NET 10) instead of a hardcoded 8.0.x.
+      - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          global-json-file: global.json
 
       - name: Run test suite
         run: dotnet test tests/AetherControl.Tests -c Release --logger "console;verbosity=normal"
@@ -54,10 +55,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up .NET 8
+      - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          global-json-file: global.json
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
