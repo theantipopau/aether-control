@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Markup;
 namespace AetherControl.App.Controls;
 
 /// <summary>A section heading with a small diagonal accent mark, echoing the angled "speed line" motif on Armoury Crate's own section headers.</summary>
+[ContentProperty(Name = nameof(Action))]
 public sealed partial class SectionHeader : UserControl
 {
     public static readonly DependencyProperty LabelProperty =
@@ -42,7 +43,6 @@ public sealed partial class SectionHeader : UserControl
 
     /// <summary>Optional right-aligned action content (a button, a StatusPill). Null (the default)
     /// leaves the slot empty and the header renders exactly as before.</summary>
-    [ContentProperty(Name = nameof(Action))]
     public object? Action
     {
         get => GetValue(ActionProperty);

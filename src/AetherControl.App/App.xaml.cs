@@ -106,7 +106,9 @@ public partial class App : Application
     /// (temperature alerts → dashboard, test notification → settings). Fires on a background
     /// thread, hence the dispatch; best-effort, since foregrounding can be refused.
     /// </summary>
-    private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationInvokedEventArgs args)
+    // The event is called NotificationInvoked but its args type is AppNotificationActivatedEventArgs
+    // (verified in both the 1.5 and 2.x SDK winmd — AppNotificationInvokedEventArgs never existed).
+    private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)
     {
         var pageType = ParseToastPage(args.Argument);
         MainWindow?.DispatcherQueue.TryEnqueue(() =>

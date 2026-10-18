@@ -1,18 +1,18 @@
 # Aether Control — working notes for Claude
 
-WinUI 3 / .NET 8 hardware monitor + control app (LibreHardwareMonitorLib). Runs **elevated**.
+WinUI 3 / .NET 10 hardware monitor + control app (LibreHardwareMonitorLib). Runs **elevated**.
 Projects: `src/AetherControl.{App,Core,Data,Services,Plugins.*}`, tests in `tests/AetherControl.Tests`.
 Phase history and open items live in `ROADMAP.md` — add a phase entry for significant work.
 
 ## Build & test
-- `dotnet build` **cannot build the App project** on this machine (`Microsoft.Build.Packaging.Pri.Tasks.dll`
-  missing from all SDKs, MSB4062). Use Visual Studio's MSBuild, and always pass `Platform=x64` (AnyCPU fails):
-  ```bash
-  "/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" src/AetherControl.App/AetherControl.App.csproj -restore -p:Configuration=Debug -p:Platform=x64 -v:minimal
-  ```
+- The App project **cannot be built on this machine at all** (Phase 64). `dotnet build` lacks
+  the WinUI workload (`Microsoft.Build.Packaging.Pri.Tasks.dll`, XAML compiler LocalAssembly),
+  and local VS2022's MSBuild 17 can't even resolve the .NET 10 SDK (needs MSBuild 18+).
+  The only green path is CI's `app-build` job (windows-latest has MSBuild 18+), which also
+  uploads the unpackaged exe as `AetherControl-x64-Release`. Always pass `Platform=x64`
+  (AnyCPU fails). Until VS is updated to 2026 locally, download the CI artifact to run the app.
 - Tests: `dotnet test tests/AetherControl.Tests` works normally. Keep the suite green before committing.
-  CI runs the same command on push/PR (`.github/workflows/ci.yml`, windows-latest, Release); the App
-  project is deliberately excluded there for the same MSBuild reason as above.
+  CI runs the same command on push/PR (`.github/workflows/ci.yml`, windows-latest, Release).
 - Hardware mapping tests use hand-written fakes in `tests/AetherControl.Tests/Fakes/FakeHardware.cs` —
   add real sensor names/values from live captures as fixtures rather than inventing them.
 

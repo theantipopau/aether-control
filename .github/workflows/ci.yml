@@ -43,14 +43,14 @@ jobs:
           retention-days: 7
 
   app-build:
-    name: Build WinUI head (experiment)
+    name: Build WinUI head
     runs-on: windows-latest
-    # Experiment (Phase 52): the App project can't build under plain `dotnet build` anywhere —
-    # it needs Visual Studio's own MSBuild with the Windows application development workload.
-    # windows-latest ships full VS2022, which may have what the local SDKs lack. Runs as
-    # continue-on-error until it proves green; flip that off once it does so XAML/codebehind
-    # breaks fail CI like everything else.
-    continue-on-error: true
+    # The App project can't build under plain `dotnet build` anywhere — it needs Visual
+    # Studio's own MSBuild with the Windows application development workload (PRI tasks,
+    # XAML compiler LocalAssembly — see ROADMAP Phase 37). windows-latest now ships
+    # MSBuild 18+, which also resolves the .NET 10 SDK that local VS2022 (MSBuild 17)
+    # cannot. Went green in Phase 64, so head breaks fail CI like everything else — and
+    # the unpackaged Release output is uploaded so it can be downloaded and run for testing.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,3 +65,10 @@ jobs:
 
       - name: Build AetherControl.App (Release, x64)
         run: msbuild src/AetherControl.App/AetherControl.App.csproj -restore -p:Configuration=Release -p:Platform=x64 -v:minimal
+
+      - name: Upload unpackaged exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: AetherControl-x64-Release
+          path: src/AetherControl.App/bin/x64/Release/net10.0-windows10.0.19041.0/
+          retention-days: 14
