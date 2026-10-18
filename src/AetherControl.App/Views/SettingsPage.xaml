@@ -70,6 +70,9 @@
                              header) and defaults off — an always-on panel pays GPU cost per frame. -->
                         <ToggleSwitch Header="Ambient thermal glow" IsOn="{x:Bind ViewModel.MainGlowEnabled, Mode=TwoWay}" />
                         <ToggleSwitch Header="Ambient glow in Portrait Mode" IsOn="{x:Bind ViewModel.PortraitGlowEnabled, Mode=TwoWay}" />
+                        <!-- Portrait skins only re-tint page/card/border surfaces (never accent or
+                             severity) — applies instantly, including an open Portrait window. -->
+                        <ComboBox Header="Portrait Mode skin" ItemsSource="{x:Bind ViewModel.PortraitSkinOptions}" SelectedIndex="{x:Bind ViewModel.PortraitSkinIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
                         <TextBlock Text="Takes effect on restart."
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>

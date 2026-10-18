@@ -161,4 +161,6 @@ public sealed class AppSettings
     public bool CheckForUpdatesOnStartup { get; set; }
     /// <summary>First-run welcome dialog. Default false so existing installs see it once after upgrade.</summary>
     public bool HasSeenOnboarding { get; set; }
+    /// <summary>Portrait Mode skin id ("Default", "OledBlack", "Midnight"). Default keeps the current look.</summary>
+    public string PortraitSkin { get; set; } = "Default";
 }

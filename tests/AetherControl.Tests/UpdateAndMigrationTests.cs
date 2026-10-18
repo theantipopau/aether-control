@@ -35,9 +35,11 @@ public class UpdateAndMigrationTests : IDisposable
         var settings = await first.GetAsync();
         Assert.False(settings.CheckForUpdatesOnStartup); // default off — opt-in only
         Assert.False(settings.HasSeenOnboarding); // default unseen — existing installs get the dialog once
+        Assert.Equal("Default", settings.PortraitSkin); // default skin keeps the current look
 
         settings.CheckForUpdatesOnStartup = true;
         settings.HasSeenOnboarding = true;
+        settings.PortraitSkin = "OledBlack";
         await first.SaveAsync(settings);
 
         // A fresh factory is a second app launch: the ALTER TABLEs must not run again.
@@ -45,6 +47,7 @@ public class UpdateAndMigrationTests : IDisposable
         var reloaded = await second.GetAsync();
         Assert.True(reloaded.CheckForUpdatesOnStartup);
         Assert.True(reloaded.HasSeenOnboarding);
+        Assert.Equal("OledBlack", reloaded.PortraitSkin);
     }
 
     [Fact]
@@ -72,6 +75,7 @@ public class UpdateAndMigrationTests : IDisposable
         Assert.Equal(AetherControl.Core.Enums.AccentColor.Purple, settings.Accent); // existing data preserved
         Assert.False(settings.CheckForUpdatesOnStartup);
         Assert.False(settings.HasSeenOnboarding); // 003 backfills unseen on pre-tracking databases too
+        Assert.Equal("Default", settings.PortraitSkin); // 004 backfills the default skin likewise
     }
 
     public void Dispose()

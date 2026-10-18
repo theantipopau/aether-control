@@ -42,6 +42,7 @@ public sealed partial class MainWindow : Window
     public IRelayCommand OpenRgbCommand { get; }
     public IRelayCommand OpenFirmwareCommand { get; }
     public IRelayCommand OpenSettingsCommand { get; }
+    public IRelayCommand ResetFansCommand { get; }
     public IRelayCommand ExitCommand { get; }
 
     public MainWindow()
@@ -55,6 +56,10 @@ public sealed partial class MainWindow : Window
         OpenRgbCommand = new RelayCommand(() => { ShowAndActivate(); ContentFrame.Navigate(typeof(RgbPage)); });
         OpenFirmwareCommand = new RelayCommand(() => { ShowAndActivate(); ContentFrame.Navigate(typeof(FirmwarePage)); });
         OpenSettingsCommand = new RelayCommand(() => { ShowAndActivate(); ContentFrame.Navigate(typeof(SettingsPage)); });
+        // Tray-accessible safety valve: stops any curve or manual drive and hands every channel
+        // back to BIOS — via the controller's Stop (a raw service reset would be re-driven next tick).
+        ResetFansCommand = new RelayCommand(() =>
+            App.Services.GetRequiredService<AetherControl.Services.Optimisation.FanCurveController>().Stop());
         ExitCommand = new RelayCommand(() => { _exitRequested = true; Close(); });
 
         ExtendsContentIntoTitleBar = true;
@@ -250,7 +255,11 @@ public sealed partial class MainWindow : Window
             // that's already queued from touching the now-closed TrayIcon.
             if (!_isClosing)
             {
-                TrayIcon.ToolTipText = string.IsNullOrWhiteSpace(readout) ? "Aether Control" : readout;
+                var text = string.IsNullOrWhiteSpace(readout) ? "Aether Control" : readout;
+                TrayIcon.ToolTipText = text;
+                // The native popup rebuilds from this same MenuFlyout on every open, so updating the
+                // header item here keeps the menu's first row as live as the tooltip.
+                TrayLiveItem.Text = text;
                 UpdateHealthIndicator(e.Snapshot);
             }
         });

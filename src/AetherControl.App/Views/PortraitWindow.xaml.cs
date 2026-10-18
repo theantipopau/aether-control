@@ -48,6 +48,9 @@ public sealed partial class PortraitWindow : Window
     {
         InitializeComponent();
         Title = "Aether Control — Portrait Mode";
+        // Skins mutate the shared portrait brushes, so apply the saved one on every open — a skin
+        // picked in Settings while this window was closed must still be honoured here.
+        Theming.PortraitSkinApplier.Apply(App.Services.GetRequiredService<ISettingsService>().Current.PortraitSkin);
         ViewModel = new PortraitViewModel(
             App.Services.GetRequiredService<IHardwareMonitorService>(),
             App.Services.GetRequiredService<ProcessRankerService>(),

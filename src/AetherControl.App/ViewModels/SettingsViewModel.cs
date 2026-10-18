@@ -51,10 +51,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool temperatureAlertsEnabled;
     [ObservableProperty] private bool mainGlowEnabled;
     [ObservableProperty] private bool portraitGlowEnabled;
+    // Index into PortraitSkinApplier.Skins (ComboBox binds SelectedIndex — SelectedItem's object
+    // type won't TwoWay-bind under x:Bind, same reason as the fan-curve preset picker).
+    [ObservableProperty] private int portraitSkinIndex;
     [ObservableProperty] private double cpuTemperatureAlertThreshold;
     [ObservableProperty] private double gpuTemperatureAlertThreshold;
 
     public IReadOnlyList<AccentColor> AccentOptions { get; } = Enum.GetValues<AccentColor>();
+    public IReadOnlyList<string> PortraitSkinOptions { get; } =
+        Theming.PortraitSkinApplier.Skins.Select(s => s.Label).ToList();
     public IReadOnlyList<string> LogLevelOptions { get; } = ["Debug", "Information", "Warning", "Error"];
 
     // ── About & updates ──
@@ -80,6 +85,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         _auraSettingsStore = auraSettingsStore;
         MainGlowEnabled = auraSettingsStore.Current.MainGlowEnabled;
         PortraitGlowEnabled = auraSettingsStore.Current.PortraitGlowEnabled;
+        PortraitSkinIndex = Math.Max(0, Theming.PortraitSkinApplier.Skins
+            .Select((skin, index) => (skin, index))
+            .FirstOrDefault(pair => pair.skin.Id == Theming.PortraitSkinApplier.Normalise(current.PortraitSkin)).index);
         _autostartService = autostartService;
         var current = _settingsService.Current;
         Accent = current.Accent;
@@ -125,6 +133,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         updated.LoggingEnabled = LoggingEnabled;
         updated.LogLevel = LogLevel;
         updated.CheckForUpdatesOnStartup = CheckForUpdatesOnStartup;
+        updated.PortraitSkin = Theming.PortraitSkinApplier.Skins[Math.Clamp(PortraitSkinIndex, 0, Theming.PortraitSkinApplier.Skins.Count - 1)].Id;
 
         // Was previously just a bool saved to the database — nothing ever created or removed the
         // actual Task Scheduler entry, so the toggle had no real effect either way.
@@ -155,6 +164,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         // (buttons, switches, the nav selection pill) derive from SystemAccentColor through
         // ThemeResource chains that don't reliably re-resolve without a restart.
         AccentPalette.Apply(updated.Accent);
+        // Skins mutate shared brushes, so this lands instantly — including an open Portrait window.
+        Theming.PortraitSkinApplier.Apply(updated.PortraitSkin);
         StatusMessage = "Settings saved. Restart Aether Control for the new accent colour to fully apply everywhere.";
     }
 

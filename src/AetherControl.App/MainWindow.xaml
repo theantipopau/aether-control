@@ -26,11 +26,17 @@
                     never fired; every item must bind Command instead.
                 -->
                 <MenuFlyout>
+                    <!-- Live readout header: same preference-driven string as the tooltip, refreshed
+                         every poll in OnSnapshotUpdatedForTray. Disabled, so it never looks tappable. -->
+                    <MenuFlyoutItem x:Name="TrayLiveItem" Text="Aether Control" IsEnabled="False" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Open Dashboard" Command="{x:Bind OpenDashboardCommand}" />
                     <MenuFlyoutItem Text="Open Portrait Mode" Command="{x:Bind OpenPortraitModeCommand}" />
                     <MenuFlyoutItem Text="Run Optimisation" Command="{x:Bind RunOptimisationCommand}" />
                     <MenuFlyoutItem Text="RGB Control" Command="{x:Bind OpenRgbCommand}" />
                     <MenuFlyoutItem Text="Driver Check" Command="{x:Bind OpenFirmwareCommand}" />
+                    <MenuFlyoutItem Text="Reset fans to BIOS control" Command="{x:Bind ResetFansCommand}"
+                                        ToolTipService.ToolTip="Stops any curve or manual control on every channel" />
                     <MenuFlyoutItem Text="Settings" Command="{x:Bind OpenSettingsCommand}" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Exit" Command="{x:Bind ExitCommand}" />
