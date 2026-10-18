@@ -42,6 +42,14 @@ public sealed class FlowPanel : Panel
     private int _plannedItemCount;
     private double[] _rowHeights = [];
 
+    /// <summary>Indices that threw during measure (Phase 65: OptimisationPage's first layout threw
+    /// "Element is already the child of another element" out of a child's own Measure, with the
+    /// native boundary hiding which element). Skipped in both passes so one poisoned child can't
+    /// take the page down, and each skip is logged with the child's identity so the real culprit
+    /// is named in unhandled-exceptions.log instead of guessed at. Cleared whenever the child
+    /// set changes, so a transient failure doesn't stick.</summary>
+    private readonly HashSet<int> _brokenChildren = [];
+
     protected override Size MeasureOverride(Size availableSize)
     {
         var width = double.IsInfinity(availableSize.Width)
@@ -72,6 +80,11 @@ public sealed class FlowPanel : Panel
             for (var i = 0; i < _plan.ItemsPerRow && index < Children.Count; i++, index++)
             {
                 var child = Children[index];
+                if (_brokenChildren.Contains(index))
+                {
+                    continue;
+                }
+
                 child.Arrange(new Rect(x, y, _plan.CellWidth, child.DesiredSize.Height));
                 x += _plan.CellWidth + Spacing;
             }
@@ -84,6 +97,11 @@ public sealed class FlowPanel : Panel
 
     private void Plan(double width)
     {
+        if (Children.Count != _plannedItemCount)
+        {
+            _brokenChildren.Clear();
+        }
+
         _plan = FlowLayout.Plan(width, Children.Count, MinItemWidth, Spacing);
         _plannedWidth = width;
         _plannedItemCount = Children.Count;
@@ -100,7 +118,23 @@ public sealed class FlowPanel : Panel
             for (var i = 0; i < _plan.ItemsPerRow && index < Children.Count; i++, index++)
             {
                 var child = Children[index];
-                child.Measure(new Size(_plan.CellWidth, double.PositiveInfinity));
+                if (_brokenChildren.Contains(index))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    child.Measure(new Size(_plan.CellWidth, double.PositiveInfinity));
+                }
+                catch (Exception ex)
+                {
+                    _brokenChildren.Add(index);
+                    Services.UnhandledExceptionLog.Write(ex,
+                        $"FlowPanel skipped child #{index} ({DescribeChild(child)}) — it threw during Measure.");
+                    continue;
+                }
+
                 rowHeight = Math.Max(rowHeight, child.DesiredSize.Height);
             }
 
@@ -108,6 +142,13 @@ public sealed class FlowPanel : Panel
         }
 
         _rowHeights = heights;
+    }
+
+    private static string DescribeChild(UIElement child)
+    {
+        var name = (child as FrameworkElement)?.Name;
+        var context = (child as FrameworkElement)?.DataContext?.GetType().Name;
+        return $"type={child.GetType().Name} name='{name}' datacontext={context}";
     }
 
     private double TotalHeight()
