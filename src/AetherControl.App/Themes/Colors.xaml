@@ -49,8 +49,12 @@
     <Color x:Key="StatusInfoColor">#5AA9FF</Color>
     <Color x:Key="StatusCoolColor">#4FC3F7</Color>
     <Color x:Key="StatusWarmColor">#F5C86B</Color>
+    <!-- Hand-tuned gauge-gradient light ends (not a uniform lighten ratio — kept byte-identical
+         to the pairs RadialGauge previously hardcoded; the token file is the only place colours live). -->
+    <Color x:Key="StatusWarmLightColor">#FAD482</Color>
     <Color x:Key="StatusWarningColor">#F5C86B</Color>
     <Color x:Key="StatusHotColor">#FF6D6D</Color>
+    <Color x:Key="StatusHotLightColor">#FF9999</Color>
     <Color x:Key="StatusCriticalColor">#FF4D5E</Color>
     <Color x:Key="StatusErrorColor">#FF4D5E</Color>
     <Color x:Key="StatusUnsupportedColor">#6E777E</Color>
@@ -90,8 +94,10 @@
     <SolidColorBrush x:Key="StatusInfoBrush" Color="{StaticResource StatusInfoColor}" />
     <SolidColorBrush x:Key="StatusCoolBrush" Color="{StaticResource StatusCoolColor}" />
     <SolidColorBrush x:Key="StatusWarmBrush" Color="{StaticResource StatusWarmColor}" />
+    <SolidColorBrush x:Key="StatusWarmLightBrush" Color="{StaticResource StatusWarmLightColor}" />
     <SolidColorBrush x:Key="StatusWarningBrush" Color="{StaticResource StatusWarningColor}" />
     <SolidColorBrush x:Key="StatusHotBrush" Color="{StaticResource StatusHotColor}" />
+    <SolidColorBrush x:Key="StatusHotLightBrush" Color="{StaticResource StatusHotLightColor}" />
     <SolidColorBrush x:Key="StatusCriticalBrush" Color="{StaticResource StatusCriticalColor}" />
     <SolidColorBrush x:Key="StatusErrorBrush" Color="{StaticResource StatusErrorColor}" />
     <SolidColorBrush x:Key="StatusUnsupportedBrush" Color="{StaticResource StatusUnsupportedColor}" />

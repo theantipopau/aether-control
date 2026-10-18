@@ -259,13 +259,8 @@ public sealed partial class MetricCard : UserControl
 
     private void ApplyTone(MetricTone tone)
     {
-        var brush = tone switch
-        {
-            MetricTone.Warm => (Brush)Application.Current.Resources["StatusWarmBrush"],
-            MetricTone.Hot => (Brush)Application.Current.Resources["StatusHotBrush"],
-            MetricTone.Cool => (Brush)Application.Current.Resources["AetherAccentBrush"],
-            _ => (Brush)Application.Current.Resources["BorderStandardBrush"]
-        };
+        // Single mapping in ToneBrushes — this card's switch was the second copy of it.
+        var brush = ToneBrushes.BrushFor(tone);
 
         AccentStripe.Background = brush;
         MeterFillBar.Background = brush;

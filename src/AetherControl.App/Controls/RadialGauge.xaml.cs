@@ -155,14 +155,9 @@ public sealed partial class RadialGauge : UserControl
         // is chosen (same rule as the Status* tokens in Colors.xaml).
         _arcAccent = tone is MetricTone.Warm or MetricTone.Hot ? null : CurrentAccent();
 
-        var (start, end) = tone switch
-        {
-            MetricTone.Warm => (Color.FromArgb(255, 0xF5, 0xC8, 0x6B), Color.FromArgb(255, 0xFA, 0xD4, 0x82)),
-            MetricTone.Hot => (Color.FromArgb(255, 0xFF, 0x6D, 0x6D), Color.FromArgb(255, 0xFF, 0x99, 0x99)),
-            // Light2 is AccentPalette's own 50%-lightened step of the same accent — same sheen
-            // direction as before, now derived instead of hardcoded.
-            _ => (_arcAccent!.Value, (Color)Application.Current.Resources["SystemAccentColorLight2"])
-        };
+        // Colours come from the single ToneBrushes mapping (tokens in Colors.xaml) — the pairs are
+        // byte-identical to the previously hardcoded ones; only their home changed.
+        var (start, end) = ToneBrushes.GradientEndsFor(tone);
 
         var brush = new LinearGradientBrush
         {
