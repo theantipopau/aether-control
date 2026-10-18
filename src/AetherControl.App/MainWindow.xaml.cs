@@ -80,6 +80,11 @@ public sealed partial class MainWindow : Window
         _ = InitializeTrayPreferencesAsync();
         _ = CheckForUpdatesAtStartupAsync();
         _ = ShowOnboardingIfFirstRunAsync();
+
+        // Ctrl+K anywhere in the window opens the quick-jump palette. RootGrid sees every
+        // bubble-up keystroke (focus is virtually always somewhere inside the window), so no
+        // per-page hookup is needed — and pages stay ignorant of the palette.
+        RootGrid.KeyDown += OnRootGridKeyDown;
         App.Services.GetRequiredService<IHardwareMonitorService>().SnapshotUpdated += OnSnapshotUpdatedForTray;
 
         // Adaptive poll cadence: focus on either Aether window keeps the monitor at its full rate;
@@ -100,6 +105,83 @@ public sealed partial class MainWindow : Window
     /// Skipped on minimised-to-tray launches (no visible window to parent the dialog) — the flag
     /// stays unset so the next visible launch shows it. Best-effort: a welcome dialog must never
     /// break launch.</summary>
+    private bool _paletteOpen;
+
+    private void OnRootGridKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key != Windows.System.VirtualKey.K)
+        {
+            return;
+        }
+
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+        if (!ctrl.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down) || _paletteOpen)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        _ = ShowCommandPaletteAsync();
+    }
+
+    /// <summary>Ctrl+K catalog: every page by its area name plus the window-level actions that
+    /// otherwise hide behind the tray menu. Navigation reuses <see cref="ShowAndNavigateTo"/> so
+    /// the nav highlight stays honest; fan reset goes through the curve controller's Stop (which
+    /// hands channels back to BIOS itself) rather than the raw service, so a running curve can't
+    /// re-drive the channels on the next tick.</summary>
+    private async Task ShowCommandPaletteAsync()
+    {
+        _paletteOpen = true;
+        try
+        {
+            var settings = App.Services.GetRequiredService<ISettingsService>();
+            var fanCurves = App.Services.GetRequiredService<AetherControl.Services.Optimisation.FanCurveController>();
+            var root = (Content as FrameworkElement)?.XamlRoot;
+            if (root is null)
+            {
+                return;
+            }
+
+            var actions = new List<Controls.CommandPaletteDialog.ActionEntry>
+            {
+                new(new("overview", "Go to Overview", "Live system health", "dashboard home temps"),
+                    () => ShowAndNavigateTo(typeof(DashboardPage))),
+                new(new("performance", "Go to Performance", "Optimisation and fan control", "cooling fans curve tuneup"),
+                    () => ShowAndNavigateTo(typeof(OptimisationPage))),
+                new(new("lighting", "Go to Lighting", "RGB devices and scenes", "rgb colour color"),
+                    () => ShowAndNavigateTo(typeof(RgbPage))),
+                new(new("devices", "Go to Peripherals & Utilities", "Vendor utilities and peripherals", "devices razer logitech"),
+                    () => ShowAndNavigateTo(typeof(DeviceUtilitiesPage))),
+                new(new("firmware", "Go to Firmware & Drivers", "Driver and chipset status", "drivers bios chipset"),
+                    () => ShowAndNavigateTo(typeof(FirmwarePage))),
+                new(new("history", "Go to History", "Recorded telemetry", "graphs charts past"),
+                    () => ShowAndNavigateTo(typeof(HistoryPage))),
+                new(new("diagnostics", "Go to Diagnostics", "Capability report and support bundle", "debug report logs"),
+                    () => ShowAndNavigateTo(typeof(DiagnosticsPage))),
+                new(new("settings", "Go to Settings", "Preferences, alerts, updates", "config options"),
+                    () => ShowAndNavigateTo(typeof(SettingsPage))),
+                new(new("portrait", "Open Portrait Mode", "Second-screen stats window", "display monitor screen"),
+                    OpenPortraitWindow),
+                new(new("optimise", "Run optimisation now", "Runs the first available task", "tuneup clean memory"),
+                    () => { if (RunOptimisationCommand.CanExecute(null)) RunOptimisationCommand.Execute(null); }),
+                new(new("fans", "Reset all fans to BIOS control", "Stops curves and manual control", "cooling fan curve stop"),
+                    fanCurves.Stop),
+                new(new("welcome", "Show welcome guide", "First-run introduction", "help onboarding about"),
+                    () => { if (root is not null) _ = Controls.OnboardingDialog.ShowAsync(root, settings); }),
+            };
+
+            await Controls.CommandPaletteDialog.ShowAsync(root, actions);
+        }
+        catch
+        {
+            // Best-effort; a palette that fails to open must never break the window.
+        }
+        finally
+        {
+            _paletteOpen = false;
+        }
+    }
+
     private async Task ShowOnboardingIfFirstRunAsync()
     {
         try

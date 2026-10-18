@@ -18,7 +18,7 @@ public static class OnboardingDialog
         body.Children.Add(Section("Elevated on purpose",
             "Most motherboard, fan and per-process readings need administrator rights — that's why every launch asks for elevation, and why some sensors stay empty without it."));
         body.Children.Add(Section("Areas, not utilities",
-            "Overview is live health, Performance holds optimisation and fan control, Lighting drives RGB, Devices covers firmware and drivers, Diagnostics explains what the sensors are doing."));
+            "Overview is live health, Performance holds optimisation and fan control, Lighting drives RGB, Devices covers firmware and drivers, Diagnostics explains what the sensors are doing. Press Ctrl+K anywhere to jump straight to any of them."));
         body.Children.Add(Section("Fans are safe by default",
             "Software control never drops below 20%, and every channel hands back to BIOS control when the app closes. Automatic curves are opt-in under Performance → Fan Control."));
         body.Children.Add(Section("Second screen? Open Portrait Mode",
