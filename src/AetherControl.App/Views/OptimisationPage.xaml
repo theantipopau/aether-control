@@ -23,7 +23,7 @@
     </Page.Resources>
 
     <ScrollViewer x:Name="RootContent" Padding="{StaticResource PagePadding}">
-        <StackPanel Spacing="20">
+        <StackPanel x:Name="SectionsStack" Spacing="20">
 
             <controls:PageHero Glyph="&#xE945;" Eyebrow="Performance"
                                Title="Optimisation Centre"

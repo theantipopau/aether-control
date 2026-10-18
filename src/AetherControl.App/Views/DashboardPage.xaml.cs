@@ -11,9 +11,25 @@ public sealed partial class DashboardPage : Page
 {
     public DashboardViewModel ViewModel { get; }
 
+    // The Frame builds a fresh page on every navigation, so an instance flag can't mean "first
+    // navigation ever" — the static gate can. Stagger runs once per app session; reflow attaches
+    // on every load (idempotent) since each instance owns new visuals.
+    private static bool s_hasStaggered;
+
     public DashboardPage()
     {
         InitializeComponent();
+        Loaded += (_, _) =>
+        {
+            Theming.Motion.EnableImplicitReflow(HeroPanel);
+            Theming.Motion.EnableImplicitReflow(LeftColumnPanel);
+            Theming.Motion.EnableImplicitReflow(RightColumnPanel);
+            if (!s_hasStaggered)
+            {
+                s_hasStaggered = true;
+                Theming.Motion.StaggerIn([HeroPanel, LeftColumnPanel, RightColumnPanel]);
+            }
+        };
         ViewModel = new DashboardViewModel(
             App.Services.GetRequiredService<IHardwareMonitorService>(),
             App.Services.GetRequiredService<ProcessRankerService>(),

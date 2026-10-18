@@ -14,9 +14,27 @@ public sealed partial class OptimisationPage : Page
 {
     public OptimisationViewModel ViewModel { get; }
 
+    // Same shape as DashboardPage: fresh instance per navigation, so the first-run gate is static.
+    private static bool s_hasStaggered;
+
     public OptimisationPage()
     {
         InitializeComponent();
+        Loaded += (_, _) =>
+        {
+            Theming.Motion.EnableImplicitReflow(SectionsStack);
+            if (!s_hasStaggered)
+            {
+                s_hasStaggered = true;
+                var cards = new List<UIElement>(SectionsStack.Children.Count);
+                foreach (var child in SectionsStack.Children)
+                {
+                    cards.Add(child);
+                }
+
+                Theming.Motion.StaggerIn(cards);
+            }
+        };
         ViewModel = new OptimisationViewModel(
             App.Services.GetRequiredService<IOptimisationService>(),
             App.Services.GetRequiredService<IFanControlService>(),
