@@ -6,9 +6,9 @@ Source of truth for progress on this build. Updated as work lands.
 
 ## Phase 64 — App-head build repair (2026-10-18)
 Matt asked for final tests plus a fresh build to try. Suite was green, but the App head had
-not compiled anywhere since before Phase 50 — three genuine code/config breaks, all in code
-added after the last successful local build (Oct 5, net8.0), all failing identically on CI's
-MSBuild 18 runner and (for the C# ones) any toolchain:
+not compiled anywhere since before Phase 50 — six genuine code/config breaks, all in code
+added after the last successful local build (Oct 5, net8.0), each found by pushing and
+reading CI's MSBuild 18 log (three pushes: `070b86d`, `4c42653`/`0908fd6`, `a828dac`):
 - [x] **`AllowUnsafeBlocks`** in the App csproj: `SingleInstanceFocus`'s `[LibraryImport]`
       P/Invokes make the interop generator emit unsafe code (SYSLIB1062/CS0227) — the
       documented fix, not a suppression.
@@ -18,15 +18,24 @@ MSBuild 18 runner and (for the C# ones) any toolchain:
       fix in `App.OnNotificationInvoked`.
 - [x] **`[ContentProperty]` moved to the class** on `SectionHeader` (CS0592: only valid on
       class declarations) — same behaviour, legal placement.
+- [x] **Phase 63's `PortraitSkinIndex` read `current` before its declaration** (CS0841) —
+      snapshot now declared first, duplicate removed.
+- [x] **x:Bind function bindings must return the target type** (WMC1121): DashboardPage's
+      `IsLive`/`IsWaiting` returned bool into `Visibility` (converter doesn't count) — they
+      return Visibility now. Swept every other `x:Bind local:` function; all clean.
+- [x] **`[RelayCommand]` method named `*Command`:** `StopFanCurveCommand()` generated
+      `StopFanCurveCommandCommand`, so XAML bound the method itself — renamed to
+      `StopActiveFanCurve`. Swept for siblings; none.
 - [x] **CI `app-build` graduates:** `continue-on-error` removed now the head builds, and the
       unpackaged Release folder uploads as `AetherControl-x64-Release` (14 days) so there is
 always a downloadable exe to run — neither this machine's VS2022/MSBuild 17 (can't resolve
       the .NET 10 SDK, needs MSBuild 18+) nor plain `dotnet msbuild` (no PRI/XAML workload)
       can produce one locally. See `CLAUDE.md` build notes.
 
-Verified: `dotnet test -c Release` green; head proven by CI `app-build` on the push.
-**Needs Matt:** download the `AetherControl-x64-Release` artifact from the latest CI run,
-unzip, run elevated, exercise Gates 0–6 end to end.
+Verified: `dotnet test -c Release` **248/248** locally; CI fully green on `a828dac`
+(head + tests) with the ~120 MB `AetherControl-x64-Release` artifact attached.
+**Needs Matt:** download the artifact from that run, unzip, run elevated, exercise Gates 0–6
+end to end (tray header liveness, fan reset, skins on the portrait panel, Ctrl+K, onboarding).
 
 ## Phase 63 — Portrait skins (2026-10-18)
 Second Gate 6 item: Portrait Mode had one look. Three background treatments now — Charcoal
