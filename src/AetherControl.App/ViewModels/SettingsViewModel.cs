@@ -80,7 +80,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _updateCheckService = updateCheckService;
         _alertLog = alertLog;
         _settingsService = settingsService;
-        CheckForUpdatesOnStartup = settingsService.Current.CheckForUpdatesOnStartup;
+        var current = _settingsService.Current;
+        CheckForUpdatesOnStartup = current.CheckForUpdatesOnStartup;
         _alertSettingsStore = alertSettingsStore;
         _auraSettingsStore = auraSettingsStore;
         MainGlowEnabled = auraSettingsStore.Current.MainGlowEnabled;
@@ -89,7 +90,6 @@ public sealed partial class SettingsViewModel : ObservableObject
             .Select((skin, index) => (skin, index))
             .FirstOrDefault(pair => pair.skin.Id == Theming.PortraitSkinApplier.Normalise(current.PortraitSkin)).index);
         _autostartService = autostartService;
-        var current = _settingsService.Current;
         Accent = current.Accent;
         DashboardRefreshMs = current.DashboardRefreshMs;
         // Reflects the real Task Scheduler state, not just whatever was last saved to the database —
