@@ -63,6 +63,13 @@
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="16">
                         <ComboBox Header="Accent colour" ItemsSource="{x:Bind ViewModel.AccentOptions}" SelectedItem="{x:Bind ViewModel.Accent, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                        <!-- Thermal Aura: a slow ambient glow behind the content that tints with
+                             system temperature. Portrait's toggle lives here (not in its crowded
+                             header) and defaults off — an always-on panel pays GPU cost per frame. -->
+                        <ToggleSwitch Header="Ambient thermal glow" IsOn="{x:Bind ViewModel.MainGlowEnabled, Mode=TwoWay}" />
+                        <ToggleSwitch Header="Ambient glow in Portrait Mode" IsOn="{x:Bind ViewModel.PortraitGlowEnabled, Mode=TwoWay}" />
+                        <TextBlock Text="Takes effect on restart."
+                                   Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
                 </Border>
             </StackPanel>

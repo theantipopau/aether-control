@@ -17,6 +17,7 @@ public sealed partial class SettingsPage : Page
         ViewModel = new SettingsViewModel(
             App.Services.GetRequiredService<ISettingsService>(),
             App.Services.GetRequiredService<AlertSettingsStore>(),
+            App.Services.GetRequiredService<ThermalAuraSettingsStore>(),
             App.Services.GetRequiredService<AutostartService>(),
             App.Services.GetRequiredService<AetherControl.Core.Updates.IUpdateCheckService>(),
             App.Services.GetRequiredService<AetherControl.Core.Alerts.AlertLog>());

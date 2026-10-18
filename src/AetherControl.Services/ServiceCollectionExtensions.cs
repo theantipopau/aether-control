@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
             client => client.Timeout = TimeSpan.FromSeconds(10));
         services.AddSingleton<FanLabelStore>();
         services.AddSingleton<AlertSettingsStore>();
+        services.AddSingleton<ThermalAuraSettingsStore>();
         // Session alert history (Core AlertLog): written by TemperatureAlertService's background
         // trips, read once per dashboard poll to surface the latest alert in the Overview hero.
         services.AddSingleton<AetherControl.Core.Alerts.AlertLog>();

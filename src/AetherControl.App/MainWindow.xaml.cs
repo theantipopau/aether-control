@@ -32,6 +32,8 @@ public sealed partial class MainWindow : Window
     private bool _isClosing;
     private PortraitWindow? _portraitWindow;
     private IReadOnlyList<TrayMetricPreference> _trayPreferences = DefaultTrayPreferences;
+    private Controls.ThermalAura? _aura;
+    private readonly Controls.ThermalToneTracker _auraTone = new();
 
     public IRelayCommand ShowWindowCommand { get; }
     public IRelayCommand OpenDashboardCommand { get; }
@@ -58,6 +60,7 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         ConfigureTitleBarButtons();
+        CreateThermalAura();
 
         // BaseAlt is Mica's darker-tinted variant — reads correctly against the charcoal palette
         // instead of the lighter default Mica tuned for light-theme apps.
@@ -82,8 +85,14 @@ public sealed partial class MainWindow : Window
         // both windows unfocused (minimised, closed to tray, or simply alt-tabbed away) plus a
         // quiet machine lets it ease back — see HardwareMonitorService.ComputeEffectiveInterval.
         var uiActivity = App.Services.GetRequiredService<UiActivityTracker>();
-        Activated += (_, e) => uiActivity.SetWindowActive(
-            UiActivityTracker.MainWindowKey, e.WindowActivationState != WindowActivationState.Deactivated);
+        Activated += (_, e) =>
+        {
+            var active = e.WindowActivationState != WindowActivationState.Deactivated;
+            uiActivity.SetWindowActive(UiActivityTracker.MainWindowKey, active);
+            // A drift nobody can see (minimised, hidden to tray, alt-tabbed away) shouldn't spend
+            // GPU cycles — tone updates still land while paused via UpdateHealthIndicator.
+            _aura?.SetDriftPaused(!active);
+        };
     }
 
     private async Task InitializeTrayPreferencesAsync()
@@ -137,6 +146,29 @@ public sealed partial class MainWindow : Window
                 UpdateHealthIndicator(e.Snapshot);
             }
         });
+    }
+
+    /// <summary>Thermal Aura backdrop, bottom layer above the Mica. Created only when the setting
+    /// is on — off means the control never exists, not a hidden visual. Best-effort: a backdrop
+    /// must never take down startup, so anything here fails silent. Takes effect on restart (the
+    /// setting is read once, same precedent as the stock-control accent path).</summary>
+    private void CreateThermalAura()
+    {
+        try
+        {
+            if (!App.Services.GetRequiredService<AetherControl.Services.Hardware.ThermalAuraSettingsStore>().Current.MainGlowEnabled)
+            {
+                return;
+            }
+
+            _aura = new Controls.ThermalAura();
+            Grid.SetRowSpan(_aura, 2);
+            RootGrid.Children.Insert(0, _aura);
+        }
+        catch
+        {
+            _aura = null;
+        }
     }
 
     private void ConfigureTitleBarButtons()
@@ -284,8 +316,24 @@ public sealed partial class MainWindow : Window
         HealthGlyph.Glyph = glyph;
         HealthGlyph.Foreground = brush;
         HealthDetailText.Text = $"CPU {cpu:F0}°C · GPU {gpu:F0}°C";
+        UpdateAuraTone(Math.Max(cpu, gpu));
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(HealthIndicator, $"System health {status}: CPU {cpu:F0} degrees, GPU {gpu:F0} degrees");
         HealthIndicator.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Retints the aura only on hysteresis-tracked tone changes (see ThermalToneTracker),
+    /// never per poll. Colours: accent while cool, amber when warm, rose when hot.</summary>
+    private void UpdateAuraTone(double worstTemp)
+    {
+        if (_aura is null)
+        {
+            return;
+        }
+
+        if (_auraTone.Update(worstTemp) is { } tone)
+        {
+            _aura.SetTone(Controls.ThermalToneTracker.GlowColorFor(tone));
+        }
     }
 
     internal void OpenPortraitWindow()

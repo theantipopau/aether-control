@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:tb="using:H.NotifyIcon">
 
-    <Grid Background="{StaticResource AetherBackgroundTranslucentBrush}">
+    <Grid x:Name="RootGrid" Background="{StaticResource AetherBackgroundTranslucentBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="40" />
             <RowDefinition Height="*" />

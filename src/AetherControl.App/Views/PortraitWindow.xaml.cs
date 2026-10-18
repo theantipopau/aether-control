@@ -41,6 +41,8 @@ public sealed partial class PortraitWindow : Window
     private bool _isFilled;
     private PointInt32 _preFillPosition;
     private SizeInt32 _preFillSize;
+    private Controls.ThermalAura? _aura;
+    private readonly Controls.ThermalToneTracker _auraTone = new();
 
     public PortraitWindow()
     {
@@ -100,10 +102,14 @@ public sealed partial class PortraitWindow : Window
         var uiActivity = App.Services.GetRequiredService<UiActivityTracker>();
         Activated += (_, e) =>
         {
-            uiActivity.SetWindowActive(
-                UiActivityTracker.PortraitWindowKey, e.WindowActivationState != WindowActivationState.Deactivated);
+            var active = e.WindowActivationState != WindowActivationState.Deactivated;
+            uiActivity.SetWindowActive(UiActivityTracker.PortraitWindowKey, active);
+            _aura?.SetDriftPaused(!active);
             EnsureFilledWindowVisible();
         };
+
+        CreateThermalAura();
+        App.Services.GetRequiredService<IHardwareMonitorService>().SnapshotUpdated += OnSnapshotForAura;
 
         AppWindow.Changed += OnAppWindowChanged;
         Closed += OnClosed;
@@ -217,6 +223,40 @@ public sealed partial class PortraitWindow : Window
 
     /// <summary>Called by MainWindow during a real app exit — unlike a normal close (which this
     /// window intercepts to just hide), shutdown needs the window to actually go away.</summary>
+    /// <summary>Same Thermal Aura as the main window, behind the portrait content — but default
+    /// OFF (an always-on panel pays the drift's GPU cost continuously). Best-effort like MainWindow's.
+    /// </summary>
+    private void CreateThermalAura()
+    {
+        try
+        {
+            if (!App.Services.GetRequiredService<ThermalAuraSettingsStore>().Current.PortraitGlowEnabled)
+            {
+                return;
+            }
+
+            _aura = new Controls.ThermalAura();
+            RootGrid.Children.Insert(0, _aura);
+        }
+        catch
+        {
+            _aura = null;
+        }
+    }
+
+    private void OnSnapshotForAura(object? sender, AetherControl.Core.Events.SensorsUpdatedEventArgs e)
+    {
+        // Same background-thread ride as MainWindow's tray callback — marshal to the UI thread.
+        var worst = Math.Max(e.Snapshot.Cpu.TemperatureCelsius, e.Snapshot.Gpu.TemperatureCelsius);
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_aura is not null && _auraTone.Update(worst) is { } tone)
+            {
+                _aura.SetTone(Controls.ThermalToneTracker.GlowColorFor(tone));
+            }
+        });
+    }
+
     public void ForceClose()
     {
         _forceClose = true;
@@ -227,6 +267,7 @@ public sealed partial class PortraitWindow : Window
     {
         if (_forceClose)
         {
+            App.Services.GetRequiredService<IHardwareMonitorService>().SnapshotUpdated -= OnSnapshotForAura;
             ViewModel.Dispose();
             return;
         }

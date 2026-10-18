@@ -29,6 +29,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private readonly ISettingsService _settingsService;
     private readonly AlertSettingsStore _alertSettingsStore;
+    private readonly ThermalAuraSettingsStore _auraSettingsStore;
     private readonly AutostartService _autostartService;
     private readonly AetherControl.Core.Alerts.AlertLog _alertLog;
 
@@ -48,6 +49,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string statusMessage = string.Empty;
     [ObservableProperty] private IReadOnlyList<TrayMetricOption> trayMetricOptions = [];
     [ObservableProperty] private bool temperatureAlertsEnabled;
+    [ObservableProperty] private bool mainGlowEnabled;
+    [ObservableProperty] private bool portraitGlowEnabled;
     [ObservableProperty] private double cpuTemperatureAlertThreshold;
     [ObservableProperty] private double gpuTemperatureAlertThreshold;
 
@@ -66,7 +69,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string AppVersionText { get; } = FormatVersion(GitHubUpdateCheckService.CurrentVersion);
     public string RuntimeText { get; } = $".NET {Environment.Version} · {System.Runtime.InteropServices.RuntimeInformation.OSDescription}";
 
-    public SettingsViewModel(ISettingsService settingsService, AlertSettingsStore alertSettingsStore, AutostartService autostartService,
+    public SettingsViewModel(ISettingsService settingsService, AlertSettingsStore alertSettingsStore, ThermalAuraSettingsStore auraSettingsStore, AutostartService autostartService,
         IUpdateCheckService updateCheckService, AetherControl.Core.Alerts.AlertLog alertLog)
     {
         _updateCheckService = updateCheckService;
@@ -74,6 +77,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settingsService = settingsService;
         CheckForUpdatesOnStartup = settingsService.Current.CheckForUpdatesOnStartup;
         _alertSettingsStore = alertSettingsStore;
+        _auraSettingsStore = auraSettingsStore;
+        MainGlowEnabled = auraSettingsStore.Current.MainGlowEnabled;
+        PortraitGlowEnabled = auraSettingsStore.Current.PortraitGlowEnabled;
         _autostartService = autostartService;
         var current = _settingsService.Current;
         Accent = current.Accent;
@@ -137,6 +143,11 @@ public sealed partial class SettingsViewModel : ObservableObject
             Enabled = TemperatureAlertsEnabled,
             CpuTemperatureThreshold = CpuTemperatureAlertThreshold,
             GpuTemperatureThreshold = GpuTemperatureAlertThreshold
+        });
+        _auraSettingsStore.Save(new ThermalAuraSettings
+        {
+            MainGlowEnabled = MainGlowEnabled,
+            PortraitGlowEnabled = PortraitGlowEnabled
         });
 
         // Aether Control's own custom-styled elements (gauges, cards, hover borders) pick up the
