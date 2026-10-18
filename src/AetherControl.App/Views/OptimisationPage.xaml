@@ -127,10 +127,10 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <controls:SectionHeader Label="Fan Control" Logo="{x:Bind ViewModel.BoardBrandLogo, Mode=OneWay}" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                            <!-- Section state at a glance: BIOS control vs manual channels. -->
+                            <!-- Section state at a glance: curve name vs BIOS control vs manual channels. -->
                             <controls:StatusPill VerticalAlignment="Center"
-                                Text="{x:Bind local:OptimisationPage.FormatFanPillText(ViewModel.FanChannels), Mode=OneWay}"
-                                State="{x:Bind local:OptimisationPage.FormatFanPillState(ViewModel.FanChannels), Mode=OneWay}" />
+                                Text="{x:Bind local:OptimisationPage.FormatFanPillText(ViewModel.FanChannels, ViewModel.ActiveCurveName), Mode=OneWay}"
+                                State="{x:Bind local:OptimisationPage.FormatFanPillState(ViewModel.FanChannels, ViewModel.ActiveCurveName), Mode=OneWay}" />
                             <Button Command="{x:Bind ViewModel.RefreshFanChannelsCommand}" ToolTipService.ToolTip="Re-read fan headers">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE72C;" FontSize="14" />
@@ -148,6 +148,32 @@
                     <TextBlock Text="Reads and writes motherboard PWM headers directly via LibreHardwareMonitor — no vendor software required. Software control never drops below 20% as a safety floor, and every channel resets to automatic (BIOS) control when Aether Control closes."
                                Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
                                Visibility="{x:Bind ViewModel.HasFanChannels, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                    <!-- Automatic curve: presets drive every channel from CPU temperature through
+                         the tested FanCurveController (anti-hunting gate, safety interlocks). While
+                         a curve is active the manual sliders lock — two drivers would fight. -->
+                    <Border Style="{StaticResource InsetBorderStyle}" Padding="14,12"
+                            Visibility="{x:Bind ViewModel.HasFanChannels, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Automatic curve" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" />
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                <ComboBox Grid.Column="0" HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.AvailableFanCurves, Mode=OneWay}"
+                                          DisplayMemberPath="Name"
+                                          SelectedIndex="{x:Bind ViewModel.SelectedCurvePresetIndex, Mode=TwoWay}"
+                                          IsEnabled="{x:Bind ViewModel.IsManualFanControlEnabled, Mode=OneWay}"
+                                          ToolTipService.ToolTip="Temperature → fan-speed preset. The curve drives every channel from CPU package temperature." />
+                                <Button Grid.Column="1" Content="Apply curve" Command="{x:Bind ViewModel.StartFanCurveCommand}"
+                                        IsEnabled="{x:Bind ViewModel.IsManualFanControlEnabled, Mode=OneWay}" />
+                                <Button Grid.Column="2" Content="Stop" Command="{x:Bind ViewModel.StopFanCurveCommand}"
+                                        IsEnabled="{x:Bind ViewModel.IsCurveActive, Mode=OneWay}" />
+                            </Grid>
+                            <TextBlock Text="{x:Bind ViewModel.SelectedCurveSummary, Mode=OneWay}"
+                                       Style="{StaticResource SecondaryTextStyle}" FontFamily="{StaticResource FontMono}" FontSize="11" />
+                            <TextBlock Text="{x:Bind ViewModel.CurveStatusMessage, Mode=OneWay}"
+                                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
 
                     <Border Style="{StaticResource InsetBorderStyle}"
                             Visibility="{x:Bind ViewModel.FanChannels, Mode=OneWay, Converter={StaticResource CollectionEmptyToVisibilityConverter}}">
@@ -171,14 +197,18 @@
                                         </StackPanel>
                                         <Slider Grid.Column="2" VerticalAlignment="Center" Minimum="20" Maximum="100"
                                                 Value="{Binding CurrentPercent, Mode=OneWay}"
-                                                ValueChanged="OnFanSliderChanged" />
+                                                ValueChanged="OnFanSliderChanged"
+                                                IsEnabled="{Binding ElementName=RootPage, Path=ViewModel.IsManualFanControlEnabled}"
+                                                ToolTipService.ToolTip="Stop the active curve to adjust manually." />
                                         <Button Grid.Column="3" VerticalAlignment="Center" Click="OnRenameFanChannelClicked"
                                                 ToolTipService.ToolTip="Rename this fan channel">
                                             <FontIcon Glyph="&#xE70F;" FontSize="14" />
                                         </Button>
                                         <Button Grid.Column="4" Content="Auto" VerticalAlignment="Center"
                                                 Command="{Binding ElementName=RootPage, Path=ViewModel.ResetFanToAutomaticCommand}"
-                                                CommandParameter="{Binding}" />
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding ElementName=RootPage, Path=ViewModel.IsManualFanControlEnabled}"
+                                                ToolTipService.ToolTip="Stop the active curve to return a single channel to BIOS control." />
                                     </Grid>
                                 </controls:HoverCard>
                             </DataTemplate>

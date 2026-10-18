@@ -58,6 +58,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GamingProfileService>();
         services.AddSingleton<IOptimisationService, OptimisationService>();
         services.AddSingleton<IGameProfileService, GameProfileService>();
+        // Closed-loop fan-curve driver. Singleton for the same reason HardwareMonitorService is:
+        // it subscribes to the shared snapshot and writes hardware state, so a per-page instance
+        // would both double-drive the Super I/O chip and hand every channel back to BIOS when a
+        // page's ViewModel is disposed on navigation away. The generic host disposes it at
+        // shutdown (which resets channels to automatic, like process exit does).
+        services.AddSingleton<FanCurveController>();
 
         services.AddSingleton<OpenRgbService>();
         services.AddSingleton<CorsairHidDirectService>();
