@@ -45,11 +45,14 @@ public sealed partial class DashboardPage : Page
 
     /// <summary>HealthLevel.Unknown is the "no usable readings yet" state (see SystemHealth) — the
     /// hero gauges stay hidden and the skeleton row holds their space until the first real snapshot
-    /// lands, so the app never shows "0 °C" at launch.</summary>
-    public static bool IsWaiting(AetherControl.Core.Health.HealthLevel level) =>
-        level == AetherControl.Core.Health.HealthLevel.Unknown;
+    /// lands, so the app never shows "0 °C" at launch. Returns Visibility (not bool) because
+    /// x:Bind function bindings require the return type to match the target property — a
+    /// Converter on the binding does not satisfy the compiler (WMC1121).</summary>
+    public static Visibility IsWaiting(AetherControl.Core.Health.HealthLevel level) =>
+        level == AetherControl.Core.Health.HealthLevel.Unknown ? Visibility.Visible : Visibility.Collapsed;
 
-    public static bool IsLive(AetherControl.Core.Health.HealthLevel level) => !IsWaiting(level);
+    public static Visibility IsLive(AetherControl.Core.Health.HealthLevel level) =>
+        level == AetherControl.Core.Health.HealthLevel.Unknown ? Visibility.Collapsed : Visibility.Visible;
 
     /// <summary>RDNA cards stop their fans below ~50–60 °C (zero-RPM mode), so 0 % on a cool GPU is
     /// normal, not a fault. Only explain it when that's plausibly what's happening.</summary>
