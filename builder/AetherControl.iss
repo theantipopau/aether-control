@@ -60,8 +60,9 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-; Setup is already elevated, so the app's requireAdministrator manifest needs no extra prompt.
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+; runascurrentuser: postinstall entries otherwise run as the original non-elevated user, and the
+; app's requireAdministrator manifest then fails CreateProcess with code 740 (seen on 0.9.8).
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent runascurrentuser
 
 [UninstallRun]
 ; `--exit` runs the same ordered shutdown as tray -> Exit, which hands every fan back to BIOS
