@@ -1,4 +1,4 @@
-using AetherControl.App.ViewModels;
+﻿using AetherControl.App.ViewModels;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Layout;
 using AetherControl.Core.Timing;
@@ -88,7 +88,7 @@ public sealed partial class PortraitWindow : Window
         var portraitDisplay = FindPortraitDisplay();
         if (portraitDisplay is not null)
         {
-            AppWindow.MoveAndResize(portraitDisplay.OuterBounds);
+            AppWindow.MoveAndResize(portraitDisplay.WorkArea);
             _isFilled = true;
             // Reflects reality in the UI; OnFillScreenChecked's _isFilled guard stops this from
             // re-capturing _preFillPosition/_preFillSize from the now-already-filled bounds.
@@ -132,7 +132,7 @@ public sealed partial class PortraitWindow : Window
         }
 
         var display = DisplayArea.GetFromWindowId(sender.Id, DisplayAreaFallback.Nearest);
-        var bounds = display.OuterBounds;
+        var bounds = display.WorkArea;
         var current = sender.Position;
         var size = sender.Size;
         if (current.X != bounds.X || current.Y != bounds.Y ||
@@ -172,7 +172,7 @@ public sealed partial class PortraitWindow : Window
         }
 
         var nearest = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
-        AppWindow.MoveAndResize(nearest.OuterBounds);
+        AppWindow.MoveAndResize(nearest.WorkArea);
     }
 
     /// <summary>Picks a connected display taller than it is wide — i.e. actually rotated to
@@ -311,7 +311,7 @@ public sealed partial class PortraitWindow : Window
         }
 
         var displayArea = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
-        AppWindow.MoveAndResize(displayArea.OuterBounds);
+        AppWindow.MoveAndResize(displayArea.WorkArea);
         _isFilled = true;
     }
 
@@ -332,7 +332,7 @@ public sealed partial class PortraitWindow : Window
     private void OnSizeCycleClick(object sender, RoutedEventArgs e)
     {
         var display = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
-        var bounds = display.OuterBounds;
+        var bounds = display.WorkArea;
 
         var step = PortraitSizing.NextStep(PortraitSizing.NearestStep(AppWindow.Size.Width));
         var (width, height) = PortraitSizing.SizeForStep(step, bounds.Width, bounds.Height);
@@ -380,7 +380,7 @@ public sealed partial class PortraitWindow : Window
         }
 
         var target = displays[PortraitSizing.NextDisplay(currentIndex, displays.Count)];
-        var targetBounds = target.OuterBounds;
+        var targetBounds = target.WorkArea;
 
         // Keep the current size; only cap it if the target display is genuinely smaller.
         var width = Math.Min(AppWindow.Size.Width, targetBounds.Width);
@@ -407,6 +407,43 @@ public sealed partial class PortraitWindow : Window
         var width = e.NewSize.Width;
         HeaderText.Visibility = width >= 560 ? Visibility.Visible : Visibility.Collapsed;
         DateText.Visibility = width >= 420 ? Visibility.Visible : Visibility.Collapsed;
+        FitContent();
+    }
+
+    // Fan/process lists changing length changes the content's height; re-fit. Our own Width change
+    // in FitContent re-enters here, but only a real height change refits, so it settles.
+    private void OnContentGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (Math.Abs(e.NewSize.Height - e.PreviousSize.Height) > 1)
+        {
+            FitContent();
+        }
+    }
+
+    /// <summary>Scales the whole panel so it exactly fills the window with no scrolling. Measures
+    /// the content at the window's width, takes scale = windowHeight / contentHeight, then lays the
+    /// content out 1/scale wider so the Viewbox's uniform scale still spans the full width.
+    /// Clamped: below 0.6 text gets unreadably small (the Viewbox then still fits, just with side
+    /// margins); above 1.5 a large panel would turn every card into a billboard.</summary>
+    private void FitContent()
+    {
+        var width = RootGrid.ActualWidth;
+        var height = RootGrid.ActualHeight;
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        ContentGrid.Width = width;
+        ContentGrid.Measure(new Windows.Foundation.Size(width, double.PositiveInfinity));
+        var contentHeight = ContentGrid.DesiredSize.Height;
+        if (contentHeight <= 0)
+        {
+            return;
+        }
+
+        var scale = Math.Clamp(height / contentHeight, 0.6, 1.5);
+        ContentGrid.Width = width / scale;
     }
 
     private void OnFanNameLostFocus(object sender, RoutedEventArgs e)

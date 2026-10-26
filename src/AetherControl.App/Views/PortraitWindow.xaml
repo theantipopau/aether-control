@@ -10,8 +10,11 @@
             <converters:OneDecimalPercentConverter x:Key="OneDecimalPercentConverter" />
         </Grid.Resources>
 
-        <ScrollViewer Padding="16,20,16,16">
-            <Grid RowSpacing="16">
+        <!-- Fit-to-window, not scroll: a 768x1366 portrait panel overflowed and needed scrolling
+             (Matt's screenshot, 2026-10-26). FitContent() widens ContentGrid by 1/scale so the
+             uniformly scaled result fills the window's full width AND height. -->
+        <Viewbox x:Name="FitBox" Stretch="Uniform" VerticalAlignment="Top">
+            <Grid x:Name="ContentGrid" RowSpacing="16" Padding="16,20,16,16" SizeChanged="OnContentGridSizeChanged">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -322,6 +325,6 @@
                     </Border>
                 </StackPanel>
             </Grid>
-        </ScrollViewer>
+        </Viewbox>
     </Grid>
 </Window>
