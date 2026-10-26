@@ -11,6 +11,7 @@
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
 
         <!-- Round colour chip. Tag carries the hex the click handler sends; the chip's own fill is the
              preview, so what you click is what you get. -->
@@ -45,7 +46,8 @@
                 </controls:PageHero.Actions>
             </controls:PageHero>
 
-            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap" />
+            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.StatusMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
 
             <!-- Reflows with the window (FlowPanel): one column when narrow, more as it widens;
                  MinItemWidth keeps the swatch row from ever being squeezed. -->

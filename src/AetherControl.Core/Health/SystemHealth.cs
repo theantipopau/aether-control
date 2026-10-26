@@ -47,11 +47,12 @@ public static class SystemHealth
 
         var detail = issues.Count == 0
             ? "Temperatures and memory are within normal range."
-            : string.Join(" · ", issues.OrderByDescending(i => i.Level).Select(i => Capitalise(i.Text)));
+            : string.Join(" · ", issues.OrderByDescending(i => i.Level).Select(i => Capitalise(i.Text))) + ".";
 
         if (motherboardStale)
         {
-            detail += " Motherboard sensors are stale — see Diagnostics.";
+            // The Motherboard card names the program sharing the sensor chip; point there.
+            detail += " Motherboard sensors are stale — see the Motherboard card.";
         }
 
         return new HealthSummary(level, title, detail);

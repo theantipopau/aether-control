@@ -42,6 +42,9 @@ public class SystemHealthTests
         var result = SystemHealth.Evaluate(61, 45, 60, motherboardStale: true);
         Assert.Equal(HealthLevel.Normal, result.Level);
         Assert.Contains("stale", result.Detail, StringComparison.OrdinalIgnoreCase);
+        // Regression (screenshot 2026-10-26: CPU 82, GPU 51, RAM 84, stale): the issue list ran
+        // straight into the stale sentence ("84% used Motherboard sensors").
+        Assert.DoesNotContain("used Motherboard", SystemHealth.Evaluate(82, 51, 84, motherboardStale: true).Detail);
         // The headline must not read as fully healthy while half the data is old.
         Assert.Contains("stale", result.Title, StringComparison.OrdinalIgnoreCase);
     }

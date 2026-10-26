@@ -11,6 +11,7 @@
 
     <Page.Resources>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
         <converters:BoolToFanModeConverter x:Key="BoolToFanModeConverter" />
@@ -60,7 +61,9 @@
                 </controls:PageHero.Stats>
             </controls:PageHero>
 
-            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap" />
+            <!-- Collapsed when empty: an empty line plus panel spacing left a blank band under the hero. -->
+            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.StatusMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
 
             <!-- Reflows with the window (FlowPanel): one column when narrow, more as it widens.
                  Masonry packs each card into the shortest column so a tall Fan Control card doesn't
