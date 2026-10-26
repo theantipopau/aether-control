@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
 using AetherControl.Core.Models;
@@ -27,7 +27,7 @@ namespace AetherControl.Services.Hardware;
 /// </para>
 /// <para>
 /// That alone isn't sufficient, though: real ASUS/vendor software already installed on the machine
-/// (Armoury Crate, iCUE, etc. — see <see cref="ConflictingProcessNames"/>) polls the same chip on
+/// (Armoury Crate, iCUE, etc. — see <see cref="SensorContenders"/>) polls the same chip on
 /// its own schedule regardless of anything Aether does. Confirmed by live testing (2026-09-23) with
 /// nothing of Aether's own running concurrently: a fresh <c>Computer.Open()</c> sometimes gets a
 /// poisoned first read, and a poisoned read never self-corrects — 30 consecutive one-second polls
@@ -42,28 +42,7 @@ namespace AetherControl.Services.Hardware;
 /// </summary>
 public sealed class HardwareMonitorService : IHardwareMonitorService, IFanControlService
 {
-    // Best-effort — exact service names aren't publicly documented and vary by ASUS software
-    // version. An earlier version of this comment claimed "AsusFanControlService" specifically was
-    // confirmed to blank out fan RPM readings and that this was disproven; the disproof was correct
-    // (the empty-readings bug then was a LibreHardwareMonitorLib version gap) but the general
-    // premise — vendor software on this list contending for the same Super I/O chip — was later
-    // confirmed true a different way: a live idle system (2026-09-23, nothing of Aether's own
-    // running concurrently) re-poisoned its own Super I/O reads on an unmistakably periodic ~11
-    // second cadence with Armoury Crate + iCUE both running, which is what EnsureSuperIoReadsAreValid
-    // and Poll's mid-session check now self-heal from (see this class's own doc comment). This list
-    // is a best-effort UI warning for *write* conflicts specifically (two programs both trying to
-    // drive the same fan-control channel) — a miss here just means the warning doesn't show.
-    private static readonly string[] ConflictingProcessNames =
-    [
-        "AsusFanControlService",
-        // The service is *named* ArmouryCrateService but its process is ArmouryCrate.Service —
-        // Process.GetProcessesByName matches process names only, so the service name alone never
-        // matched (verified live 2026-09-26 via Win32_Service.ProcessId).
-        "ArmouryCrate.Service",
-        "ArmouryCrateService",
-        "ArmouryCrateControlInterface",
-        "AsusOptimizationStartupTask"
-    ];
+    // The contender list (Armoury Crate, iCUE, HWiNFO, ...) and its evidence live in SensorContenders.
 
     // Never let software control switch a channel fully off — if Aether Control crashes or is
     // killed mid-session with no automatic-fallback watchdog, a stuck 0% fan is a real thermal
@@ -536,7 +515,7 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
     public bool IsConflictingVendorSoftwareRunning() => RunningConflictingSoftware().Count > 0;
 
     public IReadOnlyList<string> RunningConflictingSoftware() =>
-        ConflictingProcessNames.Where(name => Process.GetProcessesByName(name).Length > 0).ToList();
+        SensorContenders.Running();
 
     // Always true now that this session is the only thing in the process touching Super I/O — see
     // this class's own doc comment. Kept as a real property (not a literal `true` at every call

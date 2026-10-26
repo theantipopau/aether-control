@@ -29,6 +29,7 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
     [ObservableProperty] private bool isRunning;
     [ObservableProperty] private IReadOnlyList<FanControlChannel> fanChannels = [];
     [ObservableProperty] private bool isFanConflictWarningVisible;
+    [ObservableProperty] private string fanConflictText = string.Empty;
     // Fan-curve state. The controller itself is an app-lifetime singleton (owns the snapshot
     // subscription and hardware writes) — this VM only mirrors its active curve name for
     // bindings and must never dispose or reset it on page navigation away.
@@ -213,7 +214,10 @@ public sealed partial class OptimisationViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void RefreshFanChannels()
     {
-        IsFanConflictWarningVisible = _fanControlService.IsConflictingVendorSoftwareRunning();
+        var contenders = _fanControlService.RunningConflictingSoftware();
+        IsFanConflictWarningVisible = contenders.Count > 0;
+        FanConflictText = $"{string.Join(", ", contenders)} {(contenders.Count == 1 ? "is" : "are")} also using the motherboard sensor chip. " +
+            "A curve set here may be silently overridden, or override it. Close it first for reliable control.";
         var channels = _fanControlService.GetChannels();
         // The Super I/O chip has no concept of header naming ("Fan #2" is LHM's own enumeration
         // order, not what's actually plugged into it) — overlay any name the user has assigned,

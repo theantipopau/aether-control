@@ -191,6 +191,15 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HeroBrandLogos));
     }
 
+    // Names the program sharing the sensor chip, so the fix ("close HWiNFO") is obvious.
+    private static string DescribeContenders()
+    {
+        var running = AetherControl.Services.Hardware.SensorContenders.Running();
+        return running.Count == 0
+            ? "Another program is reading the sensor chip; see Diagnostics."
+            : $"Also reading the sensor chip: {string.Join(", ", running)}. Close it for clean readings.";
+    }
+
     public DashboardViewModel(IHardwareMonitorService hardwareMonitor, ProcessRankerService processRanker,
         AetherControl.Core.Alerts.AlertLog alertLog)
     {
@@ -272,7 +281,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         _drivesSync.Sync(snapshot.Drives);
         MotherboardModel = snapshot.Motherboard.Model;
         MotherboardStaleText = snapshot.MotherboardAge > MotherboardStaleThreshold
-            ? $"Stale — last valid sensor read {snapshot.MotherboardAge.TotalSeconds:F0}s ago (sensor chip contention; see Diagnostics)"
+            ? $"Stale — last valid sensor read {snapshot.MotherboardAge.TotalSeconds:F0}s ago. {DescribeContenders()}"
             : string.Empty;
         var health = AetherControl.Core.Health.SystemHealth.Evaluate(
             CpuTemperature, GpuTemperature, RamUtilisationPercent, MotherboardStaleText.Length > 0);

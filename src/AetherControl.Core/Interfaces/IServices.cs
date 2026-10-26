@@ -144,7 +144,8 @@ public interface IFanControlService
     /// fight over the same Super I/O ports — the UI should warn before a custom curve is applied.</summary>
     bool IsConflictingVendorSoftwareRunning();
 
-    /// <summary>Process names from the same best-effort list that are running right now.</summary>
+    /// <summary>Friendly names of programs sharing the sensor chip that are running right now
+    /// (best-effort list, <c>SensorContenders</c>).</summary>
     IReadOnlyList<string> RunningConflictingSoftware();
 
     /// <summary>False while a second process (previously <c>AetherControl.FanHelper.exe</c>) could

@@ -145,7 +145,7 @@
 
                     <InfoBar Severity="Warning" IsClosable="False" Title="Vendor fan software is running"
                              IsOpen="{x:Bind ViewModel.IsFanConflictWarningVisible, Mode=OneWay}"
-                             Message="ASUS fan-control software (Armoury Crate / AsusFanControlService) looks like it's running. It contends for the same motherboard ports — a manual curve set here may be silently overridden, or override it. Close it first for reliable control." />
+                             Message="{x:Bind ViewModel.FanConflictText, Mode=OneWay}" />
 
                     <TextBlock Text="Reads and writes motherboard PWM headers directly via LibreHardwareMonitor — no vendor software required. Software control never drops below 20% as a safety floor, and every channel resets to automatic (BIOS) control when Aether Control closes."
                                Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
