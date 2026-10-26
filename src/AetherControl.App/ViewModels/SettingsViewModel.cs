@@ -64,6 +64,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     // ── About & updates ──
     private readonly IUpdateCheckService _updateCheckService;
+    private readonly AetherControl.Services.Processes.RtssOverlayService _rtssOverlay;
+    [ObservableProperty] private bool rtssOverlayEnabled;
     [ObservableProperty] private bool checkForUpdatesOnStartup;
     [ObservableProperty] private string updateStatusText = "Not checked yet.";
     [ObservableProperty] private string? releaseUrl;
@@ -75,13 +77,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string RuntimeText { get; } = $".NET {Environment.Version} · {System.Runtime.InteropServices.RuntimeInformation.OSDescription}";
 
     public SettingsViewModel(ISettingsService settingsService, AlertSettingsStore alertSettingsStore, ThermalAuraSettingsStore auraSettingsStore, AutostartService autostartService,
-        IUpdateCheckService updateCheckService, AetherControl.Core.Alerts.AlertLog alertLog)
+        IUpdateCheckService updateCheckService, AetherControl.Core.Alerts.AlertLog alertLog, AetherControl.Services.Processes.RtssOverlayService rtssOverlay)
     {
         _updateCheckService = updateCheckService;
+        _rtssOverlay = rtssOverlay;
         _alertLog = alertLog;
         _settingsService = settingsService;
         var current = _settingsService.Current;
         CheckForUpdatesOnStartup = current.CheckForUpdatesOnStartup;
+        RtssOverlayEnabled = current.RtssOverlayEnabled;
         _alertSettingsStore = alertSettingsStore;
         _auraSettingsStore = auraSettingsStore;
         MainGlowEnabled = auraSettingsStore.Current.MainGlowEnabled;
@@ -146,6 +150,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         updated.LoggingEnabled = LoggingEnabled;
         updated.LogLevel = LogLevel;
         updated.CheckForUpdatesOnStartup = CheckForUpdatesOnStartup;
+        updated.RtssOverlayEnabled = RtssOverlayEnabled;
         updated.PortraitSkin = Theming.PortraitSkinApplier.Skins[Math.Clamp(PortraitSkinIndex, 0, Theming.PortraitSkinApplier.Skins.Count - 1)].Id;
 
         // Was previously just a bool saved to the database — nothing ever created or removed the
@@ -154,6 +159,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         await _settingsService.SaveAsync(updated);
         LoggingSettings.Apply(updated.LoggingEnabled, updated.LogLevel);
+        _rtssOverlay.SetEnabled(updated.RtssOverlayEnabled);
 
         var trayPreferences = TrayMetricOptions
             .Select((option, index) => new TrayMetricPreference { Metric = option.Metric, Enabled = option.IsEnabled, Order = index })

@@ -20,7 +20,8 @@ public sealed partial class SettingsPage : Page
             App.Services.GetRequiredService<ThermalAuraSettingsStore>(),
             App.Services.GetRequiredService<AutostartService>(),
             App.Services.GetRequiredService<AetherControl.Core.Updates.IUpdateCheckService>(),
-            App.Services.GetRequiredService<AetherControl.Core.Alerts.AlertLog>());
+            App.Services.GetRequiredService<AetherControl.Core.Alerts.AlertLog>(),
+            App.Services.GetRequiredService<AetherControl.Services.Processes.RtssOverlayService>());
     }
 
     // Window-size-dependent type scale — text grows/shrinks with the page width (WindowScale).

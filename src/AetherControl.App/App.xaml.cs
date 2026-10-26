@@ -98,6 +98,7 @@ public partial class App : Application
             Services.GetRequiredService<AetherControl.Core.Alerts.AlertLog>());
         _historyRecorderService = new HistoryRecorderService(hardwareMonitor, Services.GetRequiredService<IHistoryService>(), settings);
         Services.GetRequiredService<IGameProfileService>().Start();
+        Services.GetRequiredService<AetherControl.Services.Processes.RtssOverlayService>().SetEnabled(settings.Current.RtssOverlayEnabled);
 
         MainWindow = new MainWindow();
         MainWindow.Activate();
@@ -173,5 +174,7 @@ public partial class App : Application
         _temperatureAlertService?.Dispose();
         _historyRecorderService?.Dispose();
         Services.GetRequiredService<IGameProfileService>().Dispose();
+        // Clears our RTSS slot, so the overlay doesn't keep showing frozen board readings after exit.
+        Services.GetRequiredService<AetherControl.Services.Processes.RtssOverlayService>().Dispose();
     }
 }

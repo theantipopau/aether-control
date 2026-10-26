@@ -139,6 +139,15 @@ last three days of logs — so a bug report carries its own evidence. The About
 panel shows version + commit and does a check-only update check against GitHub
 releases (opt-in at startup, never auto-installs).
 
+### Works alongside RTSS and AMD Adrenalin
+Aether never writes to the GPU: GPU tuning and fans stay with Adrenalin, and the
+overlay stays with RTSS. Aether owns the motherboard (board temperatures, case
+fans). The opt-in **In-game overlay** setting adds one line to the RTSS
+on-screen display with the board temperature and case-fan RPM, which neither
+overlay can read on its own. FPS is read from RTSS when it's running. If
+another program is reading the same motherboard sensor chip (Armoury Crate,
+iCUE, HWiNFO, FanControl…), the Overview names it.
+
 ### Plugin framework
 `IAetherPlugin` plus optional capability interfaces
 (`IDashboardWidgetProvider`, `ITrayMetricProvider`, `IOptimisationTaskProvider`).
@@ -157,6 +166,16 @@ remove one without restarting or touching the core app.
 | `AetherControl.Plugins.Sample` | net10.0 | Reference plugin (system uptime widget) |
 | `tests/AetherControl.Tests` | net10.0-windows | xUnit tests against the Data/Services layer |
 
+## Installing
+
+Download `AetherControl-<version>-x64-Setup.exe` from
+[Releases](https://github.com/theantipopau/aether-control/releases) and run it
+(administrator: the app needs elevation for its hardware driver and fan control).
+A portable zip and `SHA256SUMS.txt` are attached too. Upgrades close the running
+copy cleanly (fans handed back to BIOS control first); settings in
+`%APPDATA%\Aether Control` are kept across upgrades and uninstalls. Builds are
+not code-signed yet, so Windows Smart App Control may block them.
+
 ## Building
 
 ```bash
@@ -168,19 +187,21 @@ dotnet build src/AetherControl.Plugins.Sample
 dotnet test  tests/AetherControl.Tests
 ```
 
-The WinUI 3 head project needs **Visual Studio 2022** with the **Windows
-application development** workload (for `Microsoft.Build.Packaging.Pri.Tasks.dll`,
-used by resource indexing even in unpackaged builds):
+The WinUI 3 head project needs **Visual Studio 2026 (MSBuild 18+)** with the
+**Windows application development** workload (PRI resource indexing and the
+XAML compiler, needed even in unpackaged builds). `dotnet publish` is not a
+substitute: it skips the PRI step, and the app then can't start.
 
 ```bash
-msbuild src/AetherControl.App/AetherControl.App.csproj -p:Configuration=Debug -p:Platform=x64
+msbuild src/AetherControl.App/AetherControl.App.csproj -restore -p:Configuration=Release -p:Platform=x64
 ```
 
 Aether Control ships as its own standalone `.exe` — unpackaged, not MSIX.
 
-CI runs the test suite on every push and pull request
-([.github/workflows/ci.yml](.github/workflows/ci.yml)); the WinUI head is
-excluded there for the same reason it's excluded from `dotnet build` above.
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests and
+builds the WinUI head on every push. Pushing a `vX.Y.Z` tag that matches the
+csproj `<Version>` runs [.github/workflows/release.yml](.github/workflows/release.yml),
+which builds the installer and portable zip into a draft GitHub release.
 
 ## Architecture at a glance
 

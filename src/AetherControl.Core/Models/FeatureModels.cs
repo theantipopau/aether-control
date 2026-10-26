@@ -167,4 +167,6 @@ public sealed class AppSettings
     public bool HasSeenOnboarding { get; set; }
     /// <summary>Portrait Mode skin id ("Default", "OledBlack", "Midnight"). Default keeps the current look.</summary>
     public string PortraitSkin { get; set; } = "Default";
+    /// <summary>Send board temperatures and fan RPM to the RTSS on-screen display. Opt-in.</summary>
+    public bool RtssOverlayEnabled { get; set; }
 }

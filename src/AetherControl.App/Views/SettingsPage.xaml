@@ -103,6 +103,18 @@
             </StackPanel>
 
             <StackPanel Spacing="12">
+                <controls:SectionHeader Label="In-game overlay" />
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="4">
+                        <ToggleSwitch Header="Show board temperature and fan speeds in the RTSS overlay"
+                                      IsOn="{x:Bind ViewModel.RtssOverlayEnabled, Mode=TwoWay}" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"
+                                   Text="Adds one line to RivaTuner Statistics Server's on-screen display — the motherboard readings Adrenalin and RTSS can't see. Needs RTSS running; CPU and GPU stay with your existing overlay. Applies on Save." />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="12">
                 <controls:SectionHeader Label="Alerts" />
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="16">

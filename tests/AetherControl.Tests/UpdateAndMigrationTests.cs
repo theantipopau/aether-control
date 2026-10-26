@@ -1,4 +1,4 @@
-using AetherControl.Core.Models;
+﻿using AetherControl.Core.Models;
 using AetherControl.Core.Updates;
 using AetherControl.Data;
 using AetherControl.Data.Repositories;
@@ -36,10 +36,12 @@ public class UpdateAndMigrationTests : IDisposable
         Assert.False(settings.CheckForUpdatesOnStartup); // default off — opt-in only
         Assert.False(settings.HasSeenOnboarding); // default unseen — existing installs get the dialog once
         Assert.Equal("Default", settings.PortraitSkin); // default skin keeps the current look
+        Assert.False(settings.RtssOverlayEnabled); // 005: overlay output is opt-in
 
         settings.CheckForUpdatesOnStartup = true;
         settings.HasSeenOnboarding = true;
         settings.PortraitSkin = "OledBlack";
+        settings.RtssOverlayEnabled = true;
         await first.SaveAsync(settings);
 
         // A fresh factory is a second app launch: the ALTER TABLEs must not run again.
@@ -48,6 +50,7 @@ public class UpdateAndMigrationTests : IDisposable
         Assert.True(reloaded.CheckForUpdatesOnStartup);
         Assert.True(reloaded.HasSeenOnboarding);
         Assert.Equal("OledBlack", reloaded.PortraitSkin);
+        Assert.True(reloaded.RtssOverlayEnabled);
     }
 
     [Fact]
@@ -76,6 +79,7 @@ public class UpdateAndMigrationTests : IDisposable
         Assert.False(settings.CheckForUpdatesOnStartup);
         Assert.False(settings.HasSeenOnboarding); // 003 backfills unseen on pre-tracking databases too
         Assert.Equal("Default", settings.PortraitSkin); // 004 backfills the default skin likewise
+        Assert.False(settings.RtssOverlayEnabled); // 005 backfills off
     }
 
     public void Dispose()

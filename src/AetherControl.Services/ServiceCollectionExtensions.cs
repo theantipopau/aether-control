@@ -72,6 +72,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPeripheralDetectionService, PeripheralDetectionService>();
         services.AddSingleton<ProcessRankerService>();
         services.AddSingleton<IFpsSource, RtssFpsSource>();
+        services.AddSingleton<RtssOverlayService>();
         services.AddSingleton<IPluginManager, PluginManager>();
 
         return services;
