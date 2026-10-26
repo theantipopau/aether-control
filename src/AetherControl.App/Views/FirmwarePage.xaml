@@ -115,6 +115,7 @@
                             <TextBlock Text="Install from Windows Settings only." Style="{StaticResource CaptionTextStyle}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
+                        <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </StackPanel>
             </Border>

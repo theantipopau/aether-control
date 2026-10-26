@@ -62,8 +62,10 @@
 
             <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="{StaticResource AetherAccentBrush}" TextWrapping="Wrap" />
 
-            <!-- Reflows with the window (FlowPanel): one column when narrow, more as it widens. -->
-            <controls:FlowPanel MinItemWidth="560" Spacing="20">
+            <!-- Reflows with the window (FlowPanel): one column when narrow, more as it widens.
+                 Masonry packs each card into the shortest column so a tall Fan Control card doesn't
+                 leave Gaming Profile and Quick Tasks stretched into empty space (Phase 67). -->
+            <controls:FlowPanel MinItemWidth="560" Spacing="20" Masonry="True">
 
             <!-- ── Gaming ── -->
             <Border Style="{StaticResource SectionCardBorderStyle}">
@@ -201,7 +203,8 @@
                                                 IsEnabled="{Binding ElementName=RootPage, Path=ViewModel.IsManualFanControlEnabled}"
                                                 ToolTipService.ToolTip="Stop the active curve to adjust manually." />
                                         <Button Grid.Column="3" VerticalAlignment="Center" Click="OnRenameFanChannelClicked"
-                                                ToolTipService.ToolTip="Rename this fan channel">
+                                                ToolTipService.ToolTip="Rename this fan channel"
+                                                AutomationProperties.Name="Rename fan channel">
                                             <FontIcon Glyph="&#xE70F;" FontSize="14" />
                                         </Button>
                                         <Button Grid.Column="4" Content="Auto" VerticalAlignment="Center"
@@ -345,6 +348,7 @@
                                 <controls:HoverCard Margin="0,0,0,8">
                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                                         <ToggleSwitch Grid.Column="0" IsOn="{Binding IsEnabled, Mode=OneWay}" OnContent="" OffContent=""
+                                                      AutomationProperties.Name="{Binding ToggleAutomationName}"
                                                       Toggled="OnStartupEntryToggled" />
                                         <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" Foreground="{StaticResource AetherTextPrimaryBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />

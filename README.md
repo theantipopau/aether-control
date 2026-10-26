@@ -13,7 +13,7 @@
 
 <p align="center">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4" />
-  <img alt=".NET" src="https://img.shields.io/badge/.NET-8.0-512BD4" />
+  <img alt=".NET" src="https://img.shields.io/badge/.NET-10.0-512BD4" />
   <img alt="UI" src="https://img.shields.io/badge/UI-WinUI%203-4A00E0" />
   <img alt="Status" src="https://img.shields.io/badge/status-active%20development-orange" />
   <img alt="CI" src="https://github.com/theantipopau/aether-control/actions/workflows/ci.yml/badge.svg" />
@@ -149,13 +149,13 @@ remove one without restarting or touching the core app.
 
 | Project | TFM | Purpose |
 |---|---|---|
-| `AetherControl.Core` | net8.0 | Models, enums, service interfaces, events — no dependencies |
-| `AetherControl.Plugins.Abstractions` | net8.0 | `IAetherPlugin` and capability interfaces third-party modules implement |
-| `AetherControl.Data` | net8.0 | SQLite schema, migrations, repositories (settings, history, layouts) |
-| `AetherControl.Services` | net8.0-windows | Hardware monitoring (LibreHardwareMonitor), optimisation, RGB (Corsair direct HID + OpenRGB), firmware/driver detection, plugin loading |
-| `AetherControl.App` | net8.0-windows10.0.19041.0 | WinUI 3 shell — dashboard, portrait mode, tray, all feature pages |
-| `AetherControl.Plugins.Sample` | net8.0 | Reference plugin (system uptime widget) |
-| `tests/AetherControl.Tests` | net8.0-windows | xUnit tests against the Data/Services layer |
+| `AetherControl.Core` | net10.0 | Models, enums, service interfaces, events — no dependencies |
+| `AetherControl.Plugins.Abstractions` | net10.0 | `IAetherPlugin` and capability interfaces third-party modules implement |
+| `AetherControl.Data` | net10.0 | SQLite schema, migrations, repositories (settings, history, layouts) |
+| `AetherControl.Services` | net10.0-windows | Hardware monitoring (LibreHardwareMonitor), optimisation, RGB (Corsair direct HID + OpenRGB), firmware/driver detection, plugin loading |
+| `AetherControl.App` | net10.0-windows10.0.19041.0 | WinUI 3 shell — dashboard, portrait mode, tray, all feature pages |
+| `AetherControl.Plugins.Sample` | net10.0 | Reference plugin (system uptime widget) |
+| `tests/AetherControl.Tests` | net10.0-windows | xUnit tests against the Data/Services layer |
 
 ## Building
 

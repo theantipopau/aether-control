@@ -83,6 +83,10 @@ public sealed class StartupEntry
     public string Publisher { get; set; } = string.Empty;
     public string ImpactEstimate { get; set; } = "Unknown";
     public bool IsEnabled { get; set; } = true;
+
+    // Screen-reader label for the enable toggle. Computed here because the XAML
+    // compiler rejects StringFormat on a {Binding} inside AutomationProperties.Name.
+    public string ToggleAutomationName => $"Run {Name} at startup";
 }
 
 public sealed class SensorSample

@@ -48,10 +48,20 @@ public partial class App : Application
         // first for the same Super I/O chip (both sides reading garbage persistently) — refuse
         // the launch and foreground the running instance instead. Held for process lifetime via
         // the field; the OS releases it on crash, so a dead holder can never wedge startup.
+        var exitRequested = Environment.GetCommandLineArgs().Contains("--exit", StringComparer.OrdinalIgnoreCase);
         _singleInstance = new SingleInstanceGuard("Local\\AetherControl.SingleInstance.v1");
-        if (!_singleInstance.IsFirstInstance)
+        if (!_singleInstance.IsFirstInstance || exitRequested)
         {
-            SingleInstanceFocus.FocusExisting();
+            if (exitRequested)
+            {
+                _singleInstance.Dispose();
+                ExitSignal.SignalAndWait(TimeSpan.FromSeconds(15));
+            }
+            else
+            {
+                SingleInstanceFocus.FocusExisting();
+            }
+
             Exit();
             return;
         }
@@ -91,6 +101,21 @@ public partial class App : Application
 
         MainWindow = new MainWindow();
         MainWindow.Activate();
+
+        var window = MainWindow;
+        ExitSignal.Listen(() => window.DispatcherQueue.TryEnqueue(() => window.ExitCommand.Execute(null)));
+
+        // The autostart task stores an absolute exe path; moving from the portable folder to the
+        // installed one (or vice versa) would leave it launching the old copy. Re-register in place.
+        // The task's existence is the setting (SettingsViewModel reads IsEnabled()), so check that.
+        var autostart = Services.GetRequiredService<AetherControl.Services.Optimisation.AutostartService>();
+        _ = Task.Run(() =>
+        {
+            if (autostart.IsEnabled())
+            {
+                autostart.SetEnabled(true);
+            }
+        });
 
         // StartMinimisedToTray was previously saved to Settings and never read by anything — the
         // window always showed on launch regardless of this toggle.

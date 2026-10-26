@@ -14,6 +14,8 @@ public sealed partial class FirmwareViewModel : ObservableObject
     [ObservableProperty] private bool isCheckingUpdates;
     [ObservableProperty] private bool hasCheckedForUpdates;
     [ObservableProperty] private DriverUpdateCheck? updateCheck;
+    /// <summary>Last failure from a page action (e.g. Windows Update can't be opened); empty when none.</summary>
+    [ObservableProperty] private string statusMessage = string.Empty;
 
     public FirmwareViewModel(IFirmwareDriverService firmwareDriverService)
     {

@@ -13,6 +13,11 @@ namespace AetherControl.App.Controls;
 /// with each row as tall as its tallest child. This is the section-level counterpart of
 /// <see cref="FluidPanel"/>: same pure Core plan (<see cref="FlowLayout.Plan"/>), but rows here
 /// have no fixed height because section cards are as tall as their content.
+///
+/// <see cref="Masonry"/> switches to column packing: the same column count, but each child goes
+/// into the currently shortest column. Use it when cards differ a lot in height — in row mode a
+/// tall card leaves the short cards beside it stretched into empty space (Phase 67: the
+/// Performance page's Fan Control card left Gaming Profile and Quick Tasks mostly blank).
 /// </summary>
 public sealed class FlowPanel : Panel
 {
@@ -21,6 +26,9 @@ public sealed class FlowPanel : Panel
 
     public static readonly DependencyProperty SpacingProperty = DependencyProperty.Register(
         nameof(Spacing), typeof(double), typeof(FlowPanel), new PropertyMetadata(20d));
+
+    public static readonly DependencyProperty MasonryProperty = DependencyProperty.Register(
+        nameof(Masonry), typeof(bool), typeof(FlowPanel), new PropertyMetadata(false));
 
     /// <summary>Minimum comfortable width of one child — below this the row count drops instead
     /// of squeezing children further.</summary>
@@ -35,6 +43,14 @@ public sealed class FlowPanel : Panel
     {
         get => (double)GetValue(SpacingProperty);
         set => SetValue(SpacingProperty, value);
+    }
+
+    /// <summary>When true, children are packed into the shortest column (masonry) rather than
+    /// into rows whose height is set by the tallest child.</summary>
+    public bool Masonry
+    {
+        get => (bool)GetValue(MasonryProperty);
+        set => SetValue(MasonryProperty, value);
     }
 
     public static readonly DependencyProperty MaxCellWidthProperty = DependencyProperty.Register(
@@ -53,6 +69,10 @@ public sealed class FlowPanel : Panel
     private int _plannedItemCount;
     private double[] _rowHeights = [];
 
+    // Masonry placement: child index, x and y of each placed child, plus the total height.
+    private readonly List<(int Index, double X, double Y)> _masonryPositions = [];
+    private double _masonryHeight;
+
     /// <summary>Indices that threw during measure (Phase 65: OptimisationPage's first layout threw
     /// "Element is already the child of another element" out of a child's own Measure, with the
     /// native boundary hiding which element). Skipped in both passes so one poisoned child can't
@@ -68,6 +88,12 @@ public sealed class FlowPanel : Panel
             : availableSize.Width;
 
         Plan(width);
+        if (Masonry)
+        {
+            MeasureMasonry();
+            return new Size(width, _masonryHeight);
+        }
+
         MeasureRows();
         return new Size(width, TotalHeight());
     }
@@ -80,27 +106,45 @@ public sealed class FlowPanel : Panel
         if (Math.Abs(finalSize.Width - _plannedWidth) > 0.5 || _plannedItemCount != Children.Count)
         {
             Plan(finalSize.Width);
-            MeasureRows();
+            if (Masonry)
+            {
+                MeasureMasonry();
+            }
+            else
+            {
+                MeasureRows();
+            }
         }
 
-        var index = 0;
-        var y = 0d;
-        for (var row = 0; row < _rowHeights.Length && index < Children.Count; row++)
+        if (Masonry)
         {
-            var x = 0d;
-            for (var i = 0; i < _plan.ItemsPerRow && index < Children.Count; i++, index++)
+            foreach (var (index, x, y) in _masonryPositions)
             {
                 var child = Children[index];
-                if (_brokenChildren.Contains(index))
+                child.Arrange(new Rect(x, y, _plan.CellWidth, child.DesiredSize.Height));
+            }
+
+            return finalSize;
+        }
+
+        var childIndex = 0;
+        var rowY = 0d;
+        for (var row = 0; row < _rowHeights.Length && childIndex < Children.Count; row++)
+        {
+            var x = 0d;
+            for (var i = 0; i < _plan.ItemsPerRow && childIndex < Children.Count; i++, childIndex++)
+            {
+                if (_brokenChildren.Contains(childIndex))
                 {
                     continue;
                 }
 
-                child.Arrange(new Rect(x, y, _plan.CellWidth, child.DesiredSize.Height));
+                var child = Children[childIndex];
+                child.Arrange(new Rect(x, rowY, _plan.CellWidth, child.DesiredSize.Height));
                 x += _plan.CellWidth + Spacing;
             }
 
-            y += _rowHeights[row] + Spacing;
+            rowY += _rowHeights[row] + Spacing;
         }
 
         return finalSize;
@@ -128,31 +172,71 @@ public sealed class FlowPanel : Panel
             var rowHeight = 0d;
             for (var i = 0; i < _plan.ItemsPerRow && index < Children.Count; i++, index++)
             {
-                var child = Children[index];
-                if (_brokenChildren.Contains(index))
+                if (_brokenChildren.Contains(index) || !MeasureChild(index))
                 {
                     continue;
                 }
 
-                try
-                {
-                    child.Measure(new Size(_plan.CellWidth, double.PositiveInfinity));
-                }
-                catch (Exception ex)
-                {
-                    _brokenChildren.Add(index);
-                    Services.UnhandledExceptionLog.Write(ex,
-                        $"FlowPanel skipped child #{index} ({DescribeChild(child)}) — it threw during Measure.");
-                    continue;
-                }
-
-                rowHeight = Math.Max(rowHeight, child.DesiredSize.Height);
+                rowHeight = Math.Max(rowHeight, Children[index].DesiredSize.Height);
             }
 
             heights[row] = rowHeight;
         }
 
         _rowHeights = heights;
+    }
+
+    /// <summary>Places each child in the currently shortest column. Column count is the same as
+    /// row mode's ItemsPerRow, so the page keeps its width-responsive column count.</summary>
+    private void MeasureMasonry()
+    {
+        _masonryPositions.Clear();
+        var columnHeights = new double[Math.Max(1, _plan.ItemsPerRow)];
+
+        for (var index = 0; index < Children.Count; index++)
+        {
+            if (_brokenChildren.Contains(index) || !MeasureChild(index))
+            {
+                continue;
+            }
+
+            var column = 0;
+            for (var c = 1; c < columnHeights.Length; c++)
+            {
+                if (columnHeights[c] < columnHeights[column])
+                {
+                    column = c;
+                }
+            }
+
+            _masonryPositions.Add((index, column * (_plan.CellWidth + Spacing), columnHeights[column]));
+            columnHeights[column] += Children[index].DesiredSize.Height + Spacing;
+        }
+
+        var tallest = 0d;
+        foreach (var h in columnHeights)
+        {
+            tallest = Math.Max(tallest, h);
+        }
+
+        _masonryHeight = _masonryPositions.Count == 0 ? 0 : Math.Max(0, tallest - Spacing);
+    }
+
+    private bool MeasureChild(int index)
+    {
+        var child = Children[index];
+        try
+        {
+            child.Measure(new Size(_plan.CellWidth, double.PositiveInfinity));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _brokenChildren.Add(index);
+            Services.UnhandledExceptionLog.Write(ex,
+                $"FlowPanel skipped child #{index} ({DescribeChild(child)}) — it threw during Measure.");
+            return false;
+        }
     }
 
     private static string DescribeChild(UIElement child)

@@ -42,10 +42,10 @@ public sealed partial class RgbViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private Task SetCyanAsync(RgbDeviceInfo device) => _rgbService.SetColorAsync(device.Id, 0, 229, 255);
+    private Task SetCyanAsync(RgbDeviceInfo device) => SetColorAsync(device, 0, 229, 255);
 
     [RelayCommand]
-    private Task SetWhiteAsync(RgbDeviceInfo device) => _rgbService.SetColorAsync(device.Id, 255, 255, 255);
+    private Task SetWhiteAsync(RgbDeviceInfo device) => SetColorAsync(device, 255, 255, 255);
 
     [ObservableProperty] private string statusMessage = string.Empty;
 

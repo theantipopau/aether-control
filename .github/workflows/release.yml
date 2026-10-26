@@ -1,0 +1,87 @@
+# Builds and publishes a release when a version tag (v1.2.3) is pushed.
+#
+# Uses the same Visual Studio MSBuild build as ci.yml's app-build job, NOT `dotnet publish`: the
+# 0.9.6 portable zip was made from a publish that skipped the PRI/XAML steps, so it shipped
+# without AetherControl.pri and every launch died at startup with "Cannot find a resource with
+# the given key: AetherAccentBrush" (unhandled-exceptions.log, 2026-10-19). The verify step below
+# fails the release if that file is ever missing again.
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      # The csproj <Version> is the single source (About page, update check, exe metadata);
+      # the tag must agree with it so the in-app update check compares like with like.
+      - name: Check tag matches csproj version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          $csproj = ([xml](Get-Content src/AetherControl.App/AetherControl.App.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if ($tag -ne $csproj) { throw "Tag v$tag does not match csproj <Version>$csproj</Version>" }
+          "version=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Run test suite
+        run: dotnet test tests/AetherControl.Tests -c Release
+
+      - name: Build AetherControl.App (Release, x64)
+        run: msbuild src/AetherControl.App/AetherControl.App.csproj -restore -p:Configuration=Release -p:Platform=x64 -v:minimal
+
+      - name: Verify app resources are present
+        shell: pwsh
+        run: |
+          $out = "src/AetherControl.App/bin/x64/Release/net10.0-windows10.0.19041.0"
+          foreach ($f in 'AetherControl.exe', 'AetherControl.pri') {
+            if (-not (Test-Path "$out/$f")) { throw "$f missing from build output - the app would not start" }
+          }
+
+      - name: Portable zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "src/AetherControl.App/bin/x64/Release/net10.0-windows10.0.19041.0/*" `
+            -DestinationPath "dist/AetherControl-${{ steps.version.outputs.version }}-x64-portable.zip"
+
+      - name: Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          & $iscc "/DMyAppVersion=${{ steps.version.outputs.version }}" `
+            "/DSourceDir=$PWD\src\AetherControl.App\bin\x64\Release\net10.0-windows10.0.19041.0" `
+            "/O$PWD\dist" builder\AetherControl.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } |
+            Set-Content dist/SHA256SUMS.txt
+
+      # Creates the release as a draft so notes can be reviewed before it goes public; the in-app
+      # update check (releases/latest) only sees it once it's published.
+      - name: Draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release create "${{ github.ref_name }}" dist/* --draft --title "Aether Control ${{ steps.version.outputs.version }}" --generate-notes

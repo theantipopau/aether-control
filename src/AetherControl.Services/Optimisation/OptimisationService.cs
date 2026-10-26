@@ -143,13 +143,19 @@ public sealed class OptimisationService(
     public async Task<OptimisationResult> CleanLocationsAsync(IReadOnlyList<string> paths, CancellationToken ct = default)
     {
         var selected = cleanupService.GetLocations().Where(l => paths.Contains(l.Path)).ToList();
-        var freed = await Task.Run(() => cleanupService.Clean(selected), ct);
+        var cleanup = await Task.Run(() => cleanupService.Clean(selected), ct);
+
+        // Reparse points (junctions/symlinks) are never followed or deleted; say so, so a short
+        // result isn't mistaken for a complete clean.
+        var skippedNote = cleanup.ItemsSkipped > 0
+            ? $" Skipped {cleanup.ItemsSkipped} reparse point(s) (junctions/symlinks) without following them."
+            : string.Empty;
 
         var result = new OptimisationResult
         {
             Success = true,
-            Message = $"Freed {freed / 1024.0 / 1024.0:F1} MB from {selected.Count} selected location(s).",
-            BytesReclaimed = freed
+            Message = $"Freed {cleanup.BytesFreed / 1024.0 / 1024.0:F1} MB from {selected.Count} selected location(s).{skippedNote}",
+            BytesReclaimed = cleanup.BytesFreed
         };
 
         await logRepository.LogAsync(SelectedCleanupTaskId, result.Success, result.Message, result.BytesReclaimed, restorePointDescription: null, ct)

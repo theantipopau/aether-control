@@ -19,8 +19,7 @@ internal static class UnhandledExceptionLog
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-            File.AppendAllText(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}\n{exception}\n\n");
+            Core.Diagnostics.BoundedLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}\n{exception}\n\n");
         }
         catch
         {

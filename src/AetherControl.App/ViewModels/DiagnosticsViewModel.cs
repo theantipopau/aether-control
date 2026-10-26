@@ -26,7 +26,9 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
     [ObservableProperty] private string appVersion = string.Empty;
     [ObservableProperty] private string libreHardwareMonitorVersion = string.Empty;
     [ObservableProperty] private string osDescription = string.Empty;
-    [ObservableProperty] private bool isElevated;
+    // Null = the check itself failed. Shown as "Unknown" rather than "No": reporting a failed probe
+    // as "not elevated" sent users chasing a missing admin token that they actually had.
+    [ObservableProperty] private bool? isElevated;
     [ObservableProperty] private string cpuName = "Not detected";
     [ObservableProperty] private string gpuName = "Not detected";
     [ObservableProperty] private string motherboardModel = "Not detected";
@@ -39,6 +41,15 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
     [ObservableProperty] private string superIoPoisonText = "—";
     [ObservableProperty] private string motherboardAgeText = "—";
     [ObservableProperty] private string conflictingSoftwareText = "None detected";
+
+    public string ElevationText => IsElevated switch
+    {
+        true => "Yes",
+        false => "No",
+        null => "Unknown",
+    };
+
+    partial void OnIsElevatedChanged(bool? value) => OnPropertyChanged(nameof(ElevationText));
 
     public string CpuBrandLogo => HardwareBrands.DetectCpu(CpuName)?.LogoUri ?? string.Empty;
     public string GpuBrandLogo => HardwareBrands.DetectGpu(GpuName)?.LogoUri ?? string.Empty;
@@ -103,7 +114,7 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         }
     }
 
-    private static bool CheckIsElevated()
+    private static bool? CheckIsElevated()
     {
         try
         {
@@ -113,8 +124,8 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         catch
         {
             // Best-effort — a failure here (e.g. sandboxed context) shouldn't stop the rest of the
-            // page from rendering, it should just report "unknown" via the false default.
-            return false;
+            // page from rendering. Return null so the page reports "Unknown", not a false "No".
+            return null;
         }
     }
 
@@ -181,7 +192,7 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
             App version: {AppVersion}
             LibreHardwareMonitorLib version: {LibreHardwareMonitorVersion}
             OS: {OsDescription}
-            Running elevated: {IsElevated}
+            Running elevated: {ElevationText}
 
             CPU: {CpuName}
             GPU: {GpuName}

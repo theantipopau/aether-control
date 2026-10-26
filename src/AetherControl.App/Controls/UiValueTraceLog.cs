@@ -19,15 +19,7 @@ internal static class UiValueTraceLog
 
     public static void Write(string tag, Guid cardInstanceId, string message)
     {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-            File.AppendAllText(LogPath,
-                $"[{DateTime.Now:HH:mm:ss.fff}] tag={tag} card={cardInstanceId:N} thread={Environment.CurrentManagedThreadId} {message}\n");
-        }
-        catch
-        {
-            // Best-effort diagnostic logging only.
-        }
+        Core.Diagnostics.BoundedLogFile.Append(LogPath,
+            $"[{DateTime.Now:HH:mm:ss.fff}] tag={tag} card={cardInstanceId:N} thread={Environment.CurrentManagedThreadId} {message}\n");
     }
 }

@@ -120,8 +120,21 @@ public sealed partial class SettingsViewModel : ObservableObject
             .ToList();
     }
 
+    // Wrapper so a failed save (disk, DB, autostart task) shows on the page instead of faulting the click.
     [RelayCommand]
     private async Task SaveAsync()
+    {
+        try
+        {
+            await SaveCoreAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Couldn't save settings: {ex.Message}";
+        }
+    }
+
+    private async Task SaveCoreAsync()
     {
         var updated = _settingsService.Current;
         updated.Accent = Accent;
@@ -195,6 +208,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             ReleaseUrl = result.Status == UpdateStatus.UpdateAvailable ? result.ReleaseUrl : null;
             ReleaseUri = Uri.TryCreate(ReleaseUrl, UriKind.Absolute, out var uri) ? uri : null;
         }
+        catch (Exception ex)
+        {
+            UpdateStatusText = $"Update check failed: {ex.Message}";
+        }
         finally
         {
             IsCheckingForUpdates = false;
@@ -217,11 +234,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task ExportAsync()
     {
-        var json = await _settingsService.ExportConfigurationAsync();
-        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Aether Control", "export.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        await File.WriteAllTextAsync(path, json);
-        StatusMessage = $"Exported to {path}";
+        try
+        {
+            var json = await _settingsService.ExportConfigurationAsync();
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Aether Control", "export.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllTextAsync(path, json);
+            StatusMessage = $"Exported to {path}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Export failed: {ex.Message}";
+        }
     }
 
     [RelayCommand]
@@ -234,7 +258,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             return;
         }
 
-        await _settingsService.ImportConfigurationAsync(await File.ReadAllTextAsync(path));
-        StatusMessage = "Configuration imported.";
+        try
+        {
+            await _settingsService.ImportConfigurationAsync(await File.ReadAllTextAsync(path));
+            StatusMessage = "Configuration imported.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Import failed: {ex.Message}";
+        }
     }
 }

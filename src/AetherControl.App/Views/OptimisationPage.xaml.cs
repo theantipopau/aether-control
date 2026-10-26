@@ -104,9 +104,16 @@ public sealed partial class OptimisationPage : Page
             XamlRoot = XamlRoot
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        try
         {
-            ViewModel.RenameFanChannel(channel.Id, input.Text.Trim());
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                ViewModel.RenameFanChannel(channel.Id, input.Text.Trim());
+            }
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"Couldn't rename fan channel: {ex.Message}";
         }
     }
 

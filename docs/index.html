@@ -163,6 +163,8 @@
   .btn.secondary { background: var(--surface); color: var(--text-primary); }
   .btn.secondary:hover { border-color: var(--accent); }
 
+  .app-shot { margin: 0 0 40px; }
+  .app-shot img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid rgba(255,255,255,.08); }
   /* ── App-window mock: the product, drawn in markup — stands in for screenshots ── */
   .app-window {
     max-width: 980px;
@@ -436,9 +438,9 @@
     </p>
     <div class="badges">
       <span class="badge">Windows 10 / 11</span>
-      <span class="badge">.NET 8.0</span>
+      <span class="badge">.NET 10.0</span>
       <span class="badge">WinUI 3</span>
-      <span class="badge">v0.9.1</span>
+      <span class="badge">v0.9.6</span>
       <span class="badge accent">Active development</span>
     </div>
     <div class="cta-row">
@@ -447,11 +449,15 @@
       <a class="btn secondary" href="https://github.com/theantipopau/aether-control/blob/main/ROADMAP.md">Full build log</a>
     </div>
 
+    <!-- Live capture of the Optimisation Centre (v0.9.6). Crop personal data from any new capture before committing. -->
+    <figure class="app-shot reveal">
+      <img src="screenshots/performance.png" alt="Aether Control Performance page: Optimisation Centre with gaming profile, fan control and quick tasks" loading="lazy" />
+    </figure>
+
     <!--
       The product, drawn in markup: title bar with live health readout, grouped navigation,
-      the Overview hero (verdict + headline gauges) and a row of metric cards. Stands in for
-      real screenshots until docs/screenshots/ is populated — crop personal data (external IP)
-      from any real capture before committing it.
+      the Overview hero (verdict + headline gauges) and a row of metric cards. Kept alongside
+      the real capture above as a lightweight preview of the Overview layout.
     -->
     <div class="app-window reveal" aria-hidden="true">
       <div class="aw-titlebar">
@@ -651,13 +657,13 @@
       <table class="stack">
         <thead><tr><th>Project</th><th>TFM</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td><code>AetherControl.Core</code></td><td class="tfm">net8.0</td><td>Models, enums, service interfaces, events — no dependencies</td></tr>
-          <tr><td><code>AetherControl.Plugins.Abstractions</code></td><td class="tfm">net8.0</td><td><code>IAetherPlugin</code> and capability interfaces third-party modules implement</td></tr>
-          <tr><td><code>AetherControl.Data</code></td><td class="tfm">net8.0</td><td>SQLite schema, migrations, repositories (settings, history, layouts)</td></tr>
-          <tr><td><code>AetherControl.Services</code></td><td class="tfm">net8.0-windows</td><td>Hardware monitoring, optimisation, RGB (Corsair direct HID + OpenRGB), firmware/driver detection, plugin loading</td></tr>
-          <tr><td><code>AetherControl.App</code></td><td class="tfm">net8.0-windows10.0.19041.0</td><td>WinUI 3 shell — overview, portrait mode, tray, all feature pages</td></tr>
-          <tr><td><code>AetherControl.Plugins.Sample</code></td><td class="tfm">net8.0</td><td>Reference plugin (system uptime widget)</td></tr>
-          <tr><td><code>tests/AetherControl.Tests</code></td><td class="tfm">net8.0-windows</td><td>xUnit tests against the Data/Services layer (run in CI on every push)</td></tr>
+          <tr><td><code>AetherControl.Core</code></td><td class="tfm">net10.0</td><td>Models, enums, service interfaces, events — no dependencies</td></tr>
+          <tr><td><code>AetherControl.Plugins.Abstractions</code></td><td class="tfm">net10.0</td><td><code>IAetherPlugin</code> and capability interfaces third-party modules implement</td></tr>
+          <tr><td><code>AetherControl.Data</code></td><td class="tfm">net10.0</td><td>SQLite schema, migrations, repositories (settings, history, layouts)</td></tr>
+          <tr><td><code>AetherControl.Services</code></td><td class="tfm">net10.0-windows</td><td>Hardware monitoring, optimisation, RGB (Corsair direct HID + OpenRGB), firmware/driver detection, plugin loading</td></tr>
+          <tr><td><code>AetherControl.App</code></td><td class="tfm">net10.0-windows10.0.19041.0</td><td>WinUI 3 shell — overview, portrait mode, tray, all feature pages</td></tr>
+          <tr><td><code>AetherControl.Plugins.Sample</code></td><td class="tfm">net10.0</td><td>Reference plugin (system uptime widget)</td></tr>
+          <tr><td><code>tests/AetherControl.Tests</code></td><td class="tfm">net10.0-windows</td><td>xUnit tests against the Data/Services layer (run in CI on every push)</td></tr>
         </tbody>
       </table>
     </div>

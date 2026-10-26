@@ -35,6 +35,18 @@ public sealed partial class FirmwarePage : Page
         succeeded ? InfoBarSeverity.Success : InfoBarSeverity.Error;
 
     /// <summary>The install step always happens in Windows itself — Aether only ever lists.</summary>
-    private async void OnOpenWindowsUpdateClick(object sender, RoutedEventArgs e) =>
-        await Launcher.LaunchUriAsync(new Uri("ms-settings:windowsupdate"));
+    private async void OnOpenWindowsUpdateClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!await Launcher.LaunchUriAsync(new Uri("ms-settings:windowsupdate")))
+            {
+                ViewModel.StatusMessage = "Windows refused to open Windows Update settings.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"Couldn't open Windows Update: {ex.Message}";
+        }
+    }
 }

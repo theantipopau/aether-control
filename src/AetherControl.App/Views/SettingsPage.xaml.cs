@@ -35,9 +35,10 @@ public sealed partial class SettingsPage : Page
         {
             await Controls.OnboardingDialog.ShowAsync(XamlRoot, App.Services.GetRequiredService<ISettingsService>());
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort; staying on the Settings page is the correct fallback.
+            // Staying on the Settings page is the correct fallback; say why the guide didn't open.
+            ViewModel.StatusMessage = $"Couldn't open the welcome guide: {ex.Message}";
         }
     }
 }

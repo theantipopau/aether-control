@@ -5,12 +5,19 @@ Projects: `src/AetherControl.{App,Core,Data,Services,Plugins.*}`, tests in `test
 Phase history and open items live in `ROADMAP.md` — add a phase entry for significant work.
 
 ## Build & test
-- The App project **cannot be built on this machine at all** (Phase 64). `dotnet build` lacks
-  the WinUI workload (`Microsoft.Build.Packaging.Pri.Tasks.dll`, XAML compiler LocalAssembly),
-  and local VS2022's MSBuild 17 can't even resolve the .NET 10 SDK (needs MSBuild 18+).
-  The only green path is CI's `app-build` job (windows-latest has MSBuild 18+), which also
-  uploads the unpackaged exe as `AetherControl-x64-Release`. Always pass `Platform=x64`
-  (AnyCPU fails). Until VS is updated to 2026 locally, download the CI artifact to run the app.
+- The App head needs Visual Studio's MSBuild **18+** (VS 2026) with the Windows application
+  development workload (PRI tasks, XAML compiler) to resolve the .NET 10 SDK from `global.json`.
+  This machine has VS2022 / MSBuild 17.14, so it can't build the head locally (checked 2026-10-26).
+  Plain `dotnet build`/`dotnet publish` does not work for the head either: a publish skips the PRI
+  step and ships without `AetherControl.pri`, and the app then dies at startup with
+  "Cannot find a resource with the given key: AetherAccentBrush" (the 0.9.6 portable zip).
+  Command: `msbuild src/AetherControl.App/AetherControl.App.csproj -restore -p:Configuration=Release -p:Platform=x64`
+  (always `Platform=x64`; AnyCPU fails). CI's `app-build` job runs it and uploads `AetherControl-x64-Release`.
+- Releases: bump `<Version>` in the App csproj, then push tag `vX.Y.Z` (must match).
+  `.github/workflows/release.yml` builds, checks the `.pri` is present, builds the Inno Setup installer
+  (`builder/AetherControl.iss`) and portable zip, and opens a **draft** GitHub release.
+- `AetherControl.exe --exit` closes a running instance via the same ordered shutdown as tray → Exit
+  (fans handed back to BIOS); the installer and uninstaller use it.
 - Tests: `dotnet test tests/AetherControl.Tests` works normally. Keep the suite green before committing.
   CI runs the same command on push/PR (`.github/workflows/ci.yml`, windows-latest, Release).
 - Hardware mapping tests use hand-written fakes in `tests/AetherControl.Tests/Fakes/FakeHardware.cs` —

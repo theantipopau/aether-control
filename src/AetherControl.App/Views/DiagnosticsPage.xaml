@@ -52,7 +52,7 @@
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.OsDescription}" Style="{StaticResource DiagnosticRowValueStyle}" />
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="Running elevated" Style="{StaticResource DiagnosticRowLabelStyle}" />
-                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.IsElevated}" Style="{StaticResource DiagnosticRowValueStyle}" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.ElevationText}" Style="{StaticResource DiagnosticRowValueStyle}" />
                     </Grid>
                 </Border>
             </StackPanel>

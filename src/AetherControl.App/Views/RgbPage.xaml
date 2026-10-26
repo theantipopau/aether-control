@@ -79,16 +79,16 @@
                                             </TextBlock>
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="00E5FF" Background="#00E5FF" Click="OnSwatchClick" ToolTipService.ToolTip="Cyan" />
-                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FFFFFF" Background="#FFFFFF" Click="OnSwatchClick" ToolTipService.ToolTip="White" />
-                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FF2D2D" Background="#FF2D2D" Click="OnSwatchClick" ToolTipService.ToolTip="Red" />
-                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FF9F1C" Background="#FF9F1C" Click="OnSwatchClick" ToolTipService.ToolTip="Amber" />
-                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="2DFF7A" Background="#2DFF7A" Click="OnSwatchClick" ToolTipService.ToolTip="Green" />
-                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="8A5CFF" Background="#8A5CFF" Click="OnSwatchClick" ToolTipService.ToolTip="Violet" />
-                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="000000" Background="#101010" Click="OnSwatchClick" ToolTipService.ToolTip="Off">
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="00E5FF" Background="#00E5FF" Click="OnSwatchClick" ToolTipService.ToolTip="Cyan" AutomationProperties.Name="Cyan" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FFFFFF" Background="#FFFFFF" Click="OnSwatchClick" ToolTipService.ToolTip="White" AutomationProperties.Name="White" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FF2D2D" Background="#FF2D2D" Click="OnSwatchClick" ToolTipService.ToolTip="Red" AutomationProperties.Name="Red" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="FF9F1C" Background="#FF9F1C" Click="OnSwatchClick" ToolTipService.ToolTip="Amber" AutomationProperties.Name="Amber" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="2DFF7A" Background="#2DFF7A" Click="OnSwatchClick" ToolTipService.ToolTip="Green" AutomationProperties.Name="Green" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="8A5CFF" Background="#8A5CFF" Click="OnSwatchClick" ToolTipService.ToolTip="Violet" AutomationProperties.Name="Violet" />
+                                            <Button Style="{StaticResource SwatchButtonStyle}" Tag="000000" Background="#101010" Click="OnSwatchClick" ToolTipService.ToolTip="Off" AutomationProperties.Name="Off">
                                                 <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" />
                                             </Button>
-                                            <Button ToolTipService.ToolTip="Custom colour" Padding="8,5">
+                                            <Button ToolTipService.ToolTip="Custom colour" AutomationProperties.Name="Custom colour" Padding="8,5">
                                                 <FontIcon Glyph="&#xE2B1;" FontSize="14" />
                                                 <Button.Flyout>
                                                     <Flyout Opening="OnCustomFlyoutOpening">

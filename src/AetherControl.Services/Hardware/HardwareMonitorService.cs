@@ -237,16 +237,8 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
 
     private static void LogStartupDiagnostic(string fileName, string message)
     {
-        try
-        {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Aether Control", fileName);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}\n");
-        }
-        catch
-        {
-            // best-effort diagnostic only
-        }
+        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Aether Control", fileName);
+        Core.Diagnostics.BoundedLogFile.Append(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}\n");
     }
 
     public HardwareSnapshot? LatestSnapshot { get; private set; }
