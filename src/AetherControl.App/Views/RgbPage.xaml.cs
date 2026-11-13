@@ -33,6 +33,22 @@ public sealed partial class RgbPage : Page
         }
     }
 
+    private async void OnEffectSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is ComboBox { DataContext: RgbDeviceInfo device, SelectedItem: string effect })
+        {
+            await ViewModel.SetEffectAsync(device, effect);
+        }
+    }
+
+    private async void OnSaveToDeviceClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: RgbDeviceInfo device })
+        {
+            await ViewModel.SaveToDeviceAsync(device);
+        }
+    }
+
     // Flyout content doesn't reliably inherit the item's DataContext, so hand it the device from
     // the button that opened it; Apply then reads it back like the swatches do.
     private void OnCustomFlyoutOpening(object sender, object e)

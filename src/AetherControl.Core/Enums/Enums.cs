@@ -133,7 +133,8 @@ public enum RgbBackend
 {
     OpenRgb,
     AuraSync,
-    CorsairDirect
+    CorsairDirect,
+    AsusAuraDirect
 }
 
 public enum HistoryResolution

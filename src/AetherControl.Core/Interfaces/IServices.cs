@@ -82,6 +82,9 @@ public interface IRgbService
 
     Task SetEffectAsync(string deviceId, string effectName, CancellationToken ct = default);
 
+    /// <summary>Commit current lighting to the device's own flash (only where <c>CanSaveToDevice</c>).</summary>
+    Task SaveToDeviceAsync(string deviceId, CancellationToken ct = default);
+
     bool IsAuraSyncInstalled();
 
     void LaunchAuraSync();

@@ -29,7 +29,7 @@
         <StackPanel Spacing="20">
 
             <controls:PageHero Glyph="&#xE790;" Eyebrow="Lighting" Title="RGB Control"
-                               Subtitle="Corsair keyboards and mice are driven directly over USB — no iCUE. Everything else routes through OpenRGB's SDK server (127.0.0.1:6742) when it's running.">
+                               Subtitle="ASUS Aura motherboard headers and Corsair keyboards and mice are driven directly over USB, with no Armoury Crate or iCUE. Everything else routes through OpenRGB's SDK server (127.0.0.1:6742) when it's running.">
                 <controls:PageHero.Actions>
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}" Width="18" Height="18"
@@ -69,7 +69,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <controls:HoverCard Margin="0,0,0,8">
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="10">
                                         <Grid Width="40" Height="40" VerticalAlignment="Center">
                                             <Border CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource AetherAccentBrush}" Opacity="0.14" />
                                             <FontIcon Glyph="&#xE790;" FontSize="18" Foreground="{StaticResource AetherAccentBrush}" />
@@ -79,6 +79,8 @@
                                             <TextBlock Style="{StaticResource SecondaryTextStyle}">
                                                 <Run Text="{Binding DeviceType}" /><Run Text="  ·  " /><Run Text="{Binding Backend}" />
                                             </TextBlock>
+                                            <TextBlock Text="{Binding Warning}" Foreground="{StaticResource StatusWarningBrush}" TextWrapping="Wrap"
+                                                       Visibility="{Binding Warning, Converter={StaticResource StringToVisibilityConverter}}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                             <Button Style="{StaticResource SwatchButtonStyle}" Tag="00E5FF" Background="#00E5FF" Click="OnSwatchClick" ToolTipService.ToolTip="Cyan" AutomationProperties.Name="Cyan" />
@@ -100,6 +102,20 @@
                                                         </StackPanel>
                                                     </Flyout>
                                                 </Button.Flyout>
+                                            </Button>
+                                        </StackPanel>
+
+                                        <!-- Effects + save. Save writes the device's flash, so it's its own button,
+                                             never automatic (only devices that support it show it). -->
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+                                            <ComboBox PlaceholderText="Effect" ItemsSource="{Binding SupportedModes}" MinWidth="160"
+                                                      SelectionChanged="OnEffectSelectionChanged" AutomationProperties.Name="Lighting effect" />
+                                            <Button Click="OnSaveToDeviceClick" ToolTipService.ToolTip="Store the current lighting on the device so it holds after a restart, with no software running"
+                                                    Visibility="{Binding CanSaveToDevice, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xE74E;" FontSize="14" />
+                                                    <TextBlock Text="Save to board" />
+                                                </StackPanel>
                                             </Button>
                                         </StackPanel>
                                     </Grid>

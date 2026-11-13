@@ -23,6 +23,10 @@ public sealed class RgbDeviceInfo
     public string DeviceType { get; set; } = string.Empty;
     public int LedCount { get; set; }
     public IReadOnlyList<string> SupportedModes { get; set; } = [];
+    /// <summary>Device can commit its current lighting to its own flash (survives reboots, no software).</summary>
+    public bool CanSaveToDevice { get; set; }
+    /// <summary>Something that will stop control working right now (e.g. vendor software owning the device); empty when none.</summary>
+    public string Warning { get; set; } = string.Empty;
 }
 
 public sealed class DriverStatus

@@ -94,6 +94,9 @@ public sealed class OpenRgbService(ILogger<OpenRgbService> logger) : IRgbService
         await client.SetModeAsync(entry.DeviceId, mode, ct).ConfigureAwait(false);
     }
 
+    // OpenRGB devices report CanSaveToDevice = false, so the UI never offers this.
+    public Task SaveToDeviceAsync(string deviceId, CancellationToken ct = default) => Task.CompletedTask;
+
     public bool IsAuraSyncInstalled() => AuraSyncDetectionService.IsInstalled();
 
     public void LaunchAuraSync() => AuraSyncDetectionService.Launch();

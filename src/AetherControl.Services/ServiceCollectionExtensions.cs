@@ -67,6 +67,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<OpenRgbService>();
         services.AddSingleton<CorsairHidDirectService>();
+        services.AddSingleton<AsusAuraUsbService>();
         services.AddSingleton<IRgbService, CompositeRgbService>();
         services.AddSingleton<IFirmwareDriverService, FirmwareDriverService>();
         services.AddSingleton<IPeripheralDetectionService, PeripheralDetectionService>();

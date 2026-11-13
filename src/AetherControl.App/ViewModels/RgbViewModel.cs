@@ -65,6 +65,34 @@ public sealed partial class RgbViewModel : ObservableObject
         }
     }
 
+    public async Task SetEffectAsync(RgbDeviceInfo device, string effect)
+    {
+        try
+        {
+            await _rgbService.SetEffectAsync(device.Id, effect);
+            StatusMessage = $"Sent {effect} to {device.Name}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Couldn't set {effect} on {device.Name}: {ex.Message}";
+        }
+    }
+
+    /// <summary>Writes the current lighting to the device's flash so it holds after a reboot with
+    /// nothing running. A separate button, not automatic: flash has limited write cycles.</summary>
+    public async Task SaveToDeviceAsync(RgbDeviceInfo device)
+    {
+        try
+        {
+            await _rgbService.SaveToDeviceAsync(device.Id);
+            StatusMessage = $"Saved the current lighting to {device.Name}. It will hold after a restart.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Couldn't save to {device.Name}: {ex.Message}";
+        }
+    }
+
     [RelayCommand]
     private void LaunchAuraSync() => _rgbService.LaunchAuraSync();
 }
