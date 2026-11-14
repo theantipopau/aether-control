@@ -186,12 +186,33 @@ public sealed class HardwareMonitorService : IHardwareMonitorService, IFanContro
                 break; // don't reopen again just to fall out of the loop unused
             }
 
-            _computer.Close();
-            Thread.Sleep(300);
-            _computer.Open();
+            ReopenForSuperIo(attempt);
         }
 
         LogStartupDiagnostic("superio-reopen.log", $"Still poisoned after {MaxSuperIoOpenAttempts} attempts — voltages/fans will read wrong until Aether Control is restarted.");
+    }
+
+    /// <summary>
+    /// First retry rebuilds only the motherboard group (toggling <c>IsMotherboardEnabled</c> re-detects
+    /// the Super I/O chip without touching CPU, GPU or storage); later retries do the full session
+    /// Close/Open that the 2026-09-23 evidence proved recovers a poisoned read. Measured on the test
+    /// rig (2026-11-14) with Armoury Crate + iCUE running: 41/56 polls poisoned per minute, ~2,400
+    /// full reopens in a day, and Aether averaging 0.78 of a core. Each full reopen re-enumerates
+    /// every drive and the GPU, which is where that time went.
+    /// </summary>
+    private void ReopenForSuperIo(int attempt)
+    {
+        if (attempt == 1)
+        {
+            _computer.IsMotherboardEnabled = false;
+            Thread.Sleep(100);
+            _computer.IsMotherboardEnabled = true;
+            return;
+        }
+
+        _computer.Close();
+        Thread.Sleep(300);
+        _computer.Open();
     }
 
     private static IEnumerable<double> VoltageValues(IEnumerable<ISensor> sensors) =>

@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using AetherControl.Core.Collections;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
@@ -93,10 +93,12 @@ public sealed partial class PortraitViewModel : ObservableObject, IDisposable
     // jitters by fractions of a percent almost every poll, which made plain-record MergeFrom
     // recreate its row every time.
     private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topCpuProcessesSync =
-        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
+        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s),
+            maxMissedSyncs: 1); // ranked top-N: a process that dropped out of the top 5 leaves now
 
     private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topGpuProcessesSync =
-        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
+        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s),
+            maxMissedSyncs: 1); // ranked top-N: a process that dropped out of the top 5 leaves now
 
     public ObservableCollection<ProcessUsageViewModel> TopCpuProcesses => _topCpuProcessesSync.Items;
     public ObservableCollection<ProcessUsageViewModel> TopGpuProcesses => _topGpuProcessesSync.Items;

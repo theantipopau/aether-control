@@ -88,7 +88,7 @@ public sealed partial class PortraitWindow : Window
         var portraitDisplay = FindPortraitDisplay();
         if (portraitDisplay is not null)
         {
-            AppWindow.MoveAndResize(portraitDisplay.WorkArea);
+            AppWindow.MoveAndResize(Services.WindowFrame.Inflate(AppWindow, portraitDisplay.WorkArea));
             _isFilled = true;
             // Reflects reality in the UI; OnFillScreenChecked's _isFilled guard stops this from
             // re-capturing _preFillPosition/_preFillSize from the now-already-filled bounds.
@@ -109,6 +109,10 @@ public sealed partial class PortraitWindow : Window
             uiActivity.SetWindowActive(UiActivityTracker.PortraitWindowKey, active);
             _aura?.SetDriftPaused(!active);
             EnsureFilledWindowVisible();
+            if (_isFilled && active)
+            {
+                SnapFilledWindow(AppWindow);
+            }
         };
 
         CreateThermalAura();
@@ -131,8 +135,15 @@ public sealed partial class PortraitWindow : Window
             return;
         }
 
+        SnapFilledWindow(sender);
+    }
+
+    // Also called on activation: the auto-fill in the constructor runs before the window is shown,
+    // when its invisible borders can't be measured yet, so the first snap there may be 8 px short.
+    private static void SnapFilledWindow(AppWindow sender)
+    {
         var display = DisplayArea.GetFromWindowId(sender.Id, DisplayAreaFallback.Nearest);
-        var bounds = display.WorkArea;
+        var bounds = Services.WindowFrame.Inflate(sender, display.WorkArea);
         var current = sender.Position;
         var size = sender.Size;
         if (current.X != bounds.X || current.Y != bounds.Y ||
@@ -172,7 +183,7 @@ public sealed partial class PortraitWindow : Window
         }
 
         var nearest = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
-        AppWindow.MoveAndResize(nearest.WorkArea);
+        AppWindow.MoveAndResize(Services.WindowFrame.Inflate(AppWindow, nearest.WorkArea));
     }
 
     /// <summary>Picks a connected display taller than it is wide — i.e. actually rotated to
@@ -311,7 +322,7 @@ public sealed partial class PortraitWindow : Window
         }
 
         var displayArea = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
-        AppWindow.MoveAndResize(displayArea.WorkArea);
+        AppWindow.MoveAndResize(Services.WindowFrame.Inflate(AppWindow, displayArea.WorkArea));
         _isFilled = true;
     }
 

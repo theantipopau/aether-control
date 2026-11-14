@@ -91,6 +91,32 @@ public sealed class LiveCollectionSync<TViewModel, TSnapshot, TKey>
 
             _missedSyncsByKey.Remove(key);
         }
+
+        // Keep the source's order (ranked lists: top processes). Move, not Replace, so containers
+        // survive; keys still in their grace period sit after the live ones. Without this the
+        // portrait panel showed "Top CPU" with 15.3% below 6.4% (screenshot, 2026-11-14).
+        for (var target = 0; target < source.Count; target++)
+        {
+            var key = _snapshotKey(source[target]);
+            var current = IndexOfKey(key);
+            if (current >= 0 && current != target)
+            {
+                Items.Move(current, target);
+            }
+        }
+    }
+
+    private int IndexOfKey(TKey key)
+    {
+        for (var i = 0; i < Items.Count; i++)
+        {
+            if (EqualityComparer<TKey>.Default.Equals(_viewModelKey(Items[i]), key))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private TViewModel? FindByKey(TKey key)

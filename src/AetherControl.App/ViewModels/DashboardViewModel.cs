@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using AetherControl.Core.Collections;
 using AetherControl.Core.Events;
 using AetherControl.Core.Interfaces;
@@ -120,13 +120,15 @@ public sealed partial class DashboardViewModel : ObservableObject, IDisposable
         new(snapshotKey: v => v.Name, viewModelKey: vm => vm.Name, create: s => new NamedSensorValueViewModel(s), apply: (vm, s) => vm.Apply(s));
 
     private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topProcessesSync =
-        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
+        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s),
+            maxMissedSyncs: 1); // ranked top-N: a process that dropped out of the top 5 leaves now
 
     // Same ranking, GPU side — ProcessRankerService.GetTopByGpu was ported alongside the CPU
     // ranking but only Portrait Mode ever displayed it; the dashboard answered "what's using my
     // CPU" with no equivalent for the GPU a game is actually loading.
     private readonly LiveCollectionSync<ProcessUsageViewModel, ProcessUsageInfo, int> _topGpuProcessesSync =
-        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s));
+        new(snapshotKey: p => p.Pid, viewModelKey: vm => vm.Pid, create: s => new ProcessUsageViewModel(s), apply: (vm, s) => vm.Apply(s),
+            maxMissedSyncs: 1); // ranked top-N: a process that dropped out of the top 5 leaves now
 
     public ObservableCollection<StorageDriveViewModel> Drives => _drivesSync.Items;
     public ObservableCollection<NamedSensorValueViewModel> MotherboardVoltages => _voltagesSync.Items;

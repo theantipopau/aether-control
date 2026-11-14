@@ -45,6 +45,21 @@ public class LiveCollectionSyncTests
     private static LiveCollectionSync<FakeViewModel, FakeSnapshot, string> CreateSync(int maxMissedSyncs = 3) =>
         new(snapshotKey: s => s.Id, viewModelKey: vm => vm.Id, create: s => new FakeViewModel(s), apply: (vm, s) => vm.Apply(s), maxMissedSyncs);
 
+    // Portrait "Top CPU" screenshot (2026-11-14): JumpConnect 15.3% listed below AetherControl 6.4%,
+    // and 8 rows for a top-5 list. Ranked lists must follow source order, using the same instances.
+    [Fact]
+    public void RankedList_FollowsSourceOrder_WithoutRecreatingItems_AndDropsImmediately()
+    {
+        var sync = CreateSync(maxMissedSyncs: 1);
+        sync.Sync([new FakeSnapshot { Id = "aether", Value = 6.4 }, new FakeSnapshot { Id = "unreal", Value = 5.3 }]);
+        var aether = sync.Items[0];
+
+        sync.Sync([new FakeSnapshot { Id = "jump", Value = 15.3 }, new FakeSnapshot { Id = "aether", Value = 6.4 }]);
+
+        Assert.Equal(["jump", "aether"], sync.Items.Select(i => i.Id));
+        Assert.Same(aether, sync.Items[1]);
+    }
+
     [Fact]
     public void NewDevice_CreatesExactlyOneCard()
     {
